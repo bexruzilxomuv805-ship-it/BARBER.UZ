@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-ink-950 text-ink-100 font-sans antialiased;
+  }
+  h1, h2, h3, h4 {
+    @apply font-display;
+  }
+  ::selection {
+    @apply bg-gold-500/30 text-gold-100;
+  }
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-ink-900;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gold-700 rounded-full;
+  }
+}
+
+@layer components {
+  .container-x {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+  .btn-gold {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-gold-500 to-gold-300 text-ink-950 font-semibold px-6 py-3 shadow-gold transition-all duration-300 hover:scale-[1.03] hover:shadow-lg active:scale-95;
+  }
+  .btn-outline {
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-gold-500/60 text-gold-300 font-semibold px-6 py-3 transition-all duration-300 hover:bg-gold-500/10 hover:border-gold-400 active:scale-95;
+  }
+  .card {
+    @apply bg-ink-900/70 border border-ink-800 rounded-2xl backdrop-blur-sm;
+  }
+  .input-field {
+    @apply w-full rounded-xl bg-ink-900 border border-ink-800 px-4 py-3 text-ink-100 placeholder:text-ink-500 focus:outline-none focus:border-gold-500/70 focus:ring-1 focus:ring-gold-500/50 transition-colors;
+  }
+  .section-title {
+    @apply text-3xl sm:text-4xl font-display font-bold text-white;
+  }
+  .gold-text {
+    @apply bg-gradient-to-r from-gold-300 via-gold-400 to-gold-600 bg-clip-text text-transparent;
+  }
+  .shimmer-line {
+    @apply h-px w-full bg-gold-line;
+  }
+}
