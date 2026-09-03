@@ -117,6 +117,8 @@
     "chooseTime": "Choose a time",
     "selectDateFirst": "Choose a date first to see available times.",
     "offDayNote": "Greyed-out days are the barber's day off or vacation.",
+    "offDaysLabel": "Day off:",
+    "barberUnavailable": "Not available for booking right now",
     "orderSummary": "Order summary",
     "serviceLabel": "Service",
     "barberLabel": "Barber",

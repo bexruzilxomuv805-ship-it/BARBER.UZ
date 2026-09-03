@@ -117,6 +117,8 @@
     "chooseTime": "Выберите время",
     "selectDateFirst": "Сначала выберите дату, чтобы увидеть время.",
     "offDayNote": "Серые дни — выходной или отпуск мастера.",
+    "offDaysLabel": "Выходной:",
+    "barberUnavailable": "Сейчас недоступен для записи",
     "orderSummary": "Итог заказа",
     "serviceLabel": "Услуга",
     "barberLabel": "Мастер",

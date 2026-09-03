@@ -117,6 +117,8 @@
     "chooseTime": "Vaqtni tanlang",
     "selectDateFirst": "Vaqtlarni ko‘rish uchun avval sanani tanlang.",
     "offDayNote": "Kulrang kunlar — ustaning dam olish kuni yoki ta’tili.",
+    "offDaysLabel": "Dam olish:",
+    "barberUnavailable": "Hozircha band qilib bo‘lmaydi",
     "orderSummary": "Buyurtma xulosasi",
     "serviceLabel": "Xizmat",
     "barberLabel": "Usta",

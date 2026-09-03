@@ -15,7 +15,7 @@ import { fetchAppointments, createAppointment } from '../../features/appointment
 import { showToast } from '../../features/ui/uiSlice'
 import useAuth from '../../hooks/useAuth'
 import { formatSum } from '../../utils/format'
-import { isBarberOff } from '../../utils/schedule'
+import { isBarberOff, WEEKDAY_DISPLAY_ORDER } from '../../utils/schedule'
 
 const WORK_HOURS = ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30']
 
@@ -204,22 +204,31 @@ export default function Booking() {
                   <Loader />
                 ) : (
                   <div className="grid gap-4 sm:grid-cols-2">
-                    {barbers.map((b) => (
-                      <button
-                        key={b.id}
-                        onClick={() => { setBarberId(b.id); setDate(''); setTime('') }}
-                        className={`card flex items-center gap-4 p-4 text-left transition-colors ${
-                          barberId === b.id ? 'border-gold-500 bg-gold-500/5' : 'hover:border-gold-500/40'
-                        }`}
-                      >
-                        <img src={getBarberImage(b.rasm)} alt={b.ism} className="h-14 w-14 rounded-full object-cover shrink-0" />
-                        <div className="flex-1">
-                          <p className="font-medium text-white text-sm">{b.ism} {b.familiya}</p>
-                          <AutoText as="p" className="text-xs text-gold-400" text={b.mutaxassislik} />
-                        </div>
-                        <span className="text-xs text-ink-500">{b.ishVaqti}</span>
-                      </button>
-                    ))}
+                    {barbers.map((b) => {
+                      const offDays = WEEKDAY_DISPLAY_ORDER.filter((d) => b.damOlishKunlari?.includes(d)).map((d) => weekdaysShort[d])
+                      const alwaysOff = offDays.length === 7
+                      return (
+                        <button
+                          key={b.id}
+                          onClick={() => { setBarberId(b.id); setDate(''); setTime('') }}
+                          className={`card flex items-center gap-4 p-4 text-left transition-colors ${
+                            barberId === b.id ? 'border-gold-500 bg-gold-500/5' : 'hover:border-gold-500/40'
+                          }`}
+                        >
+                          <img src={getBarberImage(b.rasm)} alt={b.ism} className="h-14 w-14 rounded-full object-cover shrink-0" />
+                          <div className="flex-1">
+                            <p className="font-medium text-white text-sm">{b.ism} {b.familiya}</p>
+                            <AutoText as="p" className="text-xs text-gold-400" text={b.mutaxassislik} />
+                            {offDays.length > 0 && (
+                              <p className={`mt-1 text-[11px] ${alwaysOff ? 'text-red-400' : 'text-amber-400/80'}`}>
+                                {alwaysOff ? t('booking.barberUnavailable') : `${t('booking.offDaysLabel')} ${offDays.join(', ')}`}
+                              </p>
+                            )}
+                          </div>
+                          <span className="text-xs text-ink-500">{b.ishVaqti}</span>
+                        </button>
+                      )
+                    })}
                   </div>
                 )}
               </div>
