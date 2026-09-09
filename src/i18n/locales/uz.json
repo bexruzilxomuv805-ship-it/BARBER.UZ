@@ -168,6 +168,12 @@
     "errorPasswordMismatch": "Parollar mos kelmadi.",
     "welcomeToast": "Xush kelibsiz, {{name}}! Ro‘yxatdan muvaffaqiyatli o‘tdingiz."
   },
+  "telegramLogin": {
+    "divider": "yoki",
+    "button": "Telegram orqali kirish",
+    "waiting": "Telegramda tasdiqlang...",
+    "error": "Telegram orqali kirib bo‘lmadi. Qaytadan urinib ko‘ring."
+  },
   "profile": {
     "eyebrow": "Shaxsiy kabinet",
     "title": "Mening profilim",

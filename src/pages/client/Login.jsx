@@ -7,6 +7,7 @@ import { FaEnvelope, FaLock, FaEye, FaEyeSlash, FaSignInAlt } from 'react-icons/
 import { GiRazor } from 'react-icons/gi'
 import { loginUser, clearAuthError } from '../../features/auth/authSlice'
 import { showToast } from '../../features/ui/uiSlice'
+import TelegramLoginButton from '../../components/TelegramLoginButton'
 
 export default function Login() {
   const { t } = useTranslation()
@@ -27,6 +28,11 @@ export default function Login() {
       dispatch(showToast({ type: 'success', text: t('login.welcomeToast', { name: result.payload.ism }) }))
       navigate(result.payload.role === 'admin' ? '/admin' : from || '/')
     }
+  }
+
+  const handleTelegramSuccess = (user) => {
+    dispatch(showToast({ type: 'success', text: t('login.welcomeToast', { name: user.ism }) }))
+    navigate(user.role === 'admin' ? '/admin' : from || '/')
   }
 
   return (
@@ -90,6 +96,14 @@ export default function Login() {
               <FaSignInAlt /> {status === 'loading' ? t('login.submitting') : t('login.submit')}
             </button>
           </form>
+
+          <div className="my-5 flex items-center gap-3 text-xs text-ink-500">
+            <span className="h-px flex-1 bg-ink-700" />
+            {t('telegramLogin.divider')}
+            <span className="h-px flex-1 bg-ink-700" />
+          </div>
+
+          <TelegramLoginButton onSuccess={handleTelegramSuccess} />
 
           <p className="mt-6 text-center text-sm text-ink-400">
             {t('login.noAccount')}{' '}

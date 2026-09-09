@@ -78,6 +78,20 @@ export const loginUser = createAsyncThunk(
   }
 )
 
+export const completeTelegramLogin = createAsyncThunk(
+  'auth/completeTelegramLogin',
+  async (userId, { rejectWithValue }) => {
+    try {
+      const { data } = await client.get(`/users/${userId}`)
+      const safe = sanitize(data)
+      persistUser(safe)
+      return safe
+    } catch (err) {
+      return rejectWithValue(err?.response?.data?.message || i18n.t('authErrors.loginFailed'))
+    }
+  }
+)
+
 export const updateProfile = createAsyncThunk(
   'auth/updateProfile',
   async ({ id, changes }, { rejectWithValue }) => {
@@ -139,6 +153,19 @@ const authSlice = createSlice({
         state.isAuthenticated = true
       })
       .addCase(loginUser.rejected, (state, action) => {
+        state.status = 'failed'
+        state.error = action.payload
+      })
+      .addCase(completeTelegramLogin.pending, (state) => {
+        state.status = 'loading'
+        state.error = null
+      })
+      .addCase(completeTelegramLogin.fulfilled, (state, action) => {
+        state.status = 'succeeded'
+        state.user = action.payload
+        state.isAuthenticated = true
+      })
+      .addCase(completeTelegramLogin.rejected, (state, action) => {
         state.status = 'failed'
         state.error = action.payload
       })

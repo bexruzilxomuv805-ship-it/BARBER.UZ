@@ -97,3 +97,43 @@ export async function getUnnotifiedNewClients() {
 export async function markUserNotified(id) {
   await client.patch(`/users/${id}`, { tgNotified: true })
 }
+
+export async function getTelegramLogin(token) {
+  try {
+    const { data } = await client.get(`/telegramLogins/${encodeURIComponent(token)}`)
+    return data
+  } catch (err) {
+    if (err?.response?.status === 404) return null
+    throw err
+  }
+}
+
+export async function confirmTelegramLogin(token, userId) {
+  await client.patch(`/telegramLogins/${encodeURIComponent(token)}`, { status: 'confirmed', userId })
+}
+
+export async function findUserByTelegramId(telegramId) {
+  // json-server returns ALL rows (not an empty list) when a filter targets a
+  // field no document has yet, so filter in JS instead — see getUnnotified*
+  // above for the same issue.
+  const { data } = await client.get('/users')
+  return data.find((u) => String(u.telegramId) === String(telegramId)) || null
+}
+
+export async function createTelegramUser(tgUser) {
+  const newUser = {
+    id: `u-tg-${tgUser.id}`,
+    ism: tgUser.first_name || 'Telegram',
+    familiya: tgUser.last_name || '',
+    email: '',
+    telefon: '',
+    parol: '',
+    role: 'client',
+    avatar: '',
+    telegramId: tgUser.id,
+    telegramUsername: tgUser.username || '',
+    createdAt: new Date().toISOString(),
+  }
+  const { data } = await client.post('/users', newUser)
+  return data
+}

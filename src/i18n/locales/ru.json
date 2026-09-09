@@ -168,6 +168,12 @@
     "errorPasswordMismatch": "Пароли не совпадают.",
     "welcomeToast": "Добро пожаловать, {{name}}! Вы успешно зарегистрировались."
   },
+  "telegramLogin": {
+    "divider": "или",
+    "button": "Войти через Telegram",
+    "waiting": "Подтвердите в Telegram...",
+    "error": "Не удалось войти через Telegram. Попробуйте снова."
+  },
   "profile": {
     "eyebrow": "Личный кабинет",
     "title": "Мой профиль",

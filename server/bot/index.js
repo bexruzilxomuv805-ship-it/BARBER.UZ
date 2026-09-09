@@ -12,6 +12,10 @@ import {
   markAppointmentReminded,
   getUnnotifiedNewClients,
   markUserNotified,
+  getTelegramLogin,
+  confirmTelegramLogin,
+  findUserByTelegramId,
+  createTelegramUser,
 } from './api.js'
 
 const POLL_MS = 5000
@@ -113,6 +117,58 @@ function formatMoney(n) {
   return `${(n || 0).toLocaleString('ru-RU')} so'm`
 }
 
+const BTN_BUGUN = "\u{1F4C5} Bugungi navbatlar"
+const BTN_NAVBATLAR = "\u{1F5D3}️ Kelayotgan navbatlar"
+const BTN_STATS = "\u{1F4CA} Statistika"
+
+const MENU_KEYBOARD = {
+  reply_markup: {
+    keyboard: [[{ text: BTN_BUGUN }, { text: BTN_NAVBATLAR }], [{ text: BTN_STATS }]],
+    resize_keyboard: true,
+    is_persistent: true,
+  },
+}
+
+async function buildBugunText() {
+  const all = await getAllAppointments()
+  const today = todayStr()
+  const list = all.filter((a) => a.sana === today).sort((a, b) => (a.vaqt || '').localeCompare(b.vaqt || ''))
+  if (!list.length) return "Bugun hech qanday navbat yo'q."
+  const lines = list.map((a) => `${a.vaqt} — ${a.mijozIsmi} (${a.xizmatNomi}, ${a.barberIsmi}) [${a.holat}]`)
+  return `\u{1F4C5} Bugungi navbatlar (${today}):\n\n${lines.join('\n')}`
+}
+
+async function buildNavbatlarText() {
+  const all = await getAllAppointments()
+  const today = todayStr()
+  const list = all
+    .filter((a) => a.sana >= today && a.holat !== 'bekor qilingan' && a.holat !== 'yakunlangan')
+    .sort((a, b) => `${a.sana}${a.vaqt}`.localeCompare(`${b.sana}${b.vaqt}`))
+    .slice(0, 15)
+  if (!list.length) return "Kelayotgan navbatlar yo'q."
+  const lines = list.map((a) => `${a.sana} ${a.vaqt} — ${a.mijozIsmi} (${a.xizmatNomi}, ${a.barberIsmi}) [${a.holat}]`)
+  return `\u{1F5D3}️ Kelayotgan navbatlar:\n\n${lines.join('\n')}`
+}
+
+async function buildStatsText() {
+  const all = await getAllAppointments()
+  const today = todayStr()
+  const todays = all.filter((a) => a.sana === today)
+  const revenue = todays.filter((a) => a.holat === 'yakunlangan').reduce((sum, a) => sum + (a.narxi || 0), 0)
+  const byBarber = {}
+  todays.forEach((a) => {
+    if (a.barberIsmi) byBarber[a.barberIsmi] = (byBarber[a.barberIsmi] || 0) + 1
+  })
+  const busiest = Object.entries(byBarber).sort((a, b) => b[1] - a[1])[0]
+  const lines = [
+    `\u{1F4CA} Bugungi statistika (${today})`,
+    `Jami navbatlar: ${todays.length}`,
+    `Tushum (yakunlangan): ${formatMoney(revenue)}`,
+    busiest ? `Eng band usta: ${busiest[0]} (${busiest[1]} ta)` : null,
+  ].filter(Boolean)
+  return lines.join('\n')
+}
+
 async function sendReminders() {
   if (!adminChatId) return
   try {
@@ -143,7 +199,41 @@ async function sendReminders() {
   }
 }
 
-bot.onText(/^\/start/, (msg) => {
+async function handleTelegramLoginStart(msg, token) {
+  try {
+    const login = await getTelegramLogin(token)
+    if (!login || login.status !== 'pending') {
+      await bot.sendMessage(
+        msg.chat.id,
+        "Bu havola eskirgan yoki noto'g'ri. Saytda \"Telegram orqali kirish\" tugmasini qaytadan bosing."
+      )
+      return
+    }
+
+    const tgUser = msg.from
+    let user = await findUserByTelegramId(tgUser.id)
+    if (!user) {
+      user = await createTelegramUser(tgUser)
+    }
+    await confirmTelegramLogin(token, user.id)
+
+    await bot.sendMessage(
+      msg.chat.id,
+      `✅ Xush kelibsiz, ${user.ism}!\nZolotoy Barber hisobingizga kirdingiz. Saytga qaytishingiz mumkin.`
+    )
+  } catch (err) {
+    console.error('[bot] telegram login error:', err?.message || err)
+    await bot.sendMessage(msg.chat.id, "Xatolik yuz berdi, saytda qaytadan urinib ko'ring.")
+  }
+}
+
+bot.onText(/^\/start(?:\s+(\S+))?/, async (msg, match) => {
+  const token = match?.[1]
+  if (token) {
+    await handleTelegramLoginStart(msg, token)
+    return
+  }
+
   bot.sendMessage(
     msg.chat.id,
     `Salom! Bu chat ID: ${msg.chat.id}\n\n` +
@@ -151,62 +241,42 @@ bot.onText(/^\/start/, (msg) => {
       `Shundan keyin bu yerga saytdagi yangi mijoz xabarlari, yangi navbatlar, ro'yxatdan o'tishlar va ` +
       `eslatmalar kelib turadi. Mijozga javob yozish uchun uning xabariga shu yerda "Reply" qilib yozing ` +
       `(yoki oxirgi mijozga to'g'ridan-to'g'ri yozing).\n\n` +
-      `Buyruqlar:\n/bugun — bugungi navbatlar\n/navbatlar — kelayotgan navbatlar\n/stats — bugungi statistika`
+      `Pastdagi menyudan yoki buyruqlardan foydalaning:\n/bugun /navbatlar /stats`,
+    MENU_KEYBOARD
   )
 })
 
 bot.onText(/^\/bugun/, async (msg) => {
   if (!isFromAdmin(msg)) return
-  const all = await getAllAppointments()
-  const today = todayStr()
-  const list = all.filter((a) => a.sana === today).sort((a, b) => (a.vaqt || '').localeCompare(b.vaqt || ''))
-  if (!list.length) {
-    await bot.sendMessage(msg.chat.id, "Bugun hech qanday navbat yo'q.")
-    return
-  }
-  const lines = list.map((a) => `${a.vaqt} — ${a.mijozIsmi} (${a.xizmatNomi}, ${a.barberIsmi}) [${a.holat}]`)
-  await bot.sendMessage(msg.chat.id, `\u{1F4C5} Bugungi navbatlar (${today}):\n\n${lines.join('\n')}`)
+  await bot.sendMessage(msg.chat.id, await buildBugunText())
 })
 
 bot.onText(/^\/navbatlar/, async (msg) => {
   if (!isFromAdmin(msg)) return
-  const all = await getAllAppointments()
-  const today = todayStr()
-  const list = all
-    .filter((a) => a.sana >= today && a.holat !== 'bekor qilingan' && a.holat !== 'yakunlangan')
-    .sort((a, b) => `${a.sana}${a.vaqt}`.localeCompare(`${b.sana}${b.vaqt}`))
-    .slice(0, 15)
-  if (!list.length) {
-    await bot.sendMessage(msg.chat.id, "Kelayotgan navbatlar yo'q.")
-    return
-  }
-  const lines = list.map((a) => `${a.sana} ${a.vaqt} — ${a.mijozIsmi} (${a.xizmatNomi}, ${a.barberIsmi}) [${a.holat}]`)
-  await bot.sendMessage(msg.chat.id, `\u{1F5D3}️ Kelayotgan navbatlar:\n\n${lines.join('\n')}`)
+  await bot.sendMessage(msg.chat.id, await buildNavbatlarText())
 })
 
 bot.onText(/^\/stats/, async (msg) => {
   if (!isFromAdmin(msg)) return
-  const all = await getAllAppointments()
-  const today = todayStr()
-  const todays = all.filter((a) => a.sana === today)
-  const revenue = todays.filter((a) => a.holat === 'yakunlangan').reduce((sum, a) => sum + (a.narxi || 0), 0)
-  const byBarber = {}
-  todays.forEach((a) => {
-    if (a.barberIsmi) byBarber[a.barberIsmi] = (byBarber[a.barberIsmi] || 0) + 1
-  })
-  const busiest = Object.entries(byBarber).sort((a, b) => b[1] - a[1])[0]
-  const lines = [
-    `\u{1F4CA} Bugungi statistika (${today})`,
-    `Jami navbatlar: ${todays.length}`,
-    `Tushum (yakunlangan): ${formatMoney(revenue)}`,
-    busiest ? `Eng band usta: ${busiest[0]} (${busiest[1]} ta)` : null,
-  ].filter(Boolean)
-  await bot.sendMessage(msg.chat.id, lines.join('\n'))
+  await bot.sendMessage(msg.chat.id, await buildStatsText())
 })
 
 bot.on('message', async (msg) => {
   if (!msg.text || msg.text.startsWith('/')) return
   if (!isFromAdmin(msg)) return
+
+  if (msg.text === BTN_BUGUN) {
+    await bot.sendMessage(msg.chat.id, await buildBugunText())
+    return
+  }
+  if (msg.text === BTN_NAVBATLAR) {
+    await bot.sendMessage(msg.chat.id, await buildNavbatlarText())
+    return
+  }
+  if (msg.text === BTN_STATS) {
+    await bot.sendMessage(msg.chat.id, await buildStatsText())
+    return
+  }
 
   const replyToId = msg.reply_to_message?.message_id
   const conversationId = (replyToId && conversationByTelegramMsgId.get(replyToId)) || lastConversationId
@@ -254,6 +324,13 @@ bot.on('callback_query', async (query) => {
 })
 
 bot.on('polling_error', (err) => console.error('[bot] polling error:', err?.message || err))
+
+bot.setMyCommands([
+  { command: 'start', description: "Chat ID va yordam" },
+  { command: 'bugun', description: 'Bugungi navbatlar' },
+  { command: 'navbatlar', description: 'Kelayotgan navbatlar' },
+  { command: 'stats', description: 'Bugungi statistika' },
+]).catch((err) => console.error('[bot] setMyCommands error:', err?.message || err))
 
 console.log('[bot] Telegram bot ishga tushdi (long polling).')
 if (!adminChatId) {

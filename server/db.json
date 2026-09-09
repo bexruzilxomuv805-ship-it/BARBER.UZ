@@ -369,61 +369,9 @@
       "sana": "2026-08-27"
     }
   ],
-  "messages": [
-    {
-      "id": "m-1788024924072-6zsx3",
-      "conversationId": "u-1788005149735",
-      "userId": "u-1788005149735",
-      "userName": "pro ",
-      "sender": "admin",
-      "text": "raxmat sizni yena kutib qolamiz",
-      "createdAt": "2026-08-29T17:35:24.072Z",
-      "read": true
-    },
-    {
-      "id": "m-1788025111239-zunkf",
-      "conversationId": "u-1788005149735",
-      "userId": "u-1788005149735",
-      "userName": "bexruz",
-      "sender": "client",
-      "text": "sayit juda zor\n\n\n— bexruz, +998958341545",
-      "createdAt": "2026-08-29T17:38:31.239Z",
-      "read": false,
-      "tgNotified": true
-    },
-    {
-      "id": "m-1788025300792-ma491",
-      "conversationId": "u-1788005149735",
-      "userId": "u-1788005149735",
-      "userName": "pro ",
-      "sender": "admin",
-      "text": "raxmat",
-      "createdAt": "2026-08-29T17:41:40.792Z",
-      "read": true
-    },
-    {
-      "id": "m-1788024798742-n6z2l",
-      "conversationId": "u-1788005149735",
-      "userId": "u-1788005149735",
-      "userName": "pro ",
-      "sender": "client",
-      "text": "salom sayitingiz menga yoqdi",
-      "createdAt": "2026-08-29T17:33:18.742Z",
-      "read": false,
-      "tgNotified": true
-    }
-  ],
-  "conversations": [
-    {
-      "id": "u-1788005149735",
-      "userId": "u-1788005149735",
-      "userName": "pro ",
-      "lastMessage": "raxmat",
-      "updatedAt": "2026-08-29T17:41:40.792Z",
-      "unreadForAdmin": 0,
-      "unreadForClient": 0
-    }
-  ],
+  "messages": [],
+  "conversations": [],
+  "telegramLogins": [],
   "contactInfo": {
     "manzil": "TOSHKENT SHAHAR SHAYHONTOHUR 17,18",
     "telefon": "+998 95 834 15 45",

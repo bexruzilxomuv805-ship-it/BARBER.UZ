@@ -7,6 +7,7 @@ import { FaUser, FaEnvelope, FaPhoneAlt, FaLock, FaUserPlus } from 'react-icons/
 import { GiRazor } from 'react-icons/gi'
 import { registerUser, clearAuthError } from '../../features/auth/authSlice'
 import { showToast } from '../../features/ui/uiSlice'
+import TelegramLoginButton from '../../components/TelegramLoginButton'
 
 export default function Register() {
   const { t } = useTranslation()
@@ -37,6 +38,11 @@ export default function Register() {
       dispatch(showToast({ type: 'success', text: t('register.welcomeToast', { name: result.payload.ism }) }))
       navigate('/')
     }
+  }
+
+  const handleTelegramSuccess = (user) => {
+    dispatch(showToast({ type: 'success', text: t('register.welcomeToast', { name: user.ism }) }))
+    navigate(user.role === 'admin' ? '/admin' : '/')
   }
 
   return (
@@ -96,6 +102,14 @@ export default function Register() {
               <FaUserPlus /> {status === 'loading' ? t('register.submitting') : t('register.submit')}
             </button>
           </form>
+
+          <div className="my-5 flex items-center gap-3 text-xs text-ink-500">
+            <span className="h-px flex-1 bg-ink-700" />
+            {t('telegramLogin.divider')}
+            <span className="h-px flex-1 bg-ink-700" />
+          </div>
+
+          <TelegramLoginButton onSuccess={handleTelegramSuccess} />
 
           <p className="mt-6 text-center text-sm text-ink-400">
             {t('register.haveAccount')}{' '}

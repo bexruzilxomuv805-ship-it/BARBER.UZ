@@ -168,6 +168,12 @@
     "errorPasswordMismatch": "Passwords do not match.",
     "welcomeToast": "Welcome, {{name}}! You have registered successfully."
   },
+  "telegramLogin": {
+    "divider": "or",
+    "button": "Continue with Telegram",
+    "waiting": "Confirm in Telegram...",
+    "error": "Couldn't sign in with Telegram. Please try again."
+  },
   "profile": {
     "eyebrow": "My account",
     "title": "My profile",
