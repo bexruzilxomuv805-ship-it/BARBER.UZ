@@ -68,6 +68,25 @@ Saytni ochish: **http://localhost:5173**
 Yangi mijozlar **Ro‘yxatdan o‘tish** sahifasi orqali ro‘yxatdan o‘tishi mumkin — barcha ma’lumotlar
 `server/db.json` faylidagi `users` bo‘limiga real vaqtda yoziladi.
 
+## Telegram bot
+
+`server/bot/` — saytdagi support chatni va yangi navbatlarni Telegramga ulovchi bot. Alohida deploy talab
+qilmaydi: long polling rejimida ishlaydi, ya’ni **lokal kompyuterda ham** to‘liq ishlaydi (public URL shart
+emas) — u faqat `npm run server` (json-server, port 4000) bilan gaplashadi.
+
+Sozlash:
+
+1. Telegramda [@BotFather](https://t.me/BotFather) ga `/newbot` yozing, tokenni oling.
+2. `.env.example` faylini `.env` qilib nusxalang, `TELEGRAM_BOT_TOKEN` ga tokenni yozing.
+3. `npm run bot` (yoki `npm start` — u WEB, API, BOT uchtasini birga ishga tushiradi) ni ishga tushiring,
+   botga Telegramda `/start` yozing — u sizga chat ID’ingizni qaytaradi.
+4. Shu ID’ni `.env` faylidagi `TELEGRAM_ADMIN_CHAT_ID` ga yozib, botni qayta ishga tushiring.
+
+Shundan keyin: mijoz saytda yozgan har bir support xabari botga keladi (mijoz xabariga "Reply" qilib javob
+yozsangiz — u to‘g‘ridan-to‘g‘ri saytdagi chatga tushadi), va har bir yangi navbat ✅ Tasdiqlash / ❌ Bekor
+qilish tugmalari bilan botga keladi. `.env` sozlanmagan bo‘lsa, bot shunchaki o‘chirilgan holatda qoladi —
+`npm start` qolgan ikkitasini (WEB, API) normal ishga tushiradi.
+
 ## Loyihaning tuzilishi
 
 ```
@@ -90,6 +109,7 @@ src/
 server/
   db.json        — json-server ma’lumotlar bazasi (users, barbers, services,
                     appointments, inventory, payments, reviews, messages, conversations)
+  bot/           — Telegram bot (chat va navbat bildirishnomalarini Telegramga ulaydi)
 scripts/
   gen-images.mjs — ustalar va hero uchun SVG rasmlarni qayta generatsiya qilish
 ```
