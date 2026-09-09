@@ -8,9 +8,15 @@ import {
   getUnnotifiedPendingAppointments,
   markAppointmentNotified,
   setAppointmentStatus,
+  getAllAppointments,
+  markAppointmentReminded,
+  getUnnotifiedNewClients,
+  markUserNotified,
 } from './api.js'
 
 const POLL_MS = 5000
+const REMINDER_POLL_MS = 60000
+const REMINDER_WINDOW_MIN = 60
 const { TELEGRAM_BOT_TOKEN, TELEGRAM_ADMIN_CHAT_ID } = process.env
 
 if (!TELEGRAM_BOT_TOKEN) {
@@ -74,12 +80,66 @@ async function forwardAppointments() {
   }
 }
 
+async function forwardNewClients() {
+  const users = await getUnnotifiedNewClients()
+  for (const u of users) {
+    if (!adminChatId) break
+    await bot.sendMessage(
+      adminChatId,
+      `\u{1F195} Yangi mijoz ro'yxatdan o'tdi\n` +
+        `\u{1F464} ${u.ism || ''} ${u.familiya || ''}`.trim() +
+        `\n\u{1F4DE} ${u.telefon || '—'}\n✉️ ${u.email || '—'}`
+    )
+    await markUserNotified(u.id)
+  }
+}
+
 async function poll() {
   try {
     await forwardClientMessages()
     await forwardAppointments()
+    await forwardNewClients()
   } catch (err) {
     console.error('[bot] poll error:', err?.message || err)
+  }
+}
+
+function todayStr() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function formatMoney(n) {
+  return `${(n || 0).toLocaleString('ru-RU')} so'm`
+}
+
+async function sendReminders() {
+  if (!adminChatId) return
+  try {
+    const all = await getAllAppointments()
+    const today = todayStr()
+    const now = new Date()
+    const due = all.filter((a) => {
+      if (a.tgReminded) return false
+      if (a.sana !== today) return false
+      if (a.holat !== 'kutilmoqda' && a.holat !== 'tasdiqlangan') return false
+      const [h, m] = (a.vaqt || '').split(':').map(Number)
+      if (Number.isNaN(h) || Number.isNaN(m)) return false
+      const apptTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m)
+      const diffMin = (apptTime - now) / 60000
+      return diffMin > 0 && diffMin <= REMINDER_WINDOW_MIN
+    })
+    for (const a of due) {
+      await bot.sendMessage(
+        adminChatId,
+        `⏰ Eslatma: ${a.vaqt}da navbat bor\n` +
+          `\u{1F464} ${a.mijozIsmi || 'Mijoz'} (${a.mijozTelefon || '—'})\n` +
+          `✂️ ${a.xizmatNomi || '—'} — ${a.barberIsmi || '—'}`
+      )
+      await markAppointmentReminded(a.id)
+    }
+  } catch (err) {
+    console.error('[bot] reminder error:', err?.message || err)
   }
 }
 
@@ -88,9 +148,60 @@ bot.onText(/^\/start/, (msg) => {
     msg.chat.id,
     `Salom! Bu chat ID: ${msg.chat.id}\n\n` +
       `Buni .env faylidagi TELEGRAM_ADMIN_CHAT_ID ga qo'ying va botni qayta ishga tushiring.\n\n` +
-      `Shundan keyin bu yerga saytdagi yangi mijoz xabarlari va navbatlar kelib turadi. ` +
-      `Mijozga javob yozish uchun uning xabariga shu yerda "Reply" qilib yozing (yoki oxirgi mijozga to'g'ridan-to'g'ri yozing).`
+      `Shundan keyin bu yerga saytdagi yangi mijoz xabarlari, yangi navbatlar, ro'yxatdan o'tishlar va ` +
+      `eslatmalar kelib turadi. Mijozga javob yozish uchun uning xabariga shu yerda "Reply" qilib yozing ` +
+      `(yoki oxirgi mijozga to'g'ridan-to'g'ri yozing).\n\n` +
+      `Buyruqlar:\n/bugun — bugungi navbatlar\n/navbatlar — kelayotgan navbatlar\n/stats — bugungi statistika`
   )
+})
+
+bot.onText(/^\/bugun/, async (msg) => {
+  if (!isFromAdmin(msg)) return
+  const all = await getAllAppointments()
+  const today = todayStr()
+  const list = all.filter((a) => a.sana === today).sort((a, b) => (a.vaqt || '').localeCompare(b.vaqt || ''))
+  if (!list.length) {
+    await bot.sendMessage(msg.chat.id, "Bugun hech qanday navbat yo'q.")
+    return
+  }
+  const lines = list.map((a) => `${a.vaqt} — ${a.mijozIsmi} (${a.xizmatNomi}, ${a.barberIsmi}) [${a.holat}]`)
+  await bot.sendMessage(msg.chat.id, `\u{1F4C5} Bugungi navbatlar (${today}):\n\n${lines.join('\n')}`)
+})
+
+bot.onText(/^\/navbatlar/, async (msg) => {
+  if (!isFromAdmin(msg)) return
+  const all = await getAllAppointments()
+  const today = todayStr()
+  const list = all
+    .filter((a) => a.sana >= today && a.holat !== 'bekor qilingan' && a.holat !== 'yakunlangan')
+    .sort((a, b) => `${a.sana}${a.vaqt}`.localeCompare(`${b.sana}${b.vaqt}`))
+    .slice(0, 15)
+  if (!list.length) {
+    await bot.sendMessage(msg.chat.id, "Kelayotgan navbatlar yo'q.")
+    return
+  }
+  const lines = list.map((a) => `${a.sana} ${a.vaqt} — ${a.mijozIsmi} (${a.xizmatNomi}, ${a.barberIsmi}) [${a.holat}]`)
+  await bot.sendMessage(msg.chat.id, `\u{1F5D3}️ Kelayotgan navbatlar:\n\n${lines.join('\n')}`)
+})
+
+bot.onText(/^\/stats/, async (msg) => {
+  if (!isFromAdmin(msg)) return
+  const all = await getAllAppointments()
+  const today = todayStr()
+  const todays = all.filter((a) => a.sana === today)
+  const revenue = todays.filter((a) => a.holat === 'yakunlangan').reduce((sum, a) => sum + (a.narxi || 0), 0)
+  const byBarber = {}
+  todays.forEach((a) => {
+    if (a.barberIsmi) byBarber[a.barberIsmi] = (byBarber[a.barberIsmi] || 0) + 1
+  })
+  const busiest = Object.entries(byBarber).sort((a, b) => b[1] - a[1])[0]
+  const lines = [
+    `\u{1F4CA} Bugungi statistika (${today})`,
+    `Jami navbatlar: ${todays.length}`,
+    `Tushum (yakunlangan): ${formatMoney(revenue)}`,
+    busiest ? `Eng band usta: ${busiest[0]} (${busiest[1]} ta)` : null,
+  ].filter(Boolean)
+  await bot.sendMessage(msg.chat.id, lines.join('\n'))
 })
 
 bot.on('message', async (msg) => {
@@ -151,3 +262,5 @@ if (!adminChatId) {
 
 poll()
 setInterval(poll, POLL_MS)
+sendReminders()
+setInterval(sendReminders, REMINDER_POLL_MS)

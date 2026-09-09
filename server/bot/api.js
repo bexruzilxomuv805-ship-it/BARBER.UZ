@@ -79,3 +79,21 @@ export async function setAppointmentStatus(id, holat, extra = {}) {
   const { data } = await client.patch(`/appointments/${id}`, { holat, ...extra })
   return data
 }
+
+export async function getAllAppointments() {
+  const { data } = await client.get('/appointments')
+  return data
+}
+
+export async function markAppointmentReminded(id) {
+  await client.patch(`/appointments/${id}`, { tgReminded: true })
+}
+
+export async function getUnnotifiedNewClients() {
+  const { data } = await client.get('/users', { params: { role: 'client' } })
+  return data.filter((u) => !u.tgNotified)
+}
+
+export async function markUserNotified(id) {
+  await client.patch(`/users/${id}`, { tgNotified: true })
+}
