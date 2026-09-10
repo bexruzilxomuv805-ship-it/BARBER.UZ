@@ -239,6 +239,7 @@
   "chat": {
     "supportLabel": "Qo‘llab-quvvatlash",
     "online": "Onlayn",
+    "aiLabel": "🤖 AI Yordamchi",
     "emptyState": "Savolingiz bormi? Xabar yozing, tez orada javob beramiz!",
     "placeholder": "Xabar yozing...",
     "guestName": "Mehmon",
@@ -479,6 +480,7 @@
     "chat": {
       "title": "Support chat",
       "subtitle": "Mijozlar bilan real vaqt (polling) rejimida muloqot.",
+      "aiLabel": "🤖 AI Yordamchi",
       "noConversations": "Hozircha suhbatlar yo‘q.",
       "selectConversation": "Suhbatni tanlang",
       "replyPlaceholder": "Javob yozing...",

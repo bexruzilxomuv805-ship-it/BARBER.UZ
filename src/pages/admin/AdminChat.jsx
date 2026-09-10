@@ -178,6 +178,9 @@ export default function AdminChat() {
                   const isEditing = editingId === m.id
                   return (
                     <div key={m.id} className={`flex flex-col ${isOwn ? 'items-end' : 'items-start'}`}>
+                      {m.isBot && (
+                        <span className="mb-0.5 text-[10px] font-medium text-sky-400">{t('admin.chat.aiLabel')}</span>
+                      )}
                       <div
                         className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm leading-snug ${
                           isOwn ? 'bg-gold-500 text-ink-950 rounded-br-sm' : 'bg-ink-800 text-ink-100 rounded-bl-sm'

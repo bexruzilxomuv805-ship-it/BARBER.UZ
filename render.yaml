@@ -35,3 +35,5 @@ services:
         sync: false
       - key: SITE_URL
         sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false

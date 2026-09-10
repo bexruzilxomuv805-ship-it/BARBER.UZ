@@ -20,8 +20,13 @@ process.on('unhandledRejection', (err) => {
 process.on('uncaughtException', (err) => {
   console.error('[bot] uncaught exception:', err?.message || err)
 })
+import { isAiEnabled, generateAiReply } from './ai.js'
 import {
   getUnnotifiedClientMessages,
+  getUnrepliedClientMessages,
+  markMessageAiReplied,
+  getLatestAdminMessage,
+  getConversationMessages,
   postAdminReply,
   getConversation,
   getUnnotifiedPendingAppointments,
@@ -296,6 +301,63 @@ async function forwardClientMessages() {
   }
 }
 
+// When ANTHROPIC_API_KEY is configured, a client's Support chat message gets
+// an instant AI-generated reply — the human admin can still jump into the
+// same conversation any time (from the site or by Reply-ing in Telegram to
+// the message forwardClientMessages just sent above); this reuses
+// postAdminReply, the same "admin" message pipeline the Telegram-reply path
+// already writes through, so both coexist without a separate message kind.
+async function autoReplyToClientMessages() {
+  if (!isAiEnabled()) return
+  const messages = await getUnrepliedClientMessages()
+  for (const message of messages) {
+    try {
+      const latestAdmin = await getLatestAdminMessage(message.conversationId)
+      if (latestAdmin && latestAdmin.createdAt > message.createdAt) {
+        // A human admin already answered (e.g. replied straight from
+        // Telegram) after this client message — don't pile an AI reply on.
+        await markMessageAiReplied(message.id)
+        continue
+      }
+
+      const conversation = await getConversation(message.conversationId)
+      if (!conversation) {
+        await markMessageAiReplied(message.id)
+        continue
+      }
+
+      const history = await getConversationMessages(message.conversationId)
+      const replyText = await generateAiReply(history)
+      await markMessageAiReplied(message.id)
+      if (!replyText) continue
+
+      await postAdminReply({
+        conversationId: message.conversationId,
+        userId: conversation.userId,
+        userName: conversation.userName,
+        text: replyText,
+        isBot: true,
+      })
+
+      const clientUser = await getUser(conversation.userId).catch(() => null)
+      if (clientUser?.telegramId) {
+        await bot.sendMessage(clientUser.telegramId, `\u{1F916} AI Yordamchi:\n${replyText}`).catch((err) => {
+          console.error('[bot] mirror AI reply to client error:', err?.message || err)
+        })
+      }
+
+      if (adminChatId) {
+        await bot
+          .sendMessage(adminChatId, `\u{1F916} AI ${conversation.userName || 'mijoz'}ga javob berdi:\n${replyText}`)
+          .catch((err) => console.error('[bot] AI notify admin error:', err?.message || err))
+      }
+    } catch (err) {
+      console.error('[bot] auto-reply error:', message.id, err?.message || err)
+      await markMessageAiReplied(message.id).catch(() => {})
+    }
+  }
+}
+
 // Admin replies typed on the site's Support chat page (AdminChat.jsx) only
 // ever get saved to json-server — unlike replies typed directly in Telegram
 // (which mirror to the client immediately, see postAdminReply below), these
@@ -465,6 +527,7 @@ async function maybeSendDailyDigest() {
 async function poll() {
   try {
     await forwardClientMessages()
+    await autoReplyToClientMessages()
     await forwardAdminMessages()
     await syncEditedMessages()
     await forwardAppointments()
