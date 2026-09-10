@@ -8,3 +8,30 @@ services:
     envVars:
       - key: DATABASE_URL
         sync: false
+
+  # Telegram bot — long-polls Telegram, so it needs to run continuously
+  # instead of only whenever someone's local `npm start` happens to be on.
+  # It's a "web" service purely because Render's free tier requires binding
+  # $PORT (see the dummy health-check server in server/bot/index.js);
+  # nothing actually calls its HTTP endpoint. That also means Render's
+  # free-tier idle timeout still applies — without inbound traffic it spins
+  # down after ~15 min, so pair this with a free external pinger (e.g.
+  # cron-job.org or UptimeRobot) hitting its Render URL every ~10 min to
+  # keep it awake 24/7.
+  - type: web
+    name: barber-uz-bot
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server/bot/index.js
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_ADMIN_CHAT_ID
+        sync: false
+      - key: TELEGRAM_SUPER_ADMIN_USERNAME
+        sync: false
+      - key: SITE_URL
+        sync: false

@@ -84,11 +84,13 @@ Postgres bazasidagi `users` jadvaliga real vaqtda yoziladi.
 
 ## Telegram bot
 
-`server/bot/` — saytdagi support chatni va yangi navbatlarni Telegramga ulovchi bot. Alohida deploy talab
-qilmaydi: long polling rejimida ishlaydi, ya’ni **lokal kompyuterda ham** to‘liq ishlaydi (public URL shart
-emas) — u faqat `npm run server` (Express + Postgres, port 4000) bilan gaplashadi.
+`server/bot/` — saytdagi support chatni va yangi navbatlarni Telegramga ulovchi bot. Long polling rejimida
+ishlaydi (public URL shart emas), shuning uchun **lokal kompyuterda ham** to‘liq ishlaydi — u faqat
+`npm run server` (Express + Postgres, port 4000) bilan gaplashadi. Ammo shu sababli u faqat kimdir uni
+qo‘lda ishga tushirgan paytda ishlaydi — lokal ravishda ishga tushirilsa, kompyuter o‘chirilganda yoki
+terminal yopilganda bot ham to‘xtaydi ("uxlab qoladi").
 
-Sozlash:
+Sozlash (lokal):
 
 1. Telegramda [@BotFather](https://t.me/BotFather) ga `/newbot` yozing, tokenni oling.
 2. `.env.example` faylini `.env` qilib nusxalang, `TELEGRAM_BOT_TOKEN` ga tokenni yozing.
@@ -100,6 +102,22 @@ Shundan keyin: mijoz saytda yozgan har bir support xabari botga keladi (mijoz xa
 yozsangiz — u to‘g‘ridan-to‘g‘ri saytdagi chatga tushadi), va har bir yangi navbat ✅ Tasdiqlash / ❌ Bekor
 qilish tugmalari bilan botga keladi. `.env` sozlanmagan bo‘lsa, bot shunchaki o‘chirilgan holatda qoladi —
 `npm start` qolgan ikkitasini (WEB, API) normal ishga tushiradi.
+
+### 24/7 ishlashi uchun (Render'ga deploy)
+
+Botni doim yoniq ushlab turish uchun uni ham backend kabi Render'ga deploy qilish mumkin —
+[render.yaml](render.yaml)da `barber-uz-bot` nomli ikkinchi service shu uchun qo‘shilgan
+(`node server/bot/index.js`). Render'da:
+
+1. Blueprint'ni qayta sync qiling (yoki qo‘lda "New Web Service" qo‘shing, start command
+   `node server/bot/index.js`) — `barber-uz-bot` paydo bo‘ladi.
+2. Uning Environment sozlamalarida `DATABASE_URL`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_ADMIN_CHAT_ID`,
+   `TELEGRAM_SUPER_ADMIN_USERNAME` va (ixtiyoriy) `SITE_URL` ni qo‘lda kiriting (`sync: false` bo‘lgani
+   uchun bular Git'ga yozilmaydi).
+3. Render'ning bepul tarifi 15 daqiqa kirish (HTTP so‘rov) bo‘lmasa xizmatni "uxlatib qo‘yadi" — bot esa
+   faqat Telegramga chiqib turadi, hech kim unga HTTP so‘rov yubormaydi. Shuning uchun bepul tashqi pinger
+   ([cron-job.org](https://cron-job.org) yoki UptimeRobot) sozlab, `barber-uz-bot`ning Render URL'iga
+   ~10 daqiqada bir marta so‘rov yuboring — shundagina u chinakam 24/7 ishlaydi.
 
 ## Loyihaning tuzilishi
 

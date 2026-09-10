@@ -57,6 +57,13 @@ frontend and backend can be deployed to different free hosts and repointed later
   it now survives redeploys and idle-timeout restarts — unlike the old json-server setup.
 - **Frontend**: deploy to Vercel (Import Project → this GitHub repo → `npm run build`), with
   `VITE_API_BASE_URL` set in Vercel's Environment Variables to the Render backend's URL.
+- **Telegram bot**: [render.yaml](render.yaml) also defines `barber-uz-bot`, a second free Render web
+  service running `node server/bot/index.js`, so the bot stays up continuously instead of only while
+  someone's local `npm start`/`npm run bot` happens to be running. It long-polls Telegram rather than
+  serving HTTP, so Render's free-tier idle timeout (~15 min with no inbound request) still applies to it —
+  pair it with a free external pinger (cron-job.org, UptimeRobot) hitting its Render URL every ~10 min to
+  keep it awake. Needs its own `DATABASE_URL`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_ADMIN_CHAT_ID`,
+  `TELEGRAM_SUPER_ADMIN_USERNAME` set manually in Render's dashboard (`sync: false`, same as the backend).
 - Custom domain and paid hosting tiers are added later by upgrading the same Vercel/Render projects — no
   migration needed, just point DNS at them once purchased.
 
