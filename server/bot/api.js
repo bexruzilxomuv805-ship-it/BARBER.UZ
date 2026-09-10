@@ -267,6 +267,31 @@ export async function getAppointmentById(id) {
   }
 }
 
+export async function getServiceById(id) {
+  try {
+    const { data } = await client.get(`/services/${id}`)
+    return data
+  } catch (err) {
+    if (err?.response?.status === 404) return null
+    throw err
+  }
+}
+
+export async function getPaymentByAppointment(appointmentId) {
+  const { data } = await client.get('/payments', { params: { appointmentId } })
+  return data[0] || null
+}
+
+export async function createPayment(payment) {
+  const { data } = await client.post('/payments', payment)
+  return data
+}
+
+export async function updatePaymentMethod(paymentId, usul) {
+  const { data } = await client.patch(`/payments/${paymentId}`, { usul })
+  return data
+}
+
 export async function getInventory() {
   const { data } = await client.get('/inventory')
   return data

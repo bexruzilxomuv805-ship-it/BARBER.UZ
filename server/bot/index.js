@@ -31,6 +31,10 @@ import {
   markAppointmentReminded,
   markAppointmentArrivalAsked,
   setAppointmentArrival,
+  getServiceById,
+  getPaymentByAppointment,
+  createPayment,
+  updatePaymentMethod,
   getUnnotifiedNewClients,
   markUserNotified,
   getTelegramLogin,
@@ -67,6 +71,11 @@ const REMINDER_POLL_MS = 60000
 const REMINDER_WINDOW_MIN = 15
 const DIGEST_HOUR = 22
 const { TELEGRAM_BOT_TOKEN, TELEGRAM_ADMIN_CHAT_ID, TELEGRAM_SUPER_ADMIN_USERNAME } = process.env
+
+// Card payment details shown to a client who picks "Karta" after their
+// service is auto-completed — hardcoded for now (single-card setup).
+const PAYMENT_CARD_NUMBER = '5614 6818 0907 0117'
+const PAYMENT_CARD_HOLDER = 'R.D.A'
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -814,6 +823,70 @@ async function checkArrivals() {
   }
 }
 
+// Once a confirmed appointment's actual end time (start + the service's own
+// davomiyligi) has passed, close it out automatically instead of waiting for
+// the admin to remember to tap "Yakunlash" — this is also what keeps
+// dashboard/report revenue stats accurate, since those only count
+// holat === 'yakunlangan'. Moving to that status is itself what prevents
+// re-processing on the next poll (it no longer matches the 'tasdiqlangan'
+// filter below), so no separate "already handled" flag is needed here.
+async function autoCompleteAppointments() {
+  try {
+    const all = await getAllAppointments()
+    const today = todayStr()
+    const now = new Date()
+    const candidates = all.filter((a) => a.holat === 'tasdiqlangan' && a.sana === today)
+
+    for (const a of candidates) {
+      const [h, m] = (a.vaqt || '').split(':').map(Number)
+      if (Number.isNaN(h) || Number.isNaN(m)) continue
+      const service = await getServiceById(a.xizmatId).catch(() => null)
+      const duration = service?.davomiyligi || 30
+      const apptEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m + duration)
+      if (now < apptEnd) continue
+
+      const appointment = await setAppointmentStatus(a.id, 'yakunlangan')
+
+      if (adminChatId) {
+        await bot
+          .sendMessage(
+            adminChatId,
+            `✅ Buyurtma bajarildi!\n` +
+              `\u{1F464} ${appointment.mijozIsmi || 'Mijoz'} (${appointment.mijozTelefon || '—'})\n` +
+              `✂️ ${appointment.xizmatNomi || '—'} — ${appointment.barberIsmi || '—'}\n` +
+              `\u{1F553} ${appointment.sana} ${appointment.vaqt}` +
+              (appointment.narxi ? `\n💵 ${formatMoney(appointment.narxi)}` : '')
+          )
+          .catch((err) => console.error('[bot] auto-complete admin notify error:', err?.message || err))
+      }
+
+      const clientUser = await getUser(appointment.mijozId).catch(() => null)
+      if (clientUser?.telegramId) {
+        await bot
+          .sendMessage(
+            clientUser.telegramId,
+            `✅ Xizmat yakunlandi! Oq yo'l bo'lsin!\n` +
+              `Tashrif buyurganingiz uchun rahmat.\n\n` +
+              `To'lov usulini tanlang:`,
+            {
+              reply_markup: {
+                inline_keyboard: [
+                  [
+                    { text: '💵 Naqt pul', callback_data: `pay:${appointment.id}:naqd` },
+                    { text: '💳 Karta', callback_data: `pay:${appointment.id}:karta` },
+                  ],
+                ],
+              },
+            }
+          )
+          .catch((err) => console.error('[bot] auto-complete client notify error:', err?.message || err))
+      }
+    }
+  } catch (err) {
+    console.error('[bot] auto-complete error:', err?.message || err)
+  }
+}
+
 async function handleTelegramLoginStart(msg, token) {
   try {
     const tgUser = msg.from
@@ -1427,6 +1500,75 @@ bot.on('callback_query', safeHandler(async (query) => {
     return
   }
 
+  if (action === 'pay') {
+    const method = parts[2] // 'naqd' | 'karta'
+    try {
+      const appointment = await getAppointmentById(id)
+      if (!appointment) {
+        await bot.answerCallbackQuery(query.id, { text: 'Xatolik yuz berdi', show_alert: true })
+        return
+      }
+      const requesterUser = await findUserByTelegramId(query.from.id)
+      const ownsIt = requesterUser && appointment.mijozId === requesterUser.id
+      if (!ownsIt) {
+        await bot.answerCallbackQuery(query.id, { text: "Ruxsat yo'q", show_alert: true })
+        return
+      }
+
+      // Upsert rather than always-insert, so tapping the other button after
+      // a mis-tap corrects the record instead of leaving two.
+      const existingPayment = await getPaymentByAppointment(id)
+      if (existingPayment) {
+        await updatePaymentMethod(existingPayment.id, method)
+      } else {
+        await createPayment({
+          id: `p-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          appointmentId: id,
+          mijozIsmi: appointment.mijozIsmi,
+          sana: appointment.sana,
+          usul: method,
+          summa: appointment.narxi,
+          holat: 'to‘landi',
+          createdAt: new Date().toISOString(),
+        })
+      }
+
+      if (method === 'karta') {
+        await bot.editMessageText(
+          `💳 Karta orqali to'lov\n\n` +
+            `<code>${PAYMENT_CARD_NUMBER}</code>\n` +
+            `${PAYMENT_CARD_HOLDER}\n\n` +
+            `Raqamni nusxalash uchun ustiga bosing, so'ngra ${formatMoney(appointment.narxi)} shu kartaga o'tkazing.`,
+          { chat_id: query.message.chat.id, message_id: query.message.message_id, parse_mode: 'HTML' }
+        )
+        await bot.answerCallbackQuery(query.id, { text: '💳 Karta tanlandi' })
+      } else {
+        await bot.editMessageText(
+          `💵 Naqt pul tanlandi.\n\n` +
+            `Iltimos, ${formatMoney(appointment.narxi)} miqdorini ustaga qo'lma-qo'l topshiring. Rahmat!`,
+          { chat_id: query.message.chat.id, message_id: query.message.message_id }
+        )
+        await bot.answerCallbackQuery(query.id, { text: '💵 Naqt tanlandi' })
+      }
+
+      if (adminChatId) {
+        const methodLabel = method === 'karta' ? '💳 Karta orqali' : '💵 Naqd pul bilan'
+        await bot
+          .sendMessage(
+            adminChatId,
+            `${methodLabel} to'lov tanladi\n` +
+              `\u{1F464} ${appointment.mijozIsmi || 'Mijoz'}\n` +
+              `✂️ ${appointment.xizmatNomi || '—'} — ${formatMoney(appointment.narxi)}`
+          )
+          .catch((err) => console.error('[bot] notify admin of payment error:', err?.message || err))
+      }
+    } catch (err) {
+      console.error('[bot] payment selection error:', err?.message || err)
+      await bot.answerCallbackQuery(query.id, { text: 'Xatolik yuz berdi', show_alert: true })
+    }
+    return
+  }
+
   if (action === 'rate') {
     const rating = Number(parts[2])
     try {
@@ -1620,6 +1762,7 @@ if (!adminChatId) {
 async function periodicChecks() {
   await sendReminders()
   await checkArrivals()
+  await autoCompleteAppointments()
   await checkLowStock()
   await maybeSendDailyDigest()
 }
