@@ -1,5 +1,25 @@
 import 'dotenv/config'
+import http from 'node:http'
 import TelegramBot from 'node-telegram-bot-api'
+
+// Render's free tier only exists for "Web Service" instances, which require
+// binding to $PORT for health checks — this bot has no HTTP API of its own
+// (it only long-polls Telegram), so this dummy server exists purely to keep
+// the free-tier deploy alive.
+if (process.env.PORT) {
+  http
+    .createServer((_req, res) => res.end('ok'))
+    .listen(process.env.PORT, () => console.log(`[bot] health check server on :${process.env.PORT}`))
+}
+
+// A single bad request (e.g. Telegram rejecting a malformed button URL) must
+// never take the whole bot down — log and keep running instead of crashing.
+process.on('unhandledRejection', (err) => {
+  console.error('[bot] unhandled rejection:', err?.message || err)
+})
+process.on('uncaughtException', (err) => {
+  console.error('[bot] uncaught exception:', err?.message || err)
+})
 import {
   getUnnotifiedClientMessages,
   markMessageNotified,
@@ -16,12 +36,48 @@ import {
   confirmTelegramLogin,
   findUserByTelegramId,
   createTelegramUser,
+  setUserPhone,
+  getBotUsers,
+  setUserRole,
+  deleteUser,
+  getUserAppointments,
+  settleAfterWrite,
+  getUser,
+  getBarber,
+  getContactInfo,
+  postClientMessageFromBot,
+  getAppointmentById,
+  getInventory,
+  markInventoryLowStockNotified,
+  getUnreviewedCompletedAppointments,
+  markReviewRequested,
+  createReview,
+  updateReview,
+  getReviewsByBarber,
+  setBarberRating,
 } from './api.js'
 
 const POLL_MS = 5000
 const REMINDER_POLL_MS = 60000
 const REMINDER_WINDOW_MIN = 60
-const { TELEGRAM_BOT_TOKEN, TELEGRAM_ADMIN_CHAT_ID } = process.env
+const DIGEST_HOUR = 22
+const { TELEGRAM_BOT_TOKEN, TELEGRAM_ADMIN_CHAT_ID, TELEGRAM_SUPER_ADMIN_USERNAME } = process.env
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+// Wraps a bot.on(...) handler so a thrown/rejected error inside it is logged
+// instead of becoming an unhandled rejection that kills the whole process.
+function safeHandler(fn) {
+  return async (...args) => {
+    try {
+      await fn(...args)
+    } catch (err) {
+      console.error('[bot] handler error:', err?.message || err)
+    }
+  }
+}
 
 if (!TELEGRAM_BOT_TOKEN) {
   console.log("[bot] Telegram bot o'chirilgan — .env faylida TELEGRAM_BOT_TOKEN yo'q. .env.example ga qarang.")
@@ -31,15 +87,174 @@ if (!TELEGRAM_BOT_TOKEN) {
 const bot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: true })
 const adminChatId = TELEGRAM_ADMIN_CHAT_ID ? String(TELEGRAM_ADMIN_CHAT_ID) : null
 
+// Regular emoji used throughout this file, mapped to the matching Telegram
+// Premium (custom) emoji id — captured via the super-admin's own Premium
+// account (see the custom_emoji capture utility below). Every outgoing
+// message is patched (see withPremiumEmoji/bot.sendMessage below) to swap
+// these in automatically, so no individual call site needs to change.
+const PREMIUM_EMOJI_IDS = {
+  '✅': '5436196151575459790',
+  '❌': '5436388334182086530',
+  '⭐': '5897692655273383739',
+  '✔️': '5206607081334906820',
+  '⏰': '5195352914104694560',
+  '⬇️': '5406745015365943482',
+  '▶️': '4969785943297884856',
+  '✏️': '5192670896006897974',
+  '🗑️': '5445267414562389170',
+  '👇': '5231102735817918643',
+  '📢': '5278256077954105203',
+  '👑': '5406711411541823609',
+  '👤': '6044125665400197078',
+  '✂️': '5422781517011111694',
+  '✉️': '5253742260054409879',
+  'ℹ️': '5440660757194744323',
+  '📞': '5436206493856707442',
+  '💬': '5443038326535759644',
+  '📅': '5242228225827936324',
+  '🕓': '5256110612395605858',
+  '💵': '5242490854488152537',
+  '💇': '5388738068624716772',
+  '🆕': '5294524383279198295',
+  '⚠️': '5420323339723881652',
+  '🗓️': '5274055917766202507',
+  '📊': '5231200819986047254',
+  '👥': '6001526766714227911',
+  '🚫': '5240241223632954241',
+  '📍': '5391032818111363540',
+  '🕐': '6048701411888206453',
+}
+
+function buildPremiumEntities(text) {
+  if (typeof text !== 'string') return []
+  const entities = []
+  for (const [emoji, customEmojiId] of Object.entries(PREMIUM_EMOJI_IDS)) {
+    let idx = text.indexOf(emoji)
+    while (idx !== -1) {
+      entities.push({ type: 'custom_emoji', offset: idx, length: emoji.length, custom_emoji_id: customEmojiId })
+      idx = text.indexOf(emoji, idx + emoji.length)
+    }
+  }
+  entities.sort((a, b) => a.offset - b.offset)
+  return entities
+}
+
+function withPremiumEmoji(text, options) {
+  if (options?.parse_mode) return options // entities and parse_mode are mutually exclusive
+  const entities = buildPremiumEntities(text)
+  if (!entities.length) return options
+  return { ...(options || {}), entities }
+}
+
+// Patch once here so every bot.sendMessage/editMessageText call in this file
+// automatically gets Premium emoji — no per-call-site changes needed.
+const _sendMessage = bot.sendMessage.bind(bot)
+bot.sendMessage = (chatId, text, options) => _sendMessage(chatId, text, withPremiumEmoji(text, options))
+
+const _editMessageText = bot.editMessageText.bind(bot)
+bot.editMessageText = (text, options) => _editMessageText(text, withPremiumEmoji(text, options))
+
 // Reply-routing: which conversation a given Telegram message (sent by the
 // bot to the admin) corresponds to, plus the most recent one as a fallback
 // for plain (non-reply) admin replies. In-memory only — resets on restart,
 // which is fine at this app's scale (single admin, low volume).
 const conversationByTelegramMsgId = new Map()
-let lastConversationId = null
+
+// chatId -> { userId, token }, set right after a Telegram /start while we
+// wait for the user to share their phone number. The login token is only
+// confirmed (site login unlocked) once the phone is on file.
+const awaitingPhoneForChat = new Map()
+
+// telegramId -> reviewId, set after a rating is tapped while we wait for an
+// optional follow-up text comment on that review.
+const awaitingReviewCommentForChat = new Map()
+
+// chatId set of clients who pressed "Admin bilan chat" — only their plain
+// text gets forwarded to the admin, same as admin messages only route
+// somewhere once they explicitly "Reply" to a client's message.
+const clientChatMode = new Set()
+
+// chatId set / map for the "📢 Xabar yuborish" compose flow.
+const awaitingBroadcastForChat = new Set()
+const awaitingBroadcastEditForChat = new Map() // chatId -> broadcastId
+
+let lastDigestDate = null
+
+// `${chatId}:${listKind}` -> message_id[] of the currently-shown page's item
+// cards (plus its "Keyingi" button message, if any) — cleared and replaced
+// in place on the next page instead of piling up new messages forever.
+const activeListCards = new Map()
+
+async function clearListCards(chatId, listKind) {
+  const key = `${chatId}:${listKind}`
+  const ids = activeListCards.get(key)
+  if (!ids) return
+  activeListCards.delete(key)
+  for (const messageId of ids) {
+    try {
+      await bot.deleteMessage(chatId, messageId)
+    } catch {
+      // already gone (e.g. user deleted it) — ignore
+    }
+  }
+}
+
+// Builds a [◀️ Oldingi 5 ta, ▶️ Keyingi 5 ta] row for a paginated list —
+// either button is included only when that direction actually has more items.
+function buildPageNavRow(action, offset, pageSize, total) {
+  const buttons = []
+  if (offset > 0) {
+    buttons.push({ text: '◀️ Oldingi 5 ta', callback_data: `${action}:${Math.max(0, offset - pageSize)}` })
+  }
+  const nextOffset = offset + pageSize
+  if (nextOffset < total) {
+    buttons.push({ text: '▶️ Keyingi 5 ta', callback_data: `${action}:${nextOffset}` })
+  }
+  return buttons
+}
+
+async function withRetry(fn, retries = 1, delayMs = 600) {
+  try {
+    return await fn()
+  } catch (err) {
+    if (retries <= 0) throw err
+    await new Promise((resolve) => setTimeout(resolve, delayMs))
+    return withRetry(fn, retries - 1, delayMs)
+  }
+}
+
+async function confirmWithVerify(token, userId) {
+  try {
+    await withRetry(() => confirmTelegramLogin(token, userId), 2, 800)
+    return true
+  } catch (err) {
+    console.error('[bot] confirm login error:', err?.message || err)
+    // The write may have landed even though the response didn't come back —
+    // check ground truth before declaring failure.
+    const login = await getTelegramLogin(token).catch(() => null)
+    return login?.status === 'confirmed'
+  }
+}
 
 function isFromAdmin(msg) {
   return adminChatId && String(msg.chat.id) === adminChatId
+}
+
+function isSuperAdminUsername(username) {
+  return !!TELEGRAM_SUPER_ADMIN_USERNAME && username?.toLowerCase() === TELEGRAM_SUPER_ADMIN_USERNAME.toLowerCase()
+}
+
+function isSuperAdmin(msgOrQuery) {
+  return isSuperAdminUsername(msgOrQuery.from?.username)
+}
+
+function formatBotUser(u) {
+  const role = u.role === 'admin' ? '👑 Admin' : '👤 Oddiy foydalanuvchi'
+  return (
+    `${u.ism || ''} ${u.familiya || ''}`.trim() +
+    (u.telegramUsername ? ` (@${u.telegramUsername})` : '') +
+    `\n\u{1F4DE} ${u.telefon || '—'}\n${role}`
+  )
 }
 
 async function forwardClientMessages() {
@@ -51,7 +266,6 @@ async function forwardClientMessages() {
       `\u{1F4AC} ${message.userName || 'Mijoz'}\n${message.text}`
     )
     conversationByTelegramMsgId.set(sent.message_id, message.conversationId)
-    lastConversationId = message.conversationId
     await markMessageNotified(message.id)
   }
 }
@@ -66,20 +280,41 @@ function formatAppointment(a) {
   )
 }
 
+async function notifyClientOfBooking(appointment) {
+  try {
+    const user = await getUser(appointment.mijozId)
+    if (!user?.telegramId) return
+    const barber = await getBarber(appointment.barberId)
+    await bot.sendMessage(
+      user.telegramId,
+      `✅ Navbatingiz qabul qilindi!\n` +
+        `✂️ ${appointment.xizmatNomi || '—'}\n` +
+        `\u{1F487} Usta: ${appointment.barberIsmi || '—'}${barber?.telefon ? ` (${barber.telefon})` : ''}\n` +
+        `\u{1F553} ${appointment.sana} ${appointment.vaqt}` +
+        (appointment.narxi ? `\n\u{1F4B5} ${formatMoney(appointment.narxi)}` : '') +
+        `\n\nHolat: kutilmoqda — admin tasdiqlagach xabar beramiz.`
+    )
+  } catch (err) {
+    console.error('[bot] notify client error:', err?.message || err)
+  }
+}
+
 async function forwardAppointments() {
   const appointments = await getUnnotifiedPendingAppointments()
   for (const appointment of appointments) {
-    if (!adminChatId) break
-    await bot.sendMessage(adminChatId, formatAppointment(appointment), {
-      reply_markup: {
-        inline_keyboard: [
-          [
-            { text: '✅ Tasdiqlash', callback_data: `confirm:${appointment.id}` },
-            { text: '❌ Bekor qilish', callback_data: `cancel:${appointment.id}` },
+    if (adminChatId) {
+      await bot.sendMessage(adminChatId, formatAppointment(appointment), {
+        reply_markup: {
+          inline_keyboard: [
+            [
+              { text: '✅ Tasdiqlash', callback_data: `confirm:${appointment.id}` },
+              { text: '❌ Bekor qilish', callback_data: `cancel:${appointment.id}` },
+            ],
           ],
-        ],
-      },
-    })
+        },
+      })
+    }
+    await notifyClientOfBooking(appointment)
     await markAppointmentNotified(appointment.id)
   }
 }
@@ -92,9 +327,71 @@ async function forwardNewClients() {
       adminChatId,
       `\u{1F195} Yangi mijoz ro'yxatdan o'tdi\n` +
         `\u{1F464} ${u.ism || ''} ${u.familiya || ''}`.trim() +
-        `\n\u{1F4DE} ${u.telefon || '—'}\n✉️ ${u.email || '—'}`
+        `\n\u{1F4DE} ${u.telefon || '—'}\n✉️ ${u.email || (u.telegramUsername && `@${u.telegramUsername}`) || '—'}`
     )
     await markUserNotified(u.id)
+  }
+}
+
+async function requestReviews() {
+  const appointments = await getUnreviewedCompletedAppointments()
+  for (const a of appointments) {
+    // Mark first regardless of outcome so a non-Telegram client (or a send
+    // failure) doesn't get retried forever on every poll.
+    await markReviewRequested(a.id)
+
+    const user = await getUser(a.mijozId).catch(() => null)
+    if (!user?.telegramId) continue
+
+    try {
+      await bot.sendMessage(
+        user.telegramId,
+        `⭐ "${a.xizmatNomi || 'Xizmat'}" xizmatidan mamnun bo'ldingizmi?\nUsta: ${a.barberIsmi || '—'}\n\nBaho bering:`,
+        {
+          reply_markup: {
+            inline_keyboard: [[1, 2, 3, 4, 5].map((n) => ({ text: '⭐'.repeat(n), callback_data: `rate:${a.id}:${n}` }))],
+          },
+        }
+      )
+    } catch (err) {
+      console.error('[bot] review request error:', err?.message || err)
+    }
+  }
+}
+
+async function checkLowStock() {
+  if (!adminChatId) return
+  try {
+    const items = await getInventory()
+    for (const item of items) {
+      const isLow = (item.miqdor ?? 0) <= (item.minMiqdor ?? 0)
+      if (isLow && !item.tgLowStockNotified) {
+        await bot.sendMessage(
+          adminChatId,
+          `\u{26A0}️ Omborda kam qoldi!\n${item.nomi}: ${item.miqdor} ${item.birlik} ` +
+            `(minimal: ${item.minMiqdor} ${item.birlik})`
+        )
+        await markInventoryLowStockNotified(item.id, true)
+      } else if (!isLow && item.tgLowStockNotified) {
+        await markInventoryLowStockNotified(item.id, false)
+      }
+    }
+  } catch (err) {
+    console.error('[bot] low stock check error:', err?.message || err)
+  }
+}
+
+async function maybeSendDailyDigest() {
+  if (!adminChatId) return
+  const today = todayStr()
+  if (lastDigestDate === today) return
+  if (new Date().getHours() < DIGEST_HOUR) return
+  lastDigestDate = today
+  try {
+    const stats = await buildStatsText()
+    await bot.sendMessage(adminChatId, `\u{1F4C5} Kunlik hisobot\n\n${stats}`)
+  } catch (err) {
+    console.error('[bot] daily digest error:', err?.message || err)
   }
 }
 
@@ -103,6 +400,7 @@ async function poll() {
     await forwardClientMessages()
     await forwardAppointments()
     await forwardNewClients()
+    await requestReviews()
   } catch (err) {
     console.error('[bot] poll error:', err?.message || err)
   }
@@ -120,10 +418,28 @@ function formatMoney(n) {
 const BTN_BUGUN = "\u{1F4C5} Bugungi navbatlar"
 const BTN_NAVBATLAR = "\u{1F5D3}️ Kelayotgan navbatlar"
 const BTN_STATS = "\u{1F4CA} Statistika"
+const BTN_USERS = "\u{1F465} Foydalanuvchilar"
+const BTN_BROADCAST = "\u{1F4E2} Xabar yuborish"
 
 const MENU_KEYBOARD = {
   reply_markup: {
-    keyboard: [[{ text: BTN_BUGUN }, { text: BTN_NAVBATLAR }], [{ text: BTN_STATS }]],
+    keyboard: [
+      [{ text: BTN_BUGUN }, { text: BTN_NAVBATLAR }],
+      [{ text: BTN_STATS }, { text: BTN_USERS }],
+      [{ text: BTN_BROADCAST }],
+    ],
+    resize_keyboard: true,
+    is_persistent: true,
+  },
+}
+
+const BTN_MY_APPOINTMENTS = "\u{1F5D3}️ Mening navbatlarim"
+const BTN_HELP = "ℹ️ Yordam"
+const BTN_CHAT = "\u{1F4AC} Admin bilan chat"
+
+const CLIENT_KEYBOARD = {
+  reply_markup: {
+    keyboard: [[{ text: BTN_MY_APPOINTMENTS }], [{ text: BTN_HELP }, { text: BTN_CHAT }]],
     resize_keyboard: true,
     is_persistent: true,
   },
@@ -134,39 +450,220 @@ async function buildBugunText() {
   const today = todayStr()
   const list = all.filter((a) => a.sana === today).sort((a, b) => (a.vaqt || '').localeCompare(b.vaqt || ''))
   if (!list.length) return "Bugun hech qanday navbat yo'q."
-  const lines = list.map((a) => `${a.vaqt} — ${a.mijozIsmi} (${a.xizmatNomi}, ${a.barberIsmi}) [${a.holat}]`)
-  return `\u{1F4C5} Bugungi navbatlar (${today}):\n\n${lines.join('\n')}`
+  const lines = list.map(
+    (a) => `${a.vaqt} — ${a.mijozIsmi} (${a.mijozTelefon || '—'})\n${a.xizmatNomi} — ${a.barberIsmi} [${a.holat}]`
+  )
+  return `\u{1F4C5} Bugungi navbatlar (${today}):\n\n${lines.join('\n\n')}`
 }
 
-async function buildNavbatlarText() {
-  const all = await getAllAppointments()
+const LIST_PAGE_SIZE = 5
+
+function getUpcomingActionableAppointments(all) {
   const today = todayStr()
-  const list = all
+  return all
     .filter((a) => a.sana >= today && a.holat !== 'bekor qilingan' && a.holat !== 'yakunlangan')
     .sort((a, b) => `${a.sana}${a.vaqt}`.localeCompare(`${b.sana}${b.vaqt}`))
-    .slice(0, 15)
-  if (!list.length) return "Kelayotgan navbatlar yo'q."
-  const lines = list.map((a) => `${a.sana} ${a.vaqt} — ${a.mijozIsmi} (${a.xizmatNomi}, ${a.barberIsmi}) [${a.holat}]`)
-  return `\u{1F5D3}️ Kelayotgan navbatlar:\n\n${lines.join('\n')}`
+}
+
+function formatNavbatCard(a) {
+  return (
+    `${a.sana} ${a.vaqt} — ${a.mijozIsmi || 'Mijoz'} (${a.mijozTelefon || '—'})\n` +
+    `✂️ ${a.xizmatNomi || '—'} — ${a.barberIsmi || '—'}\n` +
+    `Holat: ${a.holat}`
+  )
+}
+
+async function sendNavbatlarPage(chatId, offset, { fresh = false } = {}) {
+  const all = await getAllAppointments()
+  const list = getUpcomingActionableAppointments(all)
+
+  if (!list.length) {
+    await bot.sendMessage(chatId, "Kelayotgan navbatlar yo'q.")
+    return
+  }
+
+  const page = list.slice(offset, offset + LIST_PAGE_SIZE)
+  if (!page.length) {
+    await bot.sendMessage(chatId, "Boshqa navbat yo'q.")
+    return
+  }
+
+  await clearListCards(chatId, 'navbatlar')
+  if (fresh) {
+    await bot.sendMessage(chatId, `\u{1F5D3}️ Kelayotgan navbatlar (${list.length} ta):`)
+  }
+
+  const cardIds = []
+  for (const a of page) {
+    const buttons =
+      a.holat === 'kutilmoqda'
+        ? [
+            { text: '✅ Tasdiqlash', callback_data: `confirm:${a.id}` },
+            { text: '❌ Bekor qilish', callback_data: `cancel:${a.id}` },
+          ]
+        : [
+            { text: '✔️ Yakunlash', callback_data: `complete:${a.id}` },
+            { text: '❌ Bekor qilish', callback_data: `cancel:${a.id}` },
+          ]
+    const sent = await bot.sendMessage(chatId, formatNavbatCard(a), { reply_markup: { inline_keyboard: [buttons] } })
+    cardIds.push(sent.message_id)
+  }
+
+  const navRow = buildPageNavRow('navbatlarpage', offset, LIST_PAGE_SIZE, list.length)
+  if (navRow.length) {
+    const sentBtn = await bot.sendMessage(chatId, `${offset + 1}-${Math.min(offset + LIST_PAGE_SIZE, list.length)} / ${list.length}`, {
+      reply_markup: { inline_keyboard: [navRow] },
+    })
+    cardIds.push(sentBtn.message_id)
+  }
+
+  activeListCards.set(`${chatId}:navbatlar`, cardIds)
 }
 
 async function buildStatsText() {
   const all = await getAllAppointments()
   const today = todayStr()
+
+  const byStatus = {}
+  let totalRevenue = 0
+  all.forEach((a) => {
+    byStatus[a.holat] = (byStatus[a.holat] || 0) + 1
+    if (a.holat === 'yakunlangan') totalRevenue += a.narxi || 0
+  })
+
   const todays = all.filter((a) => a.sana === today)
-  const revenue = todays.filter((a) => a.holat === 'yakunlangan').reduce((sum, a) => sum + (a.narxi || 0), 0)
+  const todaysRevenue = todays
+    .filter((a) => a.holat === 'yakunlangan')
+    .reduce((sum, a) => sum + (a.narxi || 0), 0)
+
   const byBarber = {}
-  todays.forEach((a) => {
+  all.forEach((a) => {
     if (a.barberIsmi) byBarber[a.barberIsmi] = (byBarber[a.barberIsmi] || 0) + 1
   })
   const busiest = Object.entries(byBarber).sort((a, b) => b[1] - a[1])[0]
-  const lines = [
-    `\u{1F4CA} Bugungi statistika (${today})`,
-    `Jami navbatlar: ${todays.length}`,
-    `Tushum (yakunlangan): ${formatMoney(revenue)}`,
+
+  const botUsers = await getBotUsers().catch(() => [])
+  const usernameById = new Map(botUsers.map((u) => [u.id, u.telegramUsername]))
+
+  const recent = [...all].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')).slice(0, 10)
+
+  const header = [
+    `\u{1F4CA} Statistika`,
+    '',
+    `Jami navbatlar: ${all.length}`,
+    `— Kutilmoqda: ${byStatus['kutilmoqda'] || 0}`,
+    `— Tasdiqlangan: ${byStatus['tasdiqlangan'] || 0}`,
+    `— Yakunlangan: ${byStatus['yakunlangan'] || 0}`,
+    `— Bekor qilingan: ${byStatus['bekor qilingan'] || 0}`,
+    '',
+    `Umumiy tushum (yakunlangan): ${formatMoney(totalRevenue)}`,
+    `Bugungi (${today}) navbatlar: ${todays.length}, tushum: ${formatMoney(todaysRevenue)}`,
     busiest ? `Eng band usta: ${busiest[0]} (${busiest[1]} ta)` : null,
-  ].filter(Boolean)
-  return lines.join('\n')
+  ]
+    .filter(Boolean)
+    .join('\n')
+
+  if (!recent.length) {
+    return `${header}\n\nHali bronlar yo'q.`
+  }
+
+  const recentEntries = recent
+    .map((a) => {
+      const username = usernameById.get(a.mijozId)
+      return (
+        `${a.sana} ${a.vaqt} — ${a.mijozIsmi || 'Mijoz'} (${a.mijozTelefon || '—'})${username ? ` @${username}` : ''}\n` +
+        `${a.xizmatNomi || '—'} [${a.holat}]`
+      )
+    })
+    .join('\n\n')
+
+  return `${header}\n\n\u{1F553} Oxirgi ${recent.length} ta bron:\n\n${recentEntries}`
+}
+
+async function buildStatsHeader() {
+  const all = await getAllAppointments()
+  const today = todayStr()
+
+  const byStatus = {}
+  let totalRevenue = 0
+  all.forEach((a) => {
+    byStatus[a.holat] = (byStatus[a.holat] || 0) + 1
+    if (a.holat === 'yakunlangan') totalRevenue += a.narxi || 0
+  })
+
+  const todays = all.filter((a) => a.sana === today)
+  const todaysRevenue = todays
+    .filter((a) => a.holat === 'yakunlangan')
+    .reduce((sum, a) => sum + (a.narxi || 0), 0)
+
+  const byBarber = {}
+  all.forEach((a) => {
+    if (a.barberIsmi) byBarber[a.barberIsmi] = (byBarber[a.barberIsmi] || 0) + 1
+  })
+  const busiest = Object.entries(byBarber).sort((a, b) => b[1] - a[1])[0]
+
+  return [
+    `\u{1F4CA} Statistika`,
+    '',
+    `Jami navbatlar: ${all.length}`,
+    `— Kutilmoqda: ${byStatus['kutilmoqda'] || 0}`,
+    `— Tasdiqlangan: ${byStatus['tasdiqlangan'] || 0}`,
+    `— Yakunlangan: ${byStatus['yakunlangan'] || 0}`,
+    `— Bekor qilingan: ${byStatus['bekor qilingan'] || 0}`,
+    '',
+    `Umumiy tushum (yakunlangan): ${formatMoney(totalRevenue)}`,
+    `Bugungi (${today}) navbatlar: ${todays.length}, tushum: ${formatMoney(todaysRevenue)}`,
+    busiest ? `Eng band usta: ${busiest[0]} (${busiest[1]} ta)` : null,
+  ]
+    .filter(Boolean)
+    .join('\n')
+}
+
+// chatId -> message_id of the current "Oxirgi bronlar" message — paginating
+// edits this same message in place instead of sending a new one each time.
+const statsListMessageId = new Map()
+
+async function sendStatsPage(chatId, offset, { fresh = false } = {}) {
+  if (fresh) {
+    await bot.sendMessage(chatId, await buildStatsHeader())
+    statsListMessageId.delete(chatId)
+  }
+
+  const all = await getAllAppointments()
+  const recent = [...all].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
+
+  if (!recent.length) {
+    if (fresh) await bot.sendMessage(chatId, "Hali bronlar yo'q.")
+    return
+  }
+
+  const page = recent.slice(offset, offset + LIST_PAGE_SIZE)
+  if (!page.length) return
+
+  const botUsers = await getBotUsers().catch(() => [])
+  const usernameById = new Map(botUsers.map((u) => [u.id, u.telegramUsername]))
+
+  const entries = page
+    .map((a) => {
+      const username = usernameById.get(a.mijozId)
+      return (
+        `${a.sana} ${a.vaqt} — ${a.mijozIsmi || 'Mijoz'} (${a.mijozTelefon || '—'})${username ? ` @${username}` : ''}\n` +
+        `${a.xizmatNomi || '—'} [${a.holat}]`
+      )
+    })
+    .join('\n\n')
+
+  const text = `\u{1F553} Oxirgi bronlar (${recent.length} ta):\n\n${entries}`
+  const navRow = buildPageNavRow('statspage', offset, LIST_PAGE_SIZE, recent.length)
+  const replyMarkup = { inline_keyboard: navRow.length ? [navRow] : [] }
+
+  const existingId = statsListMessageId.get(chatId)
+  if (existingId) {
+    await bot.editMessageText(text, { chat_id: chatId, message_id: existingId, reply_markup: replyMarkup })
+  } else {
+    const sent = await bot.sendMessage(chatId, text, { reply_markup: replyMarkup })
+    statsListMessageId.set(chatId, sent.message_id)
+  }
 }
 
 async function sendReminders() {
@@ -201,8 +698,31 @@ async function sendReminders() {
 
 async function handleTelegramLoginStart(msg, token) {
   try {
-    const login = await getTelegramLogin(token)
-    if (!login || login.status !== 'pending') {
+    const tgUser = msg.from
+    const result = await withRetry(async () => {
+      const login = await getTelegramLogin(token)
+      if (!login || login.status !== 'pending') return { expired: true }
+
+      let user = await findUserByTelegramId(tgUser.id)
+      if (!user) {
+        const role = isSuperAdminUsername(tgUser.username) ? 'admin' : 'client'
+        try {
+          user = await createTelegramUser(tgUser, role)
+        } catch (err) {
+          // json-server's --watch reload can drop the response even though
+          // the write landed — check before assuming the create failed.
+          user = await findUserByTelegramId(tgUser.id)
+          if (!user) throw err
+        }
+      } else if (isSuperAdminUsername(tgUser.username) && user.role !== 'admin') {
+        // Keep the super-admin's site role in sync even if their account
+        // was created before TELEGRAM_SUPER_ADMIN_USERNAME was set.
+        user = await setUserRole(user.id, 'admin')
+      }
+      return { user }
+    }, 2, 800)
+
+    if (result.expired || !result.user) {
       await bot.sendMessage(
         msg.chat.id,
         "Bu havola eskirgan yoki noto'g'ri. Saytda \"Telegram orqali kirish\" tugmasini qaytadan bosing."
@@ -210,16 +730,37 @@ async function handleTelegramLoginStart(msg, token) {
       return
     }
 
-    const tgUser = msg.from
-    let user = await findUserByTelegramId(tgUser.id)
-    if (!user) {
-      user = await createTelegramUser(tgUser)
-    }
-    await confirmTelegramLogin(token, user.id)
+    const { user } = result
 
+    if (user.telefon) {
+      // Returning user, phone already on file — open the account right away.
+      const confirmed = await confirmWithVerify(token, user.id)
+      if (!confirmed) {
+        await bot.sendMessage(msg.chat.id, "Xatolik yuz berdi, saytda qaytadan urinib ko'ring.")
+        return
+      }
+      await bot.sendMessage(
+        msg.chat.id,
+        `✅ Xush kelibsiz, ${user.ism}!\nZolotoy Barber hisobingizga kirdingiz. Saytga qaytishingiz mumkin.`,
+        user.role === 'admin' ? MENU_KEYBOARD : CLIENT_KEYBOARD
+      )
+      return
+    }
+
+    // New (or phone-less) user — the account/site login only opens once the
+    // phone is confirmed, see handleContact below.
+    awaitingPhoneForChat.set(msg.chat.id, { userId: user.id, token, role: user.role })
     await bot.sendMessage(
       msg.chat.id,
-      `✅ Xush kelibsiz, ${user.ism}!\nZolotoy Barber hisobingizga kirdingiz. Saytga qaytishingiz mumkin.`
+      `Salom, ${user.ism}! Zolotoy Barberga xush kelibsiz.\n\n` +
+        `Ro'yxatni yakunlash uchun telefon raqamingizni yuboring:`,
+      {
+        reply_markup: {
+          keyboard: [[{ text: "\u{1F4DE} Raqamni yuborish", request_contact: true }]],
+          resize_keyboard: true,
+          one_time_keyboard: true,
+        },
+      }
     )
   } catch (err) {
     console.error('[bot] telegram login error:', err?.message || err)
@@ -227,68 +768,429 @@ async function handleTelegramLoginStart(msg, token) {
   }
 }
 
-bot.onText(/^\/start(?:\s+(\S+))?/, async (msg, match) => {
+async function handleContact(msg) {
+  const pending = awaitingPhoneForChat.get(msg.chat.id)
+  if (!pending) return
+
+  if (msg.contact.user_id && msg.contact.user_id !== msg.from.id) {
+    await bot.sendMessage(msg.chat.id, "Iltimos, o'zingizning raqamingizni yuboring.")
+    return
+  }
+
+  try {
+    await withRetry(() => setUserPhone(pending.userId, msg.contact.phone_number), 2, 800)
+    await settleAfterWrite()
+    const confirmed = await confirmWithVerify(pending.token, pending.userId)
+    if (!confirmed) throw new Error('confirm failed after retries')
+
+    awaitingPhoneForChat.delete(msg.chat.id)
+    await bot.sendMessage(
+      msg.chat.id,
+      '✅ Raqamingiz saqlandi. Hisobingiz tayyor — saytga qaytishingiz mumkin!',
+      pending.role === 'admin' ? MENU_KEYBOARD : CLIENT_KEYBOARD
+    )
+  } catch (err) {
+    console.error('[bot] save phone error:', err?.message || err)
+    // Keep `pending` in the map so they can just tap the button again.
+    await bot.sendMessage(msg.chat.id, "Xatolik yuz berdi. Qaytadan urinib ko'ring:", {
+      reply_markup: {
+        keyboard: [[{ text: "\u{1F4DE} Raqamni yuborish", request_contact: true }]],
+        resize_keyboard: true,
+        one_time_keyboard: true,
+      },
+    })
+  }
+}
+
+bot.onText(/^\/start(?:\s+(\S+))?/, safeHandler(async (msg, match) => {
   const token = match?.[1]
   if (token) {
     await handleTelegramLoginStart(msg, token)
     return
   }
 
+  if (!adminChatId) {
+    // Bot not set up yet — reveal this chat's id so it can be copied into
+    // .env as TELEGRAM_ADMIN_CHAT_ID.
+    await bot.sendMessage(
+      msg.chat.id,
+      `Salom! Bu chat ID: ${msg.chat.id}\n\n` +
+        `Buni .env faylidagi TELEGRAM_ADMIN_CHAT_ID ga qo'ying va botni qayta ishga tushiring.`
+    )
+    return
+  }
+
+  if (!isFromAdmin(msg)) {
+    const known = await findUserByTelegramId(msg.from.id).catch(() => null)
+    if (known) {
+      await bot.sendMessage(
+        msg.chat.id,
+        `Salom, ${known.ism}! Siz allaqachon ro'yxatdan o'tgansiz — quyidagi menyudan foydalaning.`,
+        known.role === 'admin' ? MENU_KEYBOARD : CLIENT_KEYBOARD
+      )
+      return
+    }
+    await bot.sendMessage(
+      msg.chat.id,
+      "Salom! Bu Zolotoy Barber boti. Saytga kirish uchun saytdagi \"Telegram orqali kirish\" tugmasini bosing."
+    )
+    return
+  }
+
   bot.sendMessage(
     msg.chat.id,
-    `Salom! Bu chat ID: ${msg.chat.id}\n\n` +
-      `Buni .env faylidagi TELEGRAM_ADMIN_CHAT_ID ga qo'ying va botni qayta ishga tushiring.\n\n` +
-      `Shundan keyin bu yerga saytdagi yangi mijoz xabarlari, yangi navbatlar, ro'yxatdan o'tishlar va ` +
-      `eslatmalar kelib turadi. Mijozga javob yozish uchun uning xabariga shu yerda "Reply" qilib yozing ` +
-      `(yoki oxirgi mijozga to'g'ridan-to'g'ri yozing).\n\n` +
-      `Pastdagi menyudan yoki buyruqlardan foydalaning:\n/bugun /navbatlar /stats`,
+    `Salom! Botga xush kelibsiz.\n\n` +
+      `Pastdagi menyudan yoki buyruqlardan foydalaning:\n/bugun /navbatlar /stats /foydalanuvchilar /xabar\n\n` +
+      `Eslatma: mijozga javob yozish uchun uning xabariga shu yerda albatta "Reply" qilib yozing.`,
     MENU_KEYBOARD
   )
-})
+}))
 
-bot.onText(/^\/bugun/, async (msg) => {
+bot.onText(/^\/bugun/, safeHandler(async (msg) => {
   if (!isFromAdmin(msg)) return
   await bot.sendMessage(msg.chat.id, await buildBugunText())
-})
+}))
 
-bot.onText(/^\/navbatlar/, async (msg) => {
+bot.onText(/^\/navbatlar/, safeHandler(async (msg) => {
   if (!isFromAdmin(msg)) return
-  await bot.sendMessage(msg.chat.id, await buildNavbatlarText())
-})
+  await sendNavbatlarPage(msg.chat.id, 0, { fresh: true })
+}))
 
-bot.onText(/^\/stats/, async (msg) => {
+bot.onText(/^\/stats/, safeHandler(async (msg) => {
   if (!isFromAdmin(msg)) return
-  await bot.sendMessage(msg.chat.id, await buildStatsText())
-})
+  await sendStatsPage(msg.chat.id, 0, { fresh: true })
+}))
 
-bot.on('message', async (msg) => {
+const USERS_PAGE_SIZE = 5
+
+async function sendUsersPage(chatId, offset, { fresh = false } = {}) {
+  const users = await getBotUsers()
+  if (!users.length) {
+    await bot.sendMessage(chatId, "Hozircha bot orqali hech kim qo'shilmagan.")
+    return
+  }
+  const page = users.slice(offset, offset + USERS_PAGE_SIZE)
+  if (!page.length) {
+    await bot.sendMessage(chatId, "Boshqa foydalanuvchi yo'q.")
+    return
+  }
+
+  await clearListCards(chatId, 'users')
+  if (fresh) {
+    await bot.sendMessage(chatId, `\u{1F465} Bot orqali qo'shilgan foydalanuvchilar (${users.length} ta):`)
+  }
+
+  const cardIds = []
+  for (const u of page) {
+    const isAdminUser = u.role === 'admin'
+    const sent = await bot.sendMessage(chatId, formatBotUser(u), {
+      reply_markup: {
+        inline_keyboard: [
+          [
+            isAdminUser
+              ? { text: '⬇️ Admindan olish', callback_data: `demote:${u.id}` }
+              : { text: '⭐ Admin qilish', callback_data: `promote:${u.id}` },
+            { text: "❌ O'chirish", callback_data: `deleteuser:${u.id}` },
+          ],
+        ],
+      },
+    })
+    cardIds.push(sent.message_id)
+  }
+
+  const navRow = buildPageNavRow('userspage', offset, USERS_PAGE_SIZE, users.length)
+  if (navRow.length) {
+    const sentBtn = await bot.sendMessage(
+      chatId,
+      `${offset + 1}-${Math.min(offset + USERS_PAGE_SIZE, users.length)} / ${users.length}`,
+      { reply_markup: { inline_keyboard: [navRow] } }
+    )
+    cardIds.push(sentBtn.message_id)
+  }
+
+  activeListCards.set(`${chatId}:users`, cardIds)
+}
+
+bot.onText(/^\/foydalanuvchilar/, safeHandler(async (msg) => {
+  if (!isSuperAdmin(msg)) return
+  await sendUsersPage(msg.chat.id, 0, { fresh: true })
+}))
+
+// broadcastId -> { text, targets: [{ chatId, messageId }] } — kept in memory
+// so a just-sent broadcast can still be edited or deleted everywhere it went.
+const broadcasts = new Map()
+let broadcastCounter = 0
+
+async function performBroadcast(replyChatId, text) {
+  const users = (await getBotUsers()).filter((u) => u.telegramId)
+  if (!users.length) {
+    await bot.sendMessage(replyChatId, "Hozircha bot orqali hech kim qo'shilmagan.")
+    return
+  }
+
+  await bot.sendMessage(replyChatId, `Yuborilmoqda... (${users.length} kishiga)`)
+  const targets = []
+  for (const u of users) {
+    try {
+      const sent = await bot.sendMessage(u.telegramId, `\u{1F4E2} ${text}`)
+      targets.push({ chatId: u.telegramId, messageId: sent.message_id })
+    } catch (err) {
+      console.error('[bot] broadcast send error:', u.id, err?.message || err)
+    }
+    await sleep(150) // gentle pacing so we don't hit Telegram's rate limits
+  }
+
+  const broadcastId = `b${++broadcastCounter}`
+  broadcasts.set(broadcastId, { text, targets })
+
+  await bot.sendMessage(replyChatId, `✅ Yuborildi: ${targets.length}/${users.length}`, {
+    reply_markup: {
+      inline_keyboard: [
+        [
+          { text: '✏️ Tahrirlash', callback_data: `editbroadcast:${broadcastId}` },
+          { text: "\u{1F5D1}️ O'chirish", callback_data: `deletebroadcast:${broadcastId}` },
+        ],
+      ],
+    },
+  })
+}
+
+bot.onText(/^\/xabar(?:\s+([\s\S]+))?/, safeHandler(async (msg, match) => {
+  if (!isSuperAdmin(msg)) return
+  const text = match?.[1]?.trim()
+  if (!text) {
+    await bot.sendMessage(
+      msg.chat.id,
+      "Foydalanish: /xabar Xabar matni\n\nYoki pastdagi \"\u{1F4E2} Xabar yuborish\" tugmasini bosing."
+    )
+    return
+  }
+  await performBroadcast(msg.chat.id, text)
+}))
+
+async function sendMyAppointmentsPage(chatId, fromTelegramId, offset, { fresh = false } = {}) {
+  const user = await findUserByTelegramId(fromTelegramId)
+  if (!user) {
+    await bot.sendMessage(
+      chatId,
+      "Sizni topa olmadim. Avval saytda \"Telegram orqali kirish\" tugmasi orqali ro'yxatdan o'ting."
+    )
+    return
+  }
+  const appointments = await getUserAppointments(user.id)
+  const upcoming = appointments
+    .filter((a) => a.holat !== 'bekor qilingan')
+    .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')) // newest first
+  if (!upcoming.length) {
+    await bot.sendMessage(chatId, "Sizda hali navbat yo'q.")
+    return
+  }
+
+  const page = upcoming.slice(offset, offset + LIST_PAGE_SIZE)
+  if (!page.length) {
+    await bot.sendMessage(chatId, "Boshqa navbat yo'q.")
+    return
+  }
+
+  await clearListCards(chatId, 'myappts')
+  if (fresh) {
+    await bot.sendMessage(chatId, `\u{1F5D3}️ Sizning navbatlaringiz (${upcoming.length} ta):`)
+  }
+
+  const cardIds = []
+  for (const a of page) {
+    const cancellable = a.holat === 'kutilmoqda' || a.holat === 'tasdiqlangan'
+    const sent = await bot.sendMessage(
+      chatId,
+      `${a.sana} ${a.vaqt} — ${a.xizmatNomi} (${a.barberIsmi})\nHolat: ${a.holat}`,
+      cancellable
+        ? { reply_markup: { inline_keyboard: [[{ text: "❌ Bekor qilish", callback_data: `cancel:${a.id}` }]] } }
+        : undefined
+    )
+    cardIds.push(sent.message_id)
+  }
+
+  const navRow = buildPageNavRow('myapptspage', offset, LIST_PAGE_SIZE, upcoming.length)
+  if (navRow.length) {
+    const sentBtn = await bot.sendMessage(
+      chatId,
+      `${offset + 1}-${Math.min(offset + LIST_PAGE_SIZE, upcoming.length)} / ${upcoming.length}`,
+      { reply_markup: { inline_keyboard: [navRow] } }
+    )
+    cardIds.push(sentBtn.message_id)
+  }
+
+  activeListCards.set(`${chatId}:myappts`, cardIds)
+}
+
+async function handleHelp(msg) {
+  const info = await getContactInfo().catch(() => null)
+  const phone = info?.telefon || ''
+  const lines = [
+    'ℹ️ Yordam',
+    '',
+    `\u{1F4DE} Telefon: ${phone || '—'}`,
+    `\u{1F4CD} Manzil: ${info?.manzil || '—'}`,
+    `\u{1F550} Ish vaqti: ${info?.ishVaqti || '—'}`,
+  ]
+  await bot.sendMessage(msg.chat.id, lines.join('\n'))
+}
+
+async function handleClientChatMessage(msg) {
+  const user = await findUserByTelegramId(msg.from.id)
+  if (!user) {
+    await bot.sendMessage(
+      msg.chat.id,
+      "Avval saytda \"Telegram orqali kirish\" tugmasi orqali ro'yxatdan o'ting, keyin admin bilan chat qilishingiz mumkin."
+    )
+    return
+  }
+  try {
+    await postClientMessageFromBot({
+      conversationId: user.id,
+      userId: user.id,
+      userName: `${user.ism || ''} ${user.familiya || ''}`.trim() || user.telegramUsername || 'Mijoz',
+      text: msg.text,
+    })
+    await bot.sendMessage(msg.chat.id, '✓ Yuborildi')
+  } catch (err) {
+    console.error('[bot] client chat error:', err?.message || err)
+    await bot.sendMessage(msg.chat.id, "Xatolik yuz berdi, qaytadan urinib ko'ring.")
+  }
+}
+
+bot.on('message', safeHandler(async (msg) => {
+  if (msg.contact) {
+    await handleContact(msg)
+    return
+  }
+
+  // Utility for the super admin: send any Telegram Premium custom emoji and
+  // the bot echoes back its custom_emoji_id, so it can be hardcoded into
+  // specific bot messages afterward.
+  if (isSuperAdmin(msg) && msg.text && msg.entities?.some((e) => e.type === 'custom_emoji')) {
+    const found = msg.entities
+      .filter((e) => e.type === 'custom_emoji')
+      .map((e) => `${msg.text.slice(e.offset, e.offset + e.length)} → \`${e.custom_emoji_id}\``)
+    await bot.sendMessage(msg.chat.id, `Premium emoji ID'lari:\n${found.join('\n')}`, { parse_mode: 'Markdown' })
+    return
+  }
+
   if (!msg.text || msg.text.startsWith('/')) return
-  if (!isFromAdmin(msg)) return
+
+  if (msg.text === BTN_MY_APPOINTMENTS) {
+    clientChatMode.delete(msg.chat.id)
+    await sendMyAppointmentsPage(msg.chat.id, msg.from.id, 0, { fresh: true })
+    return
+  }
+  if (msg.text === BTN_HELP) {
+    clientChatMode.delete(msg.chat.id)
+    await handleHelp(msg)
+    return
+  }
+  if (msg.text === BTN_CHAT) {
+    clientChatMode.add(msg.chat.id)
+    await bot.sendMessage(msg.chat.id, "Yozing — xabaringiz to'g'ridan-to'g'ri administratorga yuboriladi.")
+    return
+  }
+
+  const pendingReviewId = awaitingReviewCommentForChat.get(msg.chat.id)
+  if (pendingReviewId) {
+    awaitingReviewCommentForChat.delete(msg.chat.id)
+    try {
+      await updateReview(pendingReviewId, { matn: msg.text })
+      await bot.sendMessage(msg.chat.id, "✅ Izohingiz uchun rahmat!")
+    } catch (err) {
+      console.error('[bot] review comment error:', err?.message || err)
+    }
+    return
+  }
+
+  if (!isFromAdmin(msg)) {
+    if (clientChatMode.has(msg.chat.id)) {
+      await handleClientChatMessage(msg)
+    } else {
+      await bot.sendMessage(
+        msg.chat.id,
+        `Administratorga yozish uchun pastdagi "${BTN_CHAT}" tugmasini bosing.`
+      )
+    }
+    return
+  }
 
   if (msg.text === BTN_BUGUN) {
     await bot.sendMessage(msg.chat.id, await buildBugunText())
     return
   }
   if (msg.text === BTN_NAVBATLAR) {
-    await bot.sendMessage(msg.chat.id, await buildNavbatlarText())
+    await sendNavbatlarPage(msg.chat.id, 0, { fresh: true })
     return
   }
   if (msg.text === BTN_STATS) {
-    await bot.sendMessage(msg.chat.id, await buildStatsText())
+    await sendStatsPage(msg.chat.id, 0, { fresh: true })
+    return
+  }
+  if (msg.text === BTN_USERS) {
+    if (!isSuperAdmin(msg)) {
+      await bot.sendMessage(msg.chat.id, "Ruxsat yo'q.")
+      return
+    }
+    await sendUsersPage(msg.chat.id, 0, { fresh: true })
+    return
+  }
+  if (msg.text === BTN_BROADCAST) {
+    if (!isSuperAdmin(msg)) {
+      await bot.sendMessage(msg.chat.id, "Ruxsat yo'q.")
+      return
+    }
+    awaitingBroadcastForChat.add(msg.chat.id)
+    await bot.sendMessage(msg.chat.id, "Yubormoqchi bo'lgan xabar matnini yozing:")
+    return
+  }
+
+  if (awaitingBroadcastForChat.has(msg.chat.id)) {
+    awaitingBroadcastForChat.delete(msg.chat.id)
+    await performBroadcast(msg.chat.id, msg.text)
+    return
+  }
+
+  const editBroadcastId = awaitingBroadcastEditForChat.get(msg.chat.id)
+  if (editBroadcastId) {
+    awaitingBroadcastEditForChat.delete(msg.chat.id)
+    const broadcast = broadcasts.get(editBroadcastId)
+    if (!broadcast) {
+      await bot.sendMessage(msg.chat.id, "Bu xabar topilmadi (eskirgan bo'lishi mumkin).")
+      return
+    }
+    let edited = 0
+    for (const target of broadcast.targets) {
+      try {
+        await bot.editMessageText(`\u{1F4E2} ${msg.text}`, { chat_id: target.chatId, message_id: target.messageId })
+        edited++
+      } catch (err) {
+        console.error('[bot] broadcast edit error:', target.chatId, err?.message || err)
+      }
+      await sleep(150)
+    }
+    broadcast.text = msg.text
+    await bot.sendMessage(msg.chat.id, `✅ Tahrirlandi: ${edited}/${broadcast.targets.length}`)
     return
   }
 
   const replyToId = msg.reply_to_message?.message_id
-  const conversationId = (replyToId && conversationByTelegramMsgId.get(replyToId)) || lastConversationId
+  const conversationId = replyToId && conversationByTelegramMsgId.get(replyToId)
 
   if (!conversationId) {
-    await bot.sendMessage(msg.chat.id, "Hozircha hech kim yozmagan — javob beradigan suhbat yo'q.")
+    await bot.sendMessage(
+      msg.chat.id,
+      "Kimga yozayotganingizni bilmadim. Mijozning xabariga Telegram'da \"Reply\" qilib javob yozing."
+    )
     return
   }
 
   const conversation = await getConversation(conversationId)
   if (!conversation) {
-    await bot.sendMessage(msg.chat.id, 'Bu suhbat topilmadi.')
+    await bot.sendMessage(msg.chat.id, 'Bu suhbat topilmadi (o‘chirilgan bo‘lishi mumkin).')
     return
   }
 
@@ -298,30 +1200,248 @@ bot.on('message', async (msg) => {
     userName: conversation.userName,
     text: msg.text,
   })
-  await bot.sendMessage(msg.chat.id, '✓', { reply_to_message_id: msg.message_id })
-})
 
-bot.on('callback_query', async (query) => {
-  const [action, appointmentId] = (query.data || '').split(':')
-  if (!appointmentId || (action !== 'confirm' && action !== 'cancel')) return
-
-  try {
-    const holat = action === 'confirm' ? 'tasdiqlangan' : 'bekor qilingan'
-    const extra = action === 'cancel' ? { bekorSababi: 'Telegram orqali bekor qilindi' } : {}
-    await setAppointmentStatus(appointmentId, holat, extra)
-
-    const label = action === 'confirm' ? '✅ Tasdiqlandi' : '❌ Bekor qilindi'
-    const originalText = query.message?.text || ''
-    await bot.editMessageText(`${originalText}\n\n${label}`, {
-      chat_id: query.message.chat.id,
-      message_id: query.message.message_id,
+  // Mirror the reply straight into the client's own Telegram chat too, not
+  // just the site — if they're Telegram-linked.
+  const clientUser = await getUser(conversation.userId).catch(() => null)
+  if (clientUser?.telegramId) {
+    await bot.sendMessage(clientUser.telegramId, `\u{1F464} Admin:\n${msg.text}`).catch((err) => {
+      console.error('[bot] mirror reply to client error:', err?.message || err)
     })
-    await bot.answerCallbackQuery(query.id, { text: label })
-  } catch (err) {
-    console.error('[bot] callback_query error:', err?.message || err)
-    await bot.answerCallbackQuery(query.id, { text: 'Xatolik yuz berdi', show_alert: true })
   }
-})
+
+  await bot.sendMessage(msg.chat.id, `✓ ${conversation.userName || 'mijoz'}ga yuborildi`, {
+    reply_to_message_id: msg.message_id,
+  })
+}))
+
+bot.on('callback_query', safeHandler(async (query) => {
+  const parts = (query.data || '').split(':')
+  const [action, id] = parts
+  if (!id) return
+
+  if (action === 'confirm' || action === 'cancel' || action === 'complete') {
+    try {
+      const staffAction = isFromAdmin(query.message)
+
+      // Only staff can confirm/complete. Cancel is also allowed by the
+      // client who owns the appointment.
+      let requesterUser = null
+      if (!staffAction) {
+        requesterUser = await findUserByTelegramId(query.from.id)
+        const target = await getAppointmentById(id)
+        const ownsIt = requesterUser && target && target.mijozId === requesterUser.id
+        if (action !== 'cancel' || !ownsIt) {
+          await bot.answerCallbackQuery(query.id, { text: "Ruxsat yo'q", show_alert: true })
+          return
+        }
+      }
+
+      const holat = action === 'confirm' ? 'tasdiqlangan' : action === 'complete' ? 'yakunlangan' : 'bekor qilingan'
+      const extra =
+        action === 'cancel'
+          ? { bekorSababi: staffAction ? 'Telegram orqali bekor qilindi' : 'Mijoz tomonidan bekor qilindi' }
+          : {}
+      const appointment = await setAppointmentStatus(id, holat, extra)
+
+      const label =
+        action === 'confirm' ? '✅ Tasdiqlandi' : action === 'complete' ? '✔️ Yakunlandi' : '❌ Bekor qilindi'
+      const originalText = query.message?.text || ''
+      await bot.editMessageText(`${originalText}\n\n${label}`, {
+        chat_id: query.message.chat.id,
+        message_id: query.message.message_id,
+      })
+      await bot.answerCallbackQuery(query.id, { text: label })
+
+      if (staffAction) {
+        // Let the client know their appointment status changed too.
+        const clientUser = await getUser(appointment.mijozId).catch(() => null)
+        if (clientUser?.telegramId) {
+          const clientLabel =
+            action === 'confirm'
+              ? '✅ Navbatingiz tasdiqlandi!'
+              : action === 'complete'
+                ? '✔️ Xizmat yakunlandi. Tashrifingiz uchun rahmat!'
+                : '❌ Navbatingiz bekor qilindi.'
+          await bot
+            .sendMessage(
+              clientUser.telegramId,
+              `${clientLabel}\n✂️ ${appointment.xizmatNomi || '—'}\n\u{1F553} ${appointment.sana} ${appointment.vaqt}`
+            )
+            .catch((err) => console.error('[bot] notify client status error:', err?.message || err))
+        }
+      } else if (adminChatId) {
+        // A client cancelled their own booking — let the admin know.
+        await bot
+          .sendMessage(
+            adminChatId,
+            `\u{1F6AB} Mijoz navbatni bekor qildi:\n${appointment.mijozIsmi || 'Mijoz'} — ` +
+              `${appointment.xizmatNomi || '—'} (${appointment.sana} ${appointment.vaqt})`
+          )
+          .catch((err) => console.error('[bot] notify admin of client cancel error:', err?.message || err))
+      }
+    } catch (err) {
+      console.error('[bot] callback_query error:', err?.message || err)
+      await bot.answerCallbackQuery(query.id, { text: 'Xatolik yuz berdi', show_alert: true })
+    }
+    return
+  }
+
+  if (action === 'rate') {
+    const rating = Number(parts[2])
+    try {
+      const appointment = await getAppointmentById(id)
+      if (!appointment || !rating) {
+        await bot.answerCallbackQuery(query.id, { text: 'Xatolik yuz berdi', show_alert: true })
+        return
+      }
+      const review = await createReview({
+        id: `r-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        barberId: appointment.barberId,
+        mijozIsmi: appointment.mijozIsmi || 'Mijoz',
+        matn: '',
+        baho: rating,
+        sana: todayStr(),
+      })
+      awaitingReviewCommentForChat.set(query.message.chat.id, review.id)
+
+      // Recompute the barber's displayed rating as the average of all their
+      // reviews, so bot-collected ratings actually show up on the site.
+      try {
+        const barberReviews = await getReviewsByBarber(appointment.barberId)
+        if (barberReviews.length) {
+          const avg = barberReviews.reduce((sum, r) => sum + (r.baho || 0), 0) / barberReviews.length
+          await setBarberRating(appointment.barberId, Math.round(avg * 10) / 10)
+        }
+      } catch (err) {
+        console.error('[bot] update barber rating error:', err?.message || err)
+      }
+
+      const originalText = query.message?.text || ''
+      await bot.editMessageText(`${originalText}\n\nBahoyingiz: ${'⭐'.repeat(rating)}`, {
+        chat_id: query.message.chat.id,
+        message_id: query.message.message_id,
+      })
+      await bot.answerCallbackQuery(query.id, { text: 'Rahmat!' })
+      await bot.sendMessage(
+        query.message.chat.id,
+        "Rahmat! Xohlasangiz, izoh ham yozib yuboring (ixtiyoriy) — keyingi xabaringiz sharhga qo'shiladi."
+      )
+    } catch (err) {
+      console.error('[bot] rate error:', err?.message || err)
+      await bot.answerCallbackQuery(query.id, { text: 'Xatolik yuz berdi', show_alert: true })
+    }
+    return
+  }
+
+  if (action === 'userspage') {
+    if (!isSuperAdmin(query)) {
+      await bot.answerCallbackQuery(query.id, { text: "Ruxsat yo'q", show_alert: true })
+      return
+    }
+    await bot.answerCallbackQuery(query.id)
+    await sendUsersPage(query.message.chat.id, Number(id) || 0)
+    return
+  }
+
+  if (action === 'navbatlarpage') {
+    if (!isFromAdmin(query.message)) {
+      await bot.answerCallbackQuery(query.id, { text: "Ruxsat yo'q", show_alert: true })
+      return
+    }
+    await bot.answerCallbackQuery(query.id)
+    await sendNavbatlarPage(query.message.chat.id, Number(id) || 0)
+    return
+  }
+
+  if (action === 'myapptspage') {
+    await bot.answerCallbackQuery(query.id)
+    await sendMyAppointmentsPage(query.message.chat.id, query.from.id, Number(id) || 0)
+    return
+  }
+
+  if (action === 'statspage') {
+    if (!isFromAdmin(query.message)) {
+      await bot.answerCallbackQuery(query.id, { text: "Ruxsat yo'q", show_alert: true })
+      return
+    }
+    await bot.answerCallbackQuery(query.id)
+    await sendStatsPage(query.message.chat.id, Number(id) || 0)
+    return
+  }
+
+  if (action === 'editbroadcast' || action === 'deletebroadcast') {
+    if (!isSuperAdmin(query)) {
+      await bot.answerCallbackQuery(query.id, { text: "Ruxsat yo'q", show_alert: true })
+      return
+    }
+    const broadcast = broadcasts.get(id)
+    if (!broadcast) {
+      await bot.answerCallbackQuery(query.id, { text: "Bu xabar topilmadi (eskirgan bo'lishi mumkin).", show_alert: true })
+      return
+    }
+
+    if (action === 'editbroadcast') {
+      awaitingBroadcastEditForChat.set(query.message.chat.id, id)
+      await bot.answerCallbackQuery(query.id)
+      await bot.sendMessage(query.message.chat.id, "Yangi matnni yozing — barcha oluvchilarda yangilanadi:")
+      return
+    }
+
+    try {
+      let deleted = 0
+      for (const target of broadcast.targets) {
+        try {
+          await bot.deleteMessage(target.chatId, target.messageId)
+          deleted++
+        } catch (err) {
+          console.error('[bot] broadcast delete error:', target.chatId, err?.message || err)
+        }
+        await sleep(100)
+      }
+      broadcasts.delete(id)
+      const originalText = query.message?.text || ''
+      await bot.editMessageText(`${originalText}\n\n🗑️ O'chirildi (${deleted}/${broadcast.targets.length})`, {
+        chat_id: query.message.chat.id,
+        message_id: query.message.message_id,
+      })
+      await bot.answerCallbackQuery(query.id, { text: "O'chirildi" })
+    } catch (err) {
+      console.error('[bot] deletebroadcast error:', err?.message || err)
+      await bot.answerCallbackQuery(query.id, { text: 'Xatolik yuz berdi', show_alert: true })
+    }
+    return
+  }
+
+  if (action === 'promote' || action === 'demote' || action === 'deleteuser') {
+    if (!isSuperAdmin(query)) {
+      await bot.answerCallbackQuery(query.id, { text: "Ruxsat yo'q", show_alert: true })
+      return
+    }
+    try {
+      const originalText = query.message?.text || ''
+      let label
+      if (action === 'promote') {
+        await setUserRole(id, 'admin')
+        label = '⭐ Admin qilindi'
+      } else if (action === 'demote') {
+        await setUserRole(id, 'client')
+        label = '⬇️ Admindan olindi'
+      } else {
+        await deleteUser(id)
+        label = "❌ O'chirildi"
+      }
+      await bot.editMessageText(`${originalText}\n\n${label}`, {
+        chat_id: query.message.chat.id,
+        message_id: query.message.message_id,
+      })
+      await bot.answerCallbackQuery(query.id, { text: label })
+    } catch (err) {
+      console.error('[bot] user management error:', err?.message || err)
+      await bot.answerCallbackQuery(query.id, { text: 'Xatolik yuz berdi', show_alert: true })
+    }
+  }
+}))
 
 bot.on('polling_error', (err) => console.error('[bot] polling error:', err?.message || err))
 
@@ -332,12 +1452,38 @@ bot.setMyCommands([
   { command: 'stats', description: 'Bugungi statistika' },
 ]).catch((err) => console.error('[bot] setMyCommands error:', err?.message || err))
 
+bot
+  .setMyShortDescription({
+    short_description:
+      "Zolotoy Barber — onlayn navbat, eslatmalar va admin bilan to'g'ridan-to'g'ri chat bitta botda.",
+  })
+  .catch((err) => console.error('[bot] setMyShortDescription error:', err?.message || err))
+
+bot
+  .setMyDescription({
+    description:
+      '✂️ Zolotoy Barber — sartaroshxonangiz uchun aqlli yordamchi.\n\n' +
+      "\u{1F4C5} Mijozlarga: saytdan bir necha soniyada navbat oling, holatini kuzating, kerak bo'lsa bekor qiling.\n" +
+      "\u{1F4AC} Administrator bilan to'g'ridan-to'g'ri yozishing mumkin — qo'ng'iroqsiz.\n" +
+      "⏰ Avtomatik eslatmalar — navbatingizni hech qachon unutmaysiz.\n" +
+      "⭐ Xizmatdan so'ng ustani baholang.\n\n" +
+      "\u{1F451} Administratorga: barcha navbatlar, statistika va foydalanuvchilarni bitta joydan boshqaring.\n\n" +
+      "Boshlash uchun saytdagi \"Telegram orqali kirish\" tugmasini bosing 👇",
+  })
+  .catch((err) => console.error('[bot] setMyDescription error:', err?.message || err))
+
 console.log('[bot] Telegram bot ishga tushdi (long polling).')
 if (!adminChatId) {
   console.log("[bot] TELEGRAM_ADMIN_CHAT_ID hali sozlanmagan — botga /start yozib chat ID oling.")
 }
 
+async function periodicChecks() {
+  await sendReminders()
+  await checkLowStock()
+  await maybeSendDailyDigest()
+}
+
 poll()
 setInterval(poll, POLL_MS)
-sendReminders()
-setInterval(sendReminders, REMINDER_POLL_MS)
+periodicChecks()
+setInterval(periodicChecks, REMINDER_POLL_MS)
