@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: barber-uz-api
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npx json-server --watch server/db.json --port $PORT --host 0.0.0.0

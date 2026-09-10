@@ -19,7 +19,7 @@ a bug to fix unprompted.
 npm install          # install deps
 npm start             # run frontend (Vite, :5173) + backend (json-server, :4000) together — same as npm run dev:all
 npm run dev            # frontend only
-npm run server          # backend only (json-server --watch server/db.json --port 4000)
+npm run server          # backend only (json-server server/db.json --port 4000)
 npm run build           # production build
 npm run preview          # preview production build
 npm run lint            # oxlint
@@ -28,11 +28,27 @@ npm run gen:images        # regenerate procedural SVG placeholder images (script
 
 There is no test suite configured in this repo.
 
-The frontend expects the backend at `http://localhost:4000` (hardcoded in [src/api/client.js](src/api/client.js)
-as `API_BASE_URL`). Most login/data-fetch failures during development are because `npm run server` isn't
-running — check port 4000 first.
+The frontend expects the backend at `http://localhost:4000` by default (see `API_BASE_URL` in
+[src/api/client.js](src/api/client.js)). Most login/data-fetch failures during development are because
+`npm run server` isn't running — check port 4000 first.
 
 Demo accounts (from README): admin `admin@zolotoy.uz` / `admin123`; client `ali@example.com` / `1234`.
+
+## Deploy (free tier)
+
+`API_BASE_URL` in [src/api/client.js](src/api/client.js) reads `import.meta.env.VITE_API_BASE_URL`
+(falling back to `process.env.VITE_API_BASE_URL` for the Node bot process, then to `localhost:4000`), so the
+frontend and backend can be deployed to different free hosts and repointed later without code changes:
+
+- **Backend (json-server)**: deploy this same repo to Render (see [render.yaml](render.yaml)) — free plan,
+  start command `npx json-server --watch server/db.json --port $PORT --host 0.0.0.0`. `json-server` is a
+  regular `dependency` (not dev-only) for exactly this reason. Render's free plan spins down on inactivity
+  and its filesystem is ephemeral, so writes to `db.json` (bookings, new users, etc.) are reset on redeploy/
+  restart — fine for a demo, not for real data.
+- **Frontend**: deploy to Vercel (Import Project → this GitHub repo → `npm run build`), with
+  `VITE_API_BASE_URL` set in Vercel's Environment Variables to the Render backend's URL.
+- Custom domain and paid hosting tiers are added later by upgrading the same Vercel/Render projects — no
+  migration needed, just point DNS at them once purchased.
 
 ## Architecture
 
