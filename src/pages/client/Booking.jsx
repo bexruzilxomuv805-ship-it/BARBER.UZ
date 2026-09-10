@@ -64,6 +64,7 @@ export default function Booking() {
   }, [dispatch])
 
   const days = useMemo(() => nextDays(7), [])
+  const todayIso = days[0]?.toISOString().slice(0, 10)
   const selectedService = useMemo(() => services.find((s) => s.id === serviceId), [services, serviceId])
   const selectedBarber = useMemo(() => barbers.find((b) => b.id === barberId), [barbers, barberId])
 
@@ -75,6 +76,16 @@ export default function Booking() {
         .map((a) => a.vaqt)
     )
   }, [appointments, barberId, date])
+
+  // Today's already-passed slots shouldn't be bookable — WORK_HOURS is a
+  // fixed list independent of the current time, so this has to be filtered
+  // in separately rather than baked into the list itself.
+  const isPastSlot = (slotTime) => {
+    if (date !== todayIso) return false
+    const now = new Date()
+    const [h, m] = slotTime.split(':').map(Number)
+    return h * 60 + m <= now.getHours() * 60 + now.getMinutes()
+  }
 
   const canNext = useMemo(() => {
     if (step === 0) return !!serviceId
@@ -268,16 +279,17 @@ export default function Booking() {
                 <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
                   {WORK_HOURS.map((t) => {
                     const isTaken = takenSlots.has(t)
+                    const isPast = isPastSlot(t)
                     const active = time === t
                     return (
                       <button
                         key={t}
-                        disabled={isTaken || !date}
+                        disabled={isTaken || isPast || !date}
                         onClick={() => setTime(t)}
                         className={`rounded-lg border px-2 py-2.5 text-sm font-medium transition-colors ${
                           active
                             ? 'border-gold-500 bg-gold-500 text-ink-950'
-                            : isTaken
+                            : isTaken || isPast
                             ? 'border-ink-900 text-ink-700 line-through cursor-not-allowed'
                             : 'border-ink-800 text-ink-300 hover:border-gold-500/50'
                         }`}
