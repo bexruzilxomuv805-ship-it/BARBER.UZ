@@ -10,6 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Ping backend
-        run: curl -sS -o /dev/null -w "backend: %{http_code}\n" https://barber-uz.onrender.com/services
+        run: |
+          curl -sS -o /dev/null -w "backend: %{http_code}\n" https://barber-uz.onrender.com/services
       - name: Ping bot
-        run: curl -sS -o /dev/null -w "bot: %{http_code}\n" https://barber-uz-bot.onrender.com
+        run: |
+          curl -sS -o /dev/null -w "bot: %{http_code}\n" https://barber-uz-bot.onrender.com
