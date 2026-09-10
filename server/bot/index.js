@@ -32,6 +32,7 @@ import {
   markAppointmentArrivalAsked,
   setAppointmentArrival,
   getServiceById,
+  getAllPayments,
   getPaymentByAppointment,
   createPayment,
   updatePaymentMethod,
@@ -627,81 +628,26 @@ async function sendNavbatlarPage(chatId, offset, { fresh = false } = {}) {
   activeListCards.set(`${chatId}:navbatlar`, cardIds)
 }
 
-async function buildStatsText() {
-  const all = await getAllAppointments()
-  const today = todayStr()
-
-  const byStatus = {}
-  let totalRevenue = 0
-  all.forEach((a) => {
-    byStatus[a.holat] = (byStatus[a.holat] || 0) + 1
-    if (a.holat === 'yakunlangan') totalRevenue += a.narxi || 0
-  })
-
-  const todays = all.filter((a) => a.sana === today)
-  const todaysRevenue = todays
-    .filter((a) => a.holat === 'yakunlangan')
-    .reduce((sum, a) => sum + (a.narxi || 0), 0)
-
-  const byBarber = {}
-  all.forEach((a) => {
-    if (a.barberIsmi) byBarber[a.barberIsmi] = (byBarber[a.barberIsmi] || 0) + 1
-  })
-  const busiest = Object.entries(byBarber).sort((a, b) => b[1] - a[1])[0]
-
-  const botUsers = await getBotUsers().catch(() => [])
-  const usernameById = new Map(botUsers.map((u) => [u.id, u.telegramUsername]))
-
-  const recent = [...all].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')).slice(0, 10)
-
-  const header = [
-    `\u{1F4CA} Statistika`,
-    '',
-    `Jami navbatlar: ${all.length}`,
-    `— Kutilmoqda: ${byStatus['kutilmoqda'] || 0}`,
-    `— Tasdiqlangan: ${byStatus['tasdiqlangan'] || 0}`,
-    `— Yakunlangan: ${byStatus['yakunlangan'] || 0}`,
-    `— Bekor qilingan: ${byStatus['bekor qilingan'] || 0}`,
-    '',
-    `Umumiy tushum (yakunlangan): ${formatMoney(totalRevenue)}`,
-    `Bugungi (${today}) navbatlar: ${todays.length}, tushum: ${formatMoney(todaysRevenue)}`,
-    busiest ? `Eng band usta: ${busiest[0]} (${busiest[1]} ta)` : null,
-  ]
-    .filter(Boolean)
-    .join('\n')
-
-  if (!recent.length) {
-    return `${header}\n\nHali bronlar yo'q.`
-  }
-
-  const recentEntries = recent
-    .map((a) => {
-      const username = usernameById.get(a.mijozId)
-      return (
-        `${a.sana} ${a.vaqt} — ${a.mijozIsmi || 'Mijoz'} (${a.mijozTelefon || '—'})${username ? ` @${username}` : ''}\n` +
-        `${a.xizmatNomi || '—'} [${a.holat}]`
-      )
-    })
-    .join('\n\n')
-
-  return `${header}\n\n\u{1F553} Oxirgi ${recent.length} ta bron:\n\n${recentEntries}`
-}
-
+// Revenue here comes from the payments collection, same as AdminReports.jsx
+// on the site — an appointment's own narxi can drift from what was actually
+// charged (price edited after booking, discount, etc.), so summing narxi
+// directly (the old approach) gave the bot different totals than the site
+// showed for the exact same data.
 async function buildStatsHeader() {
   const all = await getAllAppointments()
+  const payments = await getAllPayments()
   const today = todayStr()
 
   const byStatus = {}
-  let totalRevenue = 0
   all.forEach((a) => {
     byStatus[a.holat] = (byStatus[a.holat] || 0) + 1
-    if (a.holat === 'yakunlangan') totalRevenue += a.narxi || 0
   })
 
-  const todays = all.filter((a) => a.sana === today)
-  const todaysRevenue = todays
-    .filter((a) => a.holat === 'yakunlangan')
-    .reduce((sum, a) => sum + (a.narxi || 0), 0)
+  const totalRevenue = payments.reduce((sum, p) => sum + (p.summa || 0), 0)
+  const todaysRevenue = payments
+    .filter((p) => p.sana === today)
+    .reduce((sum, p) => sum + (p.summa || 0), 0)
+  const todaysCount = all.filter((a) => a.sana === today).length
 
   const byBarber = {}
   all.forEach((a) => {
@@ -718,12 +664,38 @@ async function buildStatsHeader() {
     `— Yakunlangan: ${byStatus['yakunlangan'] || 0}`,
     `— Bekor qilingan: ${byStatus['bekor qilingan'] || 0}`,
     '',
-    `Umumiy tushum (yakunlangan): ${formatMoney(totalRevenue)}`,
-    `Bugungi (${today}) navbatlar: ${todays.length}, tushum: ${formatMoney(todaysRevenue)}`,
+    `Umumiy tushum: ${formatMoney(totalRevenue)}`,
+    `Bugungi (${today}) navbatlar: ${todaysCount}, tushum: ${formatMoney(todaysRevenue)}`,
     busiest ? `Eng band usta: ${busiest[0]} (${busiest[1]} ta)` : null,
   ]
     .filter(Boolean)
     .join('\n')
+}
+
+async function buildStatsText() {
+  const all = await getAllAppointments()
+  const header = await buildStatsHeader()
+
+  const botUsers = await getBotUsers().catch(() => [])
+  const usernameById = new Map(botUsers.map((u) => [u.id, u.telegramUsername]))
+
+  const recent = [...all].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')).slice(0, 10)
+
+  if (!recent.length) {
+    return `${header}\n\nHali bronlar yo'q.`
+  }
+
+  const recentEntries = recent
+    .map((a) => {
+      const username = usernameById.get(a.mijozId)
+      return (
+        `${a.sana} ${a.vaqt} — ${a.mijozIsmi || 'Mijoz'} (${a.mijozTelefon || '—'})${username ? ` @${username}` : ''}\n` +
+        `${a.xizmatNomi || '—'} [${a.holat}]`
+      )
+    })
+    .join('\n\n')
+
+  return `${header}\n\n\u{1F553} Oxirgi ${recent.length} ta bron:\n\n${recentEntries}`
 }
 
 // chatId -> message_id of the current "Oxirgi bronlar" message — paginating

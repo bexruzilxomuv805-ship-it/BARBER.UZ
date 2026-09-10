@@ -277,6 +277,11 @@ export async function getServiceById(id) {
   }
 }
 
+export async function getAllPayments() {
+  const { data } = await client.get('/payments')
+  return data
+}
+
 export async function getPaymentByAppointment(appointmentId) {
   const { data } = await client.get('/payments', { params: { appointmentId } })
   return data[0] || null
