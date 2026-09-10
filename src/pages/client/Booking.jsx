@@ -18,6 +18,15 @@ import { formatSum } from '../../utils/format'
 import { isBarberOff, WEEKDAY_DISPLAY_ORDER } from '../../utils/schedule'
 
 const WORK_HOURS = ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30']
+const DEFAULT_DURATION_MIN = 30
+// Last WORK_HOURS start (18:30) plus the shortest service — nothing should
+// run later than this.
+const CLOSING_MINUTES = 19 * 60
+
+function toMinutes(hhmm) {
+  const [h, m] = hhmm.split(':').map(Number)
+  return h * 60 + m
+}
 
 function nextDays(count = 7) {
   const days = []
@@ -68,14 +77,31 @@ export default function Booking() {
   const selectedService = useMemo(() => services.find((s) => s.id === serviceId), [services, serviceId])
   const selectedBarber = useMemo(() => barbers.find((b) => b.id === barberId), [barbers, barberId])
 
-  const takenSlots = useMemo(() => {
-    if (!barberId || !date) return new Set()
-    return new Set(
-      appointments
-        .filter((a) => a.barberId === barberId && a.sana === date && a.holat !== 'bekor qilingan')
-        .map((a) => a.vaqt)
-    )
-  }, [appointments, barberId, date])
+  // Ranges (in minutes-since-midnight) this barber is already booked for on
+  // the selected date — using each existing appointment's own service
+  // duration, not just its start time, so a slot inside a longer booking
+  // (e.g. a 90-minute service starting 14:00) is correctly blocked too.
+  const occupiedRanges = useMemo(() => {
+    if (!barberId || !date) return []
+    return appointments
+      .filter((a) => a.barberId === barberId && a.sana === date && a.holat !== 'bekor qilingan')
+      .map((a) => {
+        const duration = services.find((s) => s.id === a.xizmatId)?.davomiyligi || DEFAULT_DURATION_MIN
+        const start = toMinutes(a.vaqt)
+        return [start, start + duration]
+      })
+  }, [appointments, barberId, date, services])
+
+  // A slot is unavailable if the *selected* service, starting there, would
+  // overlap an existing booking or run past closing — not just if that exact
+  // start time happens to already be taken.
+  const isSlotBlocked = (slotTime) => {
+    const duration = selectedService?.davomiyligi || DEFAULT_DURATION_MIN
+    const start = toMinutes(slotTime)
+    const end = start + duration
+    if (end > CLOSING_MINUTES) return true
+    return occupiedRanges.some(([s, e]) => start < e && end > s)
+  }
 
   // Today's already-passed slots shouldn't be bookable — WORK_HOURS is a
   // fixed list independent of the current time, so this has to be filtered
@@ -189,7 +215,7 @@ export default function Booking() {
                     {services.map((s) => (
                       <button
                         key={s.id}
-                        onClick={() => setServiceId(s.id)}
+                        onClick={() => { setServiceId(s.id); setTime('') }}
                         className={`card flex items-center gap-4 p-4 text-left transition-colors ${
                           serviceId === s.id ? 'border-gold-500 bg-gold-500/5' : 'hover:border-gold-500/40'
                         }`}
@@ -278,18 +304,18 @@ export default function Booking() {
                 <p className="mb-3 mt-8 text-sm font-medium text-ink-300">{t('booking.chooseTime')}</p>
                 <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
                   {WORK_HOURS.map((t) => {
-                    const isTaken = takenSlots.has(t)
+                    const isBlocked = isSlotBlocked(t)
                     const isPast = isPastSlot(t)
                     const active = time === t
                     return (
                       <button
                         key={t}
-                        disabled={isTaken || isPast || !date}
+                        disabled={isBlocked || isPast || !date}
                         onClick={() => setTime(t)}
                         className={`rounded-lg border px-2 py-2.5 text-sm font-medium transition-colors ${
                           active
                             ? 'border-gold-500 bg-gold-500 text-ink-950'
-                            : isTaken || isPast
+                            : isBlocked || isPast
                             ? 'border-ink-900 text-ink-700 line-through cursor-not-allowed'
                             : 'border-ink-800 text-ink-300 hover:border-gold-500/50'
                         }`}
