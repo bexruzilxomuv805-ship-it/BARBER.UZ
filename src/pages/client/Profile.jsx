@@ -88,7 +88,7 @@ export default function Profile() {
                   </div>
                 </div>
                 <div className="mt-5 space-y-2 text-sm text-ink-300">
-                  <p className="flex items-center gap-2"><FaEnvelope className="text-gold-400" /> {user?.email}</p>
+                  <p className="flex items-center gap-2"><FaEnvelope className="text-gold-400" /> {user?.email || (user?.telegramUsername && `@${user.telegramUsername}`)}</p>
                   <p className="flex items-center gap-2"><FaPhoneAlt className="text-gold-400" /> {user?.telefon}</p>
                 </div>
                 <button onClick={() => setEditing(true)} className="btn-outline mt-5 w-full !py-2 text-sm">

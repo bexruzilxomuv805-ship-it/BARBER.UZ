@@ -333,7 +333,15 @@
       "deleteConfirmText": "The customer and their account will be permanently deleted.",
       "updatedToast": "Customer updated.",
       "addedToast": "Customer added.",
-      "deletedToast": "Customer deleted."
+      "deletedToast": "Customer deleted.",
+      "makeAdmin": "Make admin",
+      "removeAdmin": "Remove admin",
+      "promotedToast": "{{name}} is now an admin.",
+      "demotedToast": "{{name}} is now a regular customer.",
+      "tableRole": "Role",
+      "roleAdmin": "Admin",
+      "roleClient": "Customer",
+      "you": "You"
     },
     "barbers": {
       "title": "Barbers",

@@ -14,6 +14,7 @@ import AutoText from '../../components/AutoText'
 import { fetchServices } from '../../features/services/servicesSlice'
 import { fetchBarbers } from '../../features/barbers/barbersSlice'
 import { fetchReviews } from '../../features/reviews/reviewsSlice'
+import { fetchAppointments } from '../../features/appointments/appointmentsSlice'
 import { images, getBarberImage } from '../../assets/images'
 import { formatSum } from '../../utils/format'
 
@@ -31,6 +32,7 @@ export default function Home() {
   const { items: services, status: servicesStatus } = useSelector((s) => s.services)
   const { items: barbers, status: barbersStatus } = useSelector((s) => s.barbers)
   const { items: reviews } = useSelector((s) => s.reviews)
+  const { items: appointments } = useSelector((s) => s.appointments)
   const { info: contactInfo } = useSelector((s) => s.contact)
   const contact = contactInfo || FALLBACK_CONTACT
   const features = t('home.features', { returnObjects: true }).map((f, i) => ({ ...f, icon: FEATURE_ICONS[i] }))
@@ -39,6 +41,7 @@ export default function Home() {
     dispatch(fetchServices())
     dispatch(fetchBarbers())
     dispatch(fetchReviews())
+    dispatch(fetchAppointments())
   }, [dispatch])
 
   const featuredServices = useMemo(() => services.slice(0, 6), [services])
@@ -50,6 +53,17 @@ export default function Home() {
     if (!reviews.length) return 5
     return (reviews.reduce((sum, r) => sum + r.baho, 0) / reviews.length).toFixed(1)
   }, [reviews])
+
+  // Real, computed stats instead of hardcoded demo numbers: years = the most
+  // experienced barber's tenure, clients = completed appointment count.
+  const yearsExperience = useMemo(
+    () => (barbers.length ? Math.max(...barbers.map((b) => b.tajriba || 0)) : 0),
+    [barbers]
+  )
+  const happyClientsCount = useMemo(
+    () => appointments.filter((a) => a.holat === 'yakunlangan').length,
+    [appointments]
+  )
 
   return (
     <div>
@@ -86,19 +100,19 @@ export default function Home() {
             <div className="mt-12 grid grid-cols-3 gap-6 max-w-md">
               <div>
                 <p className="font-display text-3xl font-bold text-white">
-                  <AnimatedCounter to={9} />+
+                  <AnimatedCounter to={yearsExperience} />+
                 </p>
                 <p className="text-xs text-ink-500 mt-1">{t('home.statExperience')}</p>
               </div>
               <div>
                 <p className="font-display text-3xl font-bold text-white">
-                  <AnimatedCounter to={2400} />+
+                  <AnimatedCounter to={happyClientsCount} />+
                 </p>
                 <p className="text-xs text-ink-500 mt-1">{t('home.statClients')}</p>
               </div>
               <div>
                 <p className="font-display text-3xl font-bold text-white flex items-center gap-1">
-                  <AnimatedCounter to={4.9} duration={1} /> <FaStar className="text-gold-400 text-xl" />
+                  {avgRating} <FaStar className="text-gold-400 text-xl" />
                 </p>
                 <p className="text-xs text-ink-500 mt-1">{t('home.statRating')}</p>
               </div>

@@ -139,7 +139,7 @@ export default function AdminChat() {
           )}
         </div>
 
-        <div className="flex flex-col">
+        <div className="flex min-h-0 flex-col">
           {!activeConversationId ? (
             <div className="flex flex-1 flex-col items-center justify-center text-ink-600">
               <FaComments className="text-4xl mb-2" />
@@ -158,7 +158,7 @@ export default function AdminChat() {
                   <FaTrash />
                 </button>
               </div>
-              <div ref={listRef} className="flex-1 overflow-y-auto p-4 space-y-3">
+              <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto p-4 space-y-3">
                 {messages.map((m) => {
                   const isOwn = m.sender === 'admin'
                   const isEditing = editingId === m.id

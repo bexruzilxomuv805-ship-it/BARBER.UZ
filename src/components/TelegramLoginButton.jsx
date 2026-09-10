@@ -8,7 +8,7 @@ import { showToast } from '../features/ui/uiSlice'
 
 const BOT_USERNAME = import.meta.env.VITE_TELEGRAM_BOT_USERNAME
 const POLL_MS = 2000
-const MAX_ATTEMPTS = 90 // ~3 daqiqa
+const MAX_ATTEMPTS = 180 // ~6 daqiqa — telefon raqamini tasdiqlashga vaqt beradi
 
 export default function TelegramLoginButton({ onSuccess }) {
   const { t } = useTranslation()

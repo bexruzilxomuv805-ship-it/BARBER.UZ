@@ -333,7 +333,15 @@
       "deleteConfirmText": "Клиент и его аккаунт будут удалены безвозвратно.",
       "updatedToast": "Клиент обновлён.",
       "addedToast": "Клиент добавлен.",
-      "deletedToast": "Клиент удалён."
+      "deletedToast": "Клиент удалён.",
+      "makeAdmin": "Сделать админом",
+      "removeAdmin": "Убрать права админа",
+      "promotedToast": "{{name}} теперь админ.",
+      "demotedToast": "{{name}} теперь обычный клиент.",
+      "tableRole": "Роль",
+      "roleAdmin": "Админ",
+      "roleClient": "Клиент",
+      "you": "Вы"
     },
     "barbers": {
       "title": "Мастера",

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useTranslation } from 'react-i18next'
-import { FaSearch, FaEdit, FaTrash, FaUserPlus, FaUserCircle } from 'react-icons/fa'
+import { FaSearch, FaEdit, FaTrash, FaUserPlus, FaUserCircle, FaUserShield, FaTelegramPlane } from 'react-icons/fa'
 import Loader from '../../components/Loader'
 import Modal from '../../components/admin/Modal'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
@@ -11,12 +11,14 @@ import {
 import { fetchAppointments } from '../../features/appointments/appointmentsSlice'
 import { showToast } from '../../features/ui/uiSlice'
 import { formatSum } from '../../utils/format'
+import useAuth from '../../hooks/useAuth'
 
 const emptyForm = { ism: '', familiya: '', email: '', telefon: '', parol: '1234' }
 
 export default function AdminCustomers() {
   const { t } = useTranslation()
   const dispatch = useDispatch()
+  const { user: currentUser } = useAuth()
   const { items: users, status } = useSelector((s) => s.customers)
   const { items: appointments } = useSelector((s) => s.appointments)
   const [search, setSearch] = useState('')
@@ -30,10 +32,11 @@ export default function AdminCustomers() {
     dispatch(fetchAppointments())
   }, [dispatch])
 
-  const customers = useMemo(() => users.filter((u) => u.role === 'client'), [users])
-
+  // Everyone who signed up (client or promoted admin) — promoting someone to
+  // admin should not make them vanish from this list, so we don't filter by
+  // role here.
   const withStats = useMemo(() => {
-    return customers
+    return users
       .filter((c) =>
         search ? `${c.ism} ${c.familiya} ${c.email}`.toLowerCase().includes(search.toLowerCase()) : true
       )
@@ -44,7 +47,7 @@ export default function AdminCustomers() {
           .reduce((sum, a) => sum + (a.narxi || 0), 0)
         return { ...c, visits: myAppointments.length, spent }
       })
-  }, [customers, appointments, search])
+  }, [users, appointments, search])
 
   const openCreate = () => {
     setEditing(null)
@@ -76,12 +79,22 @@ export default function AdminCustomers() {
     dispatch(showToast({ type: 'success', text: t('admin.customers.deletedToast') }))
   }
 
+  const handlePromote = (c) => {
+    dispatch(updateCustomer({ id: c.id, changes: { role: 'admin' } }))
+    dispatch(showToast({ type: 'success', text: t('admin.customers.promotedToast', { name: c.ism }) }))
+  }
+
+  const handleDemote = (c) => {
+    dispatch(updateCustomer({ id: c.id, changes: { role: 'client' } }))
+    dispatch(showToast({ type: 'success', text: t('admin.customers.demotedToast', { name: c.ism }) }))
+  }
+
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="font-display text-2xl font-bold text-white">{t('admin.customers.title')}</h1>
-          <p className="text-sm text-ink-500 mt-1">{t('admin.customers.subtitle', { count: customers.length })}</p>
+          <p className="text-sm text-ink-500 mt-1">{t('admin.customers.subtitle', { count: users.length })}</p>
         </div>
         <button onClick={openCreate} className="btn-gold !py-2 text-sm">
           <FaUserPlus /> {t('admin.customers.addCustomer')}
@@ -107,41 +120,80 @@ export default function AdminCustomers() {
               <tr className="border-b border-ink-800 text-left text-ink-500">
                 <th className="px-4 py-3 font-medium">{t('admin.customers.tableCustomer')}</th>
                 <th className="px-4 py-3 font-medium">{t('admin.customers.tablePhone')}</th>
+                <th className="px-4 py-3 font-medium">{t('admin.customers.tableRole')}</th>
                 <th className="px-4 py-3 font-medium">{t('admin.customers.tableVisits')}</th>
                 <th className="px-4 py-3 font-medium">{t('admin.customers.tableSpent')}</th>
                 <th className="px-4 py-3 font-medium text-right">{t('admin.actions')}</th>
               </tr>
             </thead>
             <tbody>
-              {withStats.map((c) => (
-                <tr key={c.id} className="border-b border-ink-800/60 hover:bg-ink-800/30">
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <FaUserCircle className="text-2xl text-ink-600" />
-                      <div>
-                        <p className="font-medium text-white">{c.ism} {c.familiya}</p>
-                        <p className="text-xs text-ink-500">{c.email}</p>
+              {withStats.map((c) => {
+                const isSelf = c.id === currentUser?.id
+                const isAdminRole = c.role === 'admin'
+                return (
+                  <tr key={c.id} className="border-b border-ink-800/60 hover:bg-ink-800/30">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <FaUserCircle className="text-2xl text-ink-600" />
+                        <div>
+                          <p className="font-medium text-white">{c.ism} {c.familiya}</p>
+                          {c.email ? (
+                            <p className="text-xs text-ink-500">{c.email}</p>
+                          ) : c.telegramUsername ? (
+                            <a
+                              href={`https://t.me/${c.telegramUsername}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="inline-flex items-center gap-1 text-xs text-sky-400 hover:underline"
+                            >
+                              <FaTelegramPlane /> @{c.telegramUsername}
+                            </a>
+                          ) : null}
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-ink-300">{c.telefon}</td>
-                  <td className="px-4 py-3 text-ink-300">{c.visits}</td>
-                  <td className="px-4 py-3 text-gold-400 font-medium">{formatSum(c.spent)}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center justify-end gap-1.5">
-                      <button onClick={() => openEdit(c)} className="rounded-lg p-2 text-sky-400 hover:bg-sky-500/10">
-                        <FaEdit />
-                      </button>
-                      <button onClick={() => setToDelete(c.id)} className="rounded-lg p-2 text-red-400 hover:bg-red-500/10">
-                        <FaTrash />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-4 py-3 text-ink-300">{c.telefon}</td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                          isAdminRole ? 'bg-gold-500/10 text-gold-400' : 'bg-ink-800 text-ink-400'
+                        }`}
+                      >
+                        {isAdminRole ? t('admin.customers.roleAdmin') : t('admin.customers.roleClient')}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-ink-300">{c.visits}</td>
+                    <td className="px-4 py-3 text-gold-400 font-medium">{formatSum(c.spent)}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-1.5">
+                        {isSelf ? (
+                          <span className="px-2 text-xs text-ink-500">{t('admin.customers.you')}</span>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => (isAdminRole ? handleDemote(c) : handlePromote(c))}
+                              title={isAdminRole ? t('admin.customers.removeAdmin') : t('admin.customers.makeAdmin')}
+                              className="rounded-lg p-2 text-gold-400 hover:bg-gold-500/10"
+                            >
+                              <FaUserShield />
+                            </button>
+                            <button onClick={() => openEdit(c)} className="rounded-lg p-2 text-sky-400 hover:bg-sky-500/10">
+                              <FaEdit />
+                            </button>
+                            <button onClick={() => setToDelete(c.id)} className="rounded-lg p-2 text-red-400 hover:bg-red-500/10">
+                              <FaTrash />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
               {withStats.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-ink-500">{t('admin.customers.notFound')}</td>
+                  <td colSpan={6} className="px-4 py-10 text-center text-ink-500">{t('admin.customers.notFound')}</td>
                 </tr>
               )}
             </tbody>

@@ -333,7 +333,15 @@
       "deleteConfirmText": "Mijoz va uning hisobi butunlay o‘chiriladi.",
       "updatedToast": "Mijoz yangilandi.",
       "addedToast": "Mijoz qo‘shildi.",
-      "deletedToast": "Mijoz o‘chirildi."
+      "deletedToast": "Mijoz o‘chirildi.",
+      "makeAdmin": "Admin qilish",
+      "removeAdmin": "Admindan olish",
+      "promotedToast": "{{name}} endi admin.",
+      "demotedToast": "{{name}} endi oddiy mijoz.",
+      "tableRole": "Rol",
+      "roleAdmin": "Admin",
+      "roleClient": "Mijoz",
+      "you": "Siz"
     },
     "barbers": {
       "title": "Ustalar",
