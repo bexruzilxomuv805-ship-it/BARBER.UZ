@@ -504,6 +504,14 @@ function todayStr() {
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 }
 
+// Only needed for the handful of messages sent with parse_mode: 'HTML' (e.g.
+// tap-to-copy <code> numbers) — escapes admin-entered free text (manzil,
+// ishVaqti, ...) that gets interpolated alongside those tags, so a stray
+// "&"/"<"/">" in it can't break the HTML parsing of the rest of the message.
+function escapeHtml(str) {
+  return String(str ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]))
+}
+
 function formatMoney(n) {
   return `${(n || 0).toLocaleString('ru-RU')} so'm`
 }
@@ -1272,11 +1280,11 @@ async function handleHelp(msg) {
   const lines = [
     'ℹ️ Yordam',
     '',
-    `\u{1F4DE} Telefon: ${phone || '—'}`,
-    `\u{1F4CD} Manzil: ${info?.manzil || '—'}`,
-    `\u{1F550} Ish vaqti: ${info?.ishVaqti || '—'}`,
+    `\u{1F4DE} Telefon: ${phone ? `<code>${escapeHtml(phone)}</code>` : '—'}`,
+    `\u{1F4CD} Manzil: ${escapeHtml(info?.manzil) || '—'}`,
+    `\u{1F550} Ish vaqti: ${escapeHtml(info?.ishVaqti) || '—'}`,
   ]
-  await bot.sendMessage(msg.chat.id, lines.join('\n'))
+  await bot.sendMessage(msg.chat.id, lines.join('\n'), { parse_mode: 'HTML' })
 }
 
 async function handleClientChatMessage(msg) {
