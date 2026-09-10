@@ -149,6 +149,17 @@ export default function AdminCustomers() {
                             >
                               <FaTelegramPlane /> @{c.telegramUsername}
                             </a>
+                          ) : c.telegramId ? (
+                            // No public @username set — tg://user?id= opens their profile
+                            // directly in the Telegram app by numeric id instead, which
+                            // Telegram can resolve since they've already messaged our bot.
+                            <a
+                              href={`tg://user?id=${c.telegramId}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="inline-flex items-center gap-1 text-xs text-sky-400 hover:underline"
+                            >
+                              <FaTelegramPlane /> {t('admin.customers.telegramProfile')}
+                            </a>
                           ) : null}
                         </div>
                       </div>

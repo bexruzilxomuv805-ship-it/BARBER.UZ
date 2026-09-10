@@ -343,7 +343,8 @@
       "tableRole": "Role",
       "roleAdmin": "Admin",
       "roleClient": "Customer",
-      "you": "You"
+      "you": "You",
+      "telegramProfile": "Telegram profile"
     },
     "barbers": {
       "title": "Barbers",

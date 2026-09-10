@@ -343,7 +343,8 @@
       "tableRole": "Rol",
       "roleAdmin": "Admin",
       "roleClient": "Mijoz",
-      "you": "Siz"
+      "you": "Siz",
+      "telegramProfile": "Telegram profil"
     },
     "barbers": {
       "title": "Ustalar",
