@@ -244,6 +244,7 @@
     "guestName": "Guest",
     "menuTitle": "Help",
     "viaSite": "Chat on the site",
+    "telegramBotAction": "Telegram bot",
     "callAction": "Call us",
     "edited": "(edited)",
     "editPlaceholder": "Edit message...",

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   FaHeadset, FaPaperPlane, FaTimes, FaCommentDots, FaPhoneAlt, FaTelegramPlane, FaInstagram,
-  FaEdit, FaTrash, FaCheck,
+  FaEdit, FaTrash, FaCheck, FaRobot,
 } from 'react-icons/fa'
 import useAuth from '../hooks/useAuth'
 import useConversationId from '../hooks/useConversationId'
@@ -17,6 +17,7 @@ import {
 
 const POLL_MS = 3000
 const CONVERSATION_POLL_MS = 6000
+const BOT_USERNAME = import.meta.env.VITE_TELEGRAM_BOT_USERNAME
 
 const FALLBACK_CONTACT = { telefon: '', telegram: '', instagram: '' }
 const TIME_LOCALE = { uz: 'uz-UZ', ru: 'ru-RU', en: 'en-US' }
@@ -160,6 +161,20 @@ export default function ChatWidget() {
                         </span>
                       )}
                     </button>
+                    {BOT_USERNAME && (
+                      <a
+                        href={`https://t.me/${BOT_USERNAME}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-ink-800"
+                      >
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sky-500/15 text-sky-400"><FaRobot /></span>
+                        <span>
+                          <span className="block text-sm font-medium text-white">{t('chat.telegramBotAction')}</span>
+                          <span className="block text-xs text-ink-500">@{BOT_USERNAME}</span>
+                        </span>
+                      </a>
+                    )}
                     {contact.telefon && (
                       <a
                         href={`tel:${contact.telefon.replace(/\s+/g, '')}`}

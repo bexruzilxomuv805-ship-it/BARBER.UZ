@@ -244,6 +244,7 @@
     "guestName": "Гость",
     "menuTitle": "Помощь",
     "viaSite": "Написать через сайт",
+    "telegramBotAction": "Telegram-бот",
     "callAction": "Позвонить",
     "edited": "(отредактировано)",
     "editPlaceholder": "Редактировать сообщение...",
