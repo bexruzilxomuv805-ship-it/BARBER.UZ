@@ -142,33 +142,34 @@ export default function AdminCustomers() {
                         <FaUserCircle className="text-2xl text-ink-600" />
                         <div>
                           <p className="font-medium text-white">{c.ism} {c.familiya}</p>
-                          {c.email ? (
-                            <p className="text-xs text-ink-500">{c.email}</p>
-                          ) : c.telegramUsername ? (
+                          {c.email && <p className="text-xs text-ink-500">{c.email}</p>}
+                          {c.telegramUsername && (
                             <a
                               href={`https://t.me/${c.telegramUsername}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               onClick={(e) => e.stopPropagation()}
-                              className="inline-flex items-center gap-1 text-xs text-sky-400 hover:underline"
+                              className="mt-0.5 flex items-center gap-1 text-xs text-sky-400 hover:underline"
                             >
                               <FaTelegramPlane /> @{c.telegramUsername}
                             </a>
-                          ) : c.telegramId ? (
-                            // No public @username set, so there's no reliable Telegram
-                            // link (tg://user?id= depends on Telegram's own privacy/
-                            // contact resolution and silently opens the wrong chat, or
-                            // none, when it can't resolve the id) — route to our own
-                            // Support chat instead, which we fully control and which the
-                            // bot already mirrors to this exact person's Telegram.
+                          )}
+                          {c.telegramId && (
+                            // Always show this, even alongside a public @username —
+                            // tg://user?id= (or a t.me/username tap that opens the app)
+                            // depends on Telegram's own privacy/contact resolution and
+                            // can silently land on the wrong chat — this instead opens
+                            // our own Support chat with exactly this person, which we
+                            // fully control and which the bot already mirrors to their
+                            // Telegram either way.
                             <Link
                               to={`/admin/chat?userId=${c.id}&userName=${encodeURIComponent(`${c.ism} ${c.familiya}`.trim())}`}
                               onClick={(e) => e.stopPropagation()}
-                              className="inline-flex items-center gap-1 text-xs text-sky-400 hover:underline"
+                              className="mt-0.5 flex items-center gap-1 text-xs text-sky-400 hover:underline"
                             >
                               <FaComments /> {t('admin.customers.openChat')}
                             </Link>
-                          ) : null}
+                          )}
                         </div>
                       </div>
                     </td>
