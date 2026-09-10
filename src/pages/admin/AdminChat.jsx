@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
+import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { FaPaperPlane, FaUserCircle, FaComments, FaEdit, FaTrash, FaCheck, FaTimes } from 'react-icons/fa'
 import Loader from '../../components/Loader'
@@ -20,6 +21,7 @@ function formatTime(iso, lang) {
 export default function AdminChat() {
   const { t, i18n } = useTranslation()
   const dispatch = useDispatch()
+  const [searchParams] = useSearchParams()
   const { conversations, messagesByConversation, activeConversationId } = useSelector((s) => s.chat)
   const [text, setText] = useState('')
   const [loadingList, setLoadingList] = useState(true)
@@ -31,6 +33,18 @@ export default function AdminChat() {
 
   const messages = messagesByConversation[activeConversationId] || []
   const activeConversation = conversations.find((c) => c.id === activeConversationId)
+  // Deep-link support (e.g. from Mijozlar's "Telegram profil" fallback for a
+  // customer with no public @username): ?userId= picks their conversation
+  // even before one exists yet — conversationId is always just the userId
+  // (see handleSend below) — and ?userName= fills the header/first message
+  // in that case, since there's no conversation record to read it from yet.
+  const linkedUserId = searchParams.get('userId')
+  const linkedUserName = searchParams.get('userName')
+
+  useEffect(() => {
+    if (linkedUserId) dispatch(setActiveConversation(linkedUserId))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [linkedUserId])
 
   useEffect(() => {
     dispatch(fetchConversations()).finally(() => setLoadingList(false))
@@ -95,7 +109,7 @@ export default function AdminChat() {
       sendMessage({
         conversationId: activeConversationId,
         userId: activeConversationId,
-        userName: conv?.userName || t('profile.roleClient'),
+        userName: conv?.userName || linkedUserName || t('profile.roleClient'),
         sender: 'admin',
         text: trimmed,
       })
@@ -148,7 +162,7 @@ export default function AdminChat() {
           ) : (
             <>
               <div className="flex items-center justify-between border-b border-ink-800 px-4 py-3">
-                <p className="truncate text-sm font-medium text-white">{activeConversation?.userName}</p>
+                <p className="truncate text-sm font-medium text-white">{activeConversation?.userName || linkedUserName}</p>
                 <button
                   onClick={() => setDeleteChatConfirmOpen(true)}
                   className="-m-2 shrink-0 rounded-lg p-2 text-ink-400 hover:bg-red-500/10 hover:text-red-400"

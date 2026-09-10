@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
+import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { FaSearch, FaEdit, FaTrash, FaUserPlus, FaUserCircle, FaUserShield, FaTelegramPlane } from 'react-icons/fa'
+import { FaSearch, FaEdit, FaTrash, FaUserPlus, FaUserCircle, FaUserShield, FaTelegramPlane, FaComments } from 'react-icons/fa'
 import Loader from '../../components/Loader'
 import Modal from '../../components/admin/Modal'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
@@ -154,16 +155,19 @@ export default function AdminCustomers() {
                               <FaTelegramPlane /> @{c.telegramUsername}
                             </a>
                           ) : c.telegramId ? (
-                            // No public @username set — tg://user?id= opens their profile
-                            // directly in the Telegram app by numeric id instead, which
-                            // Telegram can resolve since they've already messaged our bot.
-                            <a
-                              href={`tg://user?id=${c.telegramId}`}
+                            // No public @username set, so there's no reliable Telegram
+                            // link (tg://user?id= depends on Telegram's own privacy/
+                            // contact resolution and silently opens the wrong chat, or
+                            // none, when it can't resolve the id) — route to our own
+                            // Support chat instead, which we fully control and which the
+                            // bot already mirrors to this exact person's Telegram.
+                            <Link
+                              to={`/admin/chat?userId=${c.id}&userName=${encodeURIComponent(`${c.ism} ${c.familiya}`.trim())}`}
                               onClick={(e) => e.stopPropagation()}
                               className="inline-flex items-center gap-1 text-xs text-sky-400 hover:underline"
                             >
-                              <FaTelegramPlane /> {t('admin.customers.telegramProfile')}
-                            </a>
+                              <FaComments /> {t('admin.customers.openChat')}
+                            </Link>
                           ) : null}
                         </div>
                       </div>
