@@ -445,7 +445,7 @@ async function maybeSendDailyDigest() {
   if (!adminChatId) return
   const today = todayStr()
   if (lastDigestDate === today) return
-  if (new Date().getHours() < DIGEST_HOUR) return
+  if (getTashkentNow().hour < DIGEST_HOUR) return
   lastDigestDate = today
   try {
     const stats = await buildStatsText()
@@ -468,9 +468,40 @@ async function poll() {
   }
 }
 
+// Render's server clock runs in UTC, not Uzbekistan time — every "what's
+// today" / "what time is it" / "is this appointment's time here yet" check
+// in this file needs the shop's actual local time (Asia/Tashkent, a fixed
+// UTC+5 with no DST), not the server's. Intl.DateTimeFormat reads that
+// regardless of the process's own configured timezone.
+const BUSINESS_TIMEZONE = 'Asia/Tashkent'
+const TASHKENT_UTC_OFFSET_HOURS = 5
+
+function getTashkentNow() {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: BUSINESS_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(new Date())
+  const get = (type) => Number(parts.find((p) => p.type === type).value)
+  return { year: get('year'), month: get('month'), day: get('day'), hour: get('hour'), minute: get('minute') }
+}
+
+// The real Date instant for HH:MM on *today's* Tashkent calendar date — safe
+// to compare directly against `new Date()` (always a real, timezone-
+// independent instant). `minute` may safely exceed 59 (e.g. start + a
+// service's duration); Date.UTC normalizes the overflow correctly.
+function tashkentTimeToday(hour, minute) {
+  const { year, month, day } = getTashkentNow()
+  return new Date(Date.UTC(year, month - 1, day, hour - TASHKENT_UTC_OFFSET_HOURS, minute))
+}
+
 function todayStr() {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  const { year, month, day } = getTashkentNow()
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 }
 
 function formatMoney(n) {
@@ -756,7 +787,7 @@ async function sendReminders() {
       if (a.holat !== 'kutilmoqda' && a.holat !== 'tasdiqlangan') return false
       const [h, m] = (a.vaqt || '').split(':').map(Number)
       if (Number.isNaN(h) || Number.isNaN(m)) return false
-      const apptTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m)
+      const apptTime = tashkentTimeToday(h, m)
       const diffMin = (apptTime - now) / 60000
       return diffMin > 0 && diffMin <= REMINDER_WINDOW_MIN
     })
@@ -794,7 +825,7 @@ async function checkArrivals() {
       if (a.holat !== 'kutilmoqda' && a.holat !== 'tasdiqlangan') return false
       const [h, m] = (a.vaqt || '').split(':').map(Number)
       if (Number.isNaN(h) || Number.isNaN(m)) return false
-      const apptTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m)
+      const apptTime = tashkentTimeToday(h, m)
       return now >= apptTime
     })
     for (const a of due) {
@@ -842,10 +873,31 @@ async function autoCompleteAppointments() {
       if (Number.isNaN(h) || Number.isNaN(m)) continue
       const service = await getServiceById(a.xizmatId).catch(() => null)
       const duration = service?.davomiyligi || 30
-      const apptEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m + duration)
+      const apptEnd = tashkentTimeToday(h, m + duration)
       if (now < apptEnd) continue
 
       const appointment = await setAppointmentStatus(a.id, 'yakunlangan')
+
+      // Bill immediately on completion (mirrors AdminAppointments.jsx's own
+      // site-side completion flow) rather than waiting on the client to pick
+      // a payment method — otherwise an appointment the client never
+      // responds to in Telegram would never get a payments record at all,
+      // silently understating revenue. Defaults to naqd; the client's own
+      // choice below (if they respond) corrects it via the same upsert the
+      // 'pay' callback already uses.
+      const alreadyBilled = await getPaymentByAppointment(a.id).catch(() => null)
+      if (!alreadyBilled) {
+        await createPayment({
+          id: `p-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          appointmentId: a.id,
+          mijozIsmi: appointment.mijozIsmi,
+          sana: appointment.sana,
+          usul: 'naqd',
+          summa: appointment.narxi,
+          holat: 'to‘landi',
+          createdAt: new Date().toISOString(),
+        }).catch((err) => console.error('[bot] auto-complete billing error:', err?.message || err))
+      }
 
       if (adminChatId) {
         await bot
@@ -1486,6 +1538,13 @@ bot.on('callback_query', safeHandler(async (query) => {
     try {
       const kelganmi = action === 'arrived'
       await setAppointmentArrival(id, kelganmi)
+      if (!kelganmi) {
+        // Move it out of 'tasdiqlangan' so autoCompleteAppointments() never
+        // picks it up and bills a service that never happened — 'kelmagan'
+        // is the same no-show status AdminAppointments.jsx already sets from
+        // the site.
+        await setAppointmentStatus(id, 'kelmagan')
+      }
       const label = kelganmi ? '✅ Keldi deb belgilandi' : "❌ Kelmadi deb belgilandi"
       const originalText = query.message?.text || ''
       await bot.editMessageText(`${originalText}\n\n${label}`, {
