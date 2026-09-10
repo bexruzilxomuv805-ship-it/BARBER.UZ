@@ -25,37 +25,6 @@ export async function getUnnotifiedClientMessages() {
   return data.filter((m) => !m.tgNotified)
 }
 
-// Tracked separately from tgNotified (Telegram-forwarding) so the AI
-// auto-reply pass and the admin-notification pass don't race over the same
-// flag — each concern marks its own "have I handled this" bit.
-export async function getUnrepliedClientMessages() {
-  const { data } = await client.get('/messages', {
-    params: { sender: 'client', _sort: 'createdAt', _order: 'asc' },
-  })
-  return data.filter((m) => !m.aiReplied)
-}
-
-export async function markMessageAiReplied(id) {
-  await client.patch(`/messages/${id}`, { aiReplied: true })
-}
-
-// Most recent admin-authored message in the conversation, if any — used to
-// skip auto-replying to a client message a human admin already answered
-// (e.g. replied straight from Telegram before this poll tick ran).
-export async function getLatestAdminMessage(conversationId) {
-  const { data } = await client.get('/messages', {
-    params: { conversationId, sender: 'admin', _sort: 'createdAt', _order: 'desc' },
-  })
-  return data[0] || null
-}
-
-export async function getConversationMessages(conversationId, limit = 10) {
-  const { data } = await client.get('/messages', {
-    params: { conversationId, _sort: 'createdAt', _order: 'desc' },
-  })
-  return data.slice(0, limit).reverse()
-}
-
 export async function markMessageNotified(id) {
   await client.patch(`/messages/${id}`, { tgNotified: true })
 }
@@ -95,7 +64,7 @@ export async function getUnnotifiedAdminMessages() {
   return data.filter((m) => !m.tgNotified)
 }
 
-export async function postAdminReply({ conversationId, userId, userName, text, isBot = false }) {
+export async function postAdminReply({ conversationId, userId, userName, text }) {
   const message = {
     id: `m-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     conversationId,
@@ -106,7 +75,6 @@ export async function postAdminReply({ conversationId, userId, userName, text, i
     createdAt: new Date().toISOString(),
     read: true,
     tgNotified: true,
-    ...(isBot ? { isBot: true } : {}),
   }
   const { data } = await client.post('/messages', message)
 

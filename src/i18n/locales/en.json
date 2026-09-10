@@ -239,7 +239,6 @@
   "chat": {
     "supportLabel": "Support",
     "online": "Online",
-    "aiLabel": "🤖 AI Assistant",
     "emptyState": "Have a question? Send a message and we'll reply soon!",
     "placeholder": "Type a message...",
     "guestName": "Guest",
@@ -480,7 +479,6 @@
     "chat": {
       "title": "Support chat",
       "subtitle": "Real-time (polling-based) conversations with customers.",
-      "aiLabel": "🤖 AI Assistant",
       "noConversations": "No conversations yet.",
       "selectConversation": "Select a conversation",
       "replyPlaceholder": "Type a reply...",

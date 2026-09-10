@@ -64,9 +64,6 @@ frontend and backend can be deployed to different free hosts and repointed later
   pair it with a free external pinger (cron-job.org, UptimeRobot) hitting its Render URL every ~10 min to
   keep it awake. Needs its own `DATABASE_URL`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_ADMIN_CHAT_ID`,
   `TELEGRAM_SUPER_ADMIN_USERNAME` set manually in Render's dashboard (`sync: false`, same as the backend).
-  [server/bot/ai.js](server/bot/ai.js) additionally auto-replies to Support chat messages via the Claude
-  API (`ANTHROPIC_API_KEY`, same `sync: false` pattern) — left unset, the bot just skips auto-reply and
-  Support chat stays human-only; a human admin can always jump into the same conversation regardless.
 - Custom domain and paid hosting tiers are added later by upgrading the same Vercel/Render projects — no
   migration needed, just point DNS at them once purchased.
 
