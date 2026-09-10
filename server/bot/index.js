@@ -77,6 +77,11 @@ const { TELEGRAM_BOT_TOKEN, TELEGRAM_ADMIN_CHAT_ID, TELEGRAM_SUPER_ADMIN_USERNAM
 const PAYMENT_CARD_NUMBER = '5614 6818 0907 0117'
 const PAYMENT_CARD_HOLDER = 'R.D.A'
 
+const SITE_URL = process.env.SITE_URL || 'https://barber-uz-one.vercel.app'
+const SITE_LINK_BUTTON = {
+  reply_markup: { inline_keyboard: [[{ text: '🌐 Saytga o\'tish', url: SITE_URL }]] },
+}
+
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
@@ -1071,12 +1076,14 @@ bot.onText(/^\/start(?:\s+(\S+))?/, safeHandler(async (msg, match) => {
         `Salom, ${known.ism}! Siz allaqachon ro'yxatdan o'tgansiz — quyidagi menyudan foydalaning.`,
         known.role === 'admin' ? MENU_KEYBOARD : CLIENT_KEYBOARD
       )
+      await bot.sendMessage(msg.chat.id, "Yangi navbat olish yoki profilingizni ko'rish uchun saytga o'ting:", SITE_LINK_BUTTON)
       return
     }
     await bot.sendMessage(
       msg.chat.id,
       "Salom! Bu Zolotoy Barber boti. Saytga kirish uchun saytdagi \"Telegram orqali kirish\" tugmasini bosing."
     )
+    await bot.sendMessage(msg.chat.id, 'Sayt shu yerda:', SITE_LINK_BUTTON)
     return
   }
 
@@ -1087,6 +1094,7 @@ bot.onText(/^\/start(?:\s+(\S+))?/, safeHandler(async (msg, match) => {
       `Eslatma: mijozga javob yozish uchun uning xabariga shu yerda albatta "Reply" qilib yozing.`,
     MENU_KEYBOARD
   )
+  await bot.sendMessage(msg.chat.id, 'Boshqaruv panelini ochish uchun sayt:', SITE_LINK_BUTTON)
 }))
 
 bot.onText(/^\/bugun/, safeHandler(async (msg) => {
