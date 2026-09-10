@@ -1276,12 +1276,19 @@ async function handleHelp(msg) {
     `\u{1F4CD} Manzil: ${info?.manzil || '—'}`,
     `\u{1F550} Ish vaqti: ${info?.ishVaqti || '—'}`,
   ]
-  // Telegram's Bot API rejects `tel:` in both message entities and inline
-  // keyboard button URLs ("Wrong port number specified in the URL") — a
-  // platform restriction, not something formatting can work around. Plain
-  // text is what's left, and Telegram's own clients already auto-detect
-  // phone-number-shaped text and make it tap-to-call without any entity.
   await bot.sendMessage(msg.chat.id, lines.join('\n'))
+
+  // Telegram's Bot API rejects `tel:` in both message entities and inline
+  // keyboard button URLs ("Wrong port number specified in the URL") — that's
+  // a platform restriction, not something formatting can work around. A
+  // native contact card is Telegram's actual mechanism for a tappable
+  // call/message/save number, so send the phone as one of those instead.
+  const telHref = phone.replace(/[^\d+]/g, '')
+  if (telHref) {
+    await bot.sendContact(msg.chat.id, telHref, 'Zolotoy Barber').catch((err) => {
+      console.error('[bot] send contact card error:', err?.message || err)
+    })
+  }
 }
 
 async function handleClientChatMessage(msg) {
