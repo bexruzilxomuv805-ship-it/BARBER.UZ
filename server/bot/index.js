@@ -155,10 +155,7 @@ function buildPremiumEntities(text) {
 
 function withPremiumEmoji(text, options) {
   if (options?.parse_mode) return options // entities and parse_mode are mutually exclusive
-  // Merge with (not overwrite) any entities a caller already built — e.g. a
-  // tap-to-call text_link on a phone number, see handleHelp — rather than
-  // silently dropping them.
-  const entities = [...(options?.entities || []), ...buildPremiumEntities(text)].sort((a, b) => a.offset - b.offset)
+  const entities = buildPremiumEntities(text)
   if (!entities.length) return options
   return { ...(options || {}), entities }
 }
@@ -1279,19 +1276,12 @@ async function handleHelp(msg) {
     `\u{1F4CD} Manzil: ${info?.manzil || '—'}`,
     `\u{1F550} Ish vaqti: ${info?.ishVaqti || '—'}`,
   ]
-  const text = lines.join('\n')
-
-  // A tel: text_link (not parse_mode/<code>) so the number is tap-to-call —
-  // and, since it skips parse_mode, withPremiumEmoji can still merge its own
-  // custom_emoji entities into the same message (see above).
-  const options = {}
-  const telHref = phone.replace(/[^\d+]/g, '')
-  const offset = phone ? text.indexOf(phone) : -1
-  if (offset !== -1 && telHref) {
-    options.entities = [{ type: 'text_link', offset, length: phone.length, url: `tel:${telHref}` }]
-  }
-
-  await bot.sendMessage(msg.chat.id, text, options)
+  // Telegram's Bot API rejects `tel:` in both message entities and inline
+  // keyboard button URLs ("Wrong port number specified in the URL") — a
+  // platform restriction, not something formatting can work around. Plain
+  // text is what's left, and Telegram's own clients already auto-detect
+  // phone-number-shaped text and make it tap-to-call without any entity.
+  await bot.sendMessage(msg.chat.id, lines.join('\n'))
 }
 
 async function handleClientChatMessage(msg) {
