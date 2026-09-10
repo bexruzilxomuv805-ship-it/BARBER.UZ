@@ -6,6 +6,7 @@ import Loader from '../../components/Loader'
 import StatusBadge from '../../components/StatusBadge'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import AutoText from '../../components/AutoText'
+import usePolling from '../../hooks/usePolling'
 import { fetchAppointments, updateAppointment, removeAppointment } from '../../features/appointments/appointmentsSlice'
 import { fetchPayments, createPayment } from '../../features/payments/paymentsSlice'
 import { showToast } from '../../features/ui/uiSlice'
@@ -13,6 +14,7 @@ import { formatSum, STATUS_LABELS } from '../../utils/format'
 
 const STATUSES = ['kutilmoqda', 'tasdiqlangan', 'yakunlangan', 'bekor qilingan', 'kelmagan']
 const ALL = '__ALL__'
+const POLL_MS = 8000
 
 export default function AdminAppointments() {
   const { t } = useTranslation()
@@ -27,6 +29,13 @@ export default function AdminAppointments() {
     dispatch(fetchAppointments())
     dispatch(fetchPayments())
   }, [dispatch])
+
+  // Bookings come in from the bot/site at any moment — keep this list live
+  // without the admin needing to manually reload.
+  usePolling(() => {
+    dispatch(fetchAppointments())
+    dispatch(fetchPayments())
+  }, POLL_MS)
 
   const statusLabel = (holat) => {
     const key = STATUS_LABELS[holat]?.key

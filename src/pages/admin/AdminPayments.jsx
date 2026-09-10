@@ -6,7 +6,10 @@ import Loader from '../../components/Loader'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import { fetchPayments, removePayment } from '../../features/payments/paymentsSlice'
 import { showToast } from '../../features/ui/uiSlice'
+import usePolling from '../../hooks/usePolling'
 import { formatSum, PAYMENT_METHOD_LABELS, PAYMENT_STATUS_LABELS } from '../../utils/format'
+
+const POLL_MS = 8000
 
 export default function AdminPayments() {
   const { t } = useTranslation()
@@ -18,6 +21,8 @@ export default function AdminPayments() {
   useEffect(() => {
     dispatch(fetchPayments())
   }, [dispatch])
+
+  usePolling(() => dispatch(fetchPayments()), POLL_MS)
 
   const filtered = useMemo(
     () =>

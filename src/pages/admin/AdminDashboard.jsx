@@ -16,11 +16,13 @@ import { fetchPayments } from '../../features/payments/paymentsSlice'
 import { fetchCustomers } from '../../features/customers/customersSlice'
 import { fetchBarbers } from '../../features/barbers/barbersSlice'
 import { fetchServices } from '../../features/services/servicesSlice'
+import usePolling from '../../hooks/usePolling'
 import { formatSum, STATUS_LABELS } from '../../utils/format'
 import { getWeekdayOptions, toLocalDateIso } from '../../utils/schedule'
 
 const COLORS = ['#c9a227', '#38bdf8', '#34d399', '#f87171', '#a78bfa']
 const HEATMAP_HOURS = ['09', '10', '11', '12', '14', '15', '16', '17', '18']
+const POLL_MS = 8000
 
 export default function AdminDashboard() {
   const { t } = useTranslation()
@@ -38,6 +40,15 @@ export default function AdminDashboard() {
     dispatch(fetchBarbers())
     dispatch(fetchServices())
   }, [dispatch])
+
+  // Dashboard numbers (revenue, today's queue, etc.) shouldn't need a manual
+  // reload to reflect a booking/payment that just came in. Barbers/services
+  // change rarely, so only the fast-moving data is repolled.
+  usePolling(() => {
+    dispatch(fetchAppointments())
+    dispatch(fetchPayments())
+    dispatch(fetchCustomers())
+  }, POLL_MS)
 
   const todayStr = useMemo(() => toLocalDateIso(), [])
 

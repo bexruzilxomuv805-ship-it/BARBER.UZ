@@ -13,8 +13,10 @@ import { fetchAppointments } from '../../features/appointments/appointmentsSlice
 import { showToast } from '../../features/ui/uiSlice'
 import { formatSum } from '../../utils/format'
 import useAuth from '../../hooks/useAuth'
+import usePolling from '../../hooks/usePolling'
 
 const emptyForm = { ism: '', familiya: '', email: '', telefon: '', parol: '1234' }
+const POLL_MS = 8000
 
 export default function AdminCustomers() {
   const { t } = useTranslation()
@@ -36,6 +38,13 @@ export default function AdminCustomers() {
     dispatch(fetchCustomers())
     dispatch(fetchAppointments())
   }, [dispatch])
+
+  // New signups (site or bot) and role changes should show up without a
+  // manual reload.
+  usePolling(() => {
+    dispatch(fetchCustomers())
+    dispatch(fetchAppointments())
+  }, POLL_MS)
 
   // Everyone who signed up (client or promoted admin) — promoting someone to
   // admin should not make them vanish from this list, so we don't filter by
