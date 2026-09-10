@@ -1,7 +1,7 @@
 import axios from 'axios'
 
-// json-server backend — run with: npm run server (port 4000).
-// In production set VITE_API_BASE_URL to the deployed json-server URL
+// Backend (server/pgserver.js) — run with: npm run server (port 4000).
+// In production set VITE_API_BASE_URL to the deployed backend URL
 // (e.g. Render), otherwise it falls back to localhost for local dev.
 // This file is also imported directly by the Node bot process (server/bot),
 // where import.meta.env doesn't exist — hence the optional chaining and the

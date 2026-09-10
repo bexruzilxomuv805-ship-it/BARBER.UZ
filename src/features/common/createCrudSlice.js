@@ -3,7 +3,7 @@ import client from '../../api/client'
 
 /**
  * Factory that builds a full CRUD Redux slice (fetch/create/update/remove)
- * backed by a json-server REST resource. Used for barbers, services,
+ * backed by a REST resource on the Postgres API. Used for barbers, services,
  * appointments, inventory and payments so we don't repeat the same
  * boilerplate five times.
  */

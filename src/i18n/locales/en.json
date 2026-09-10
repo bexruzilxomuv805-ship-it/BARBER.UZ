@@ -33,7 +33,7 @@
     "accountTitle": "Account",
     "contactTitle": "Contact",
     "copyright": "© {{year}} Zolotoy Barber. All rights reserved.",
-    "builtWith": "Demo project — built with React, Redux Toolkit, Tailwind CSS and json-server."
+    "builtWith": "Demo project — built with React, Redux Toolkit, Tailwind CSS and PostgreSQL."
   },
   "status": {
     "kutilmoqda": "Pending",
@@ -134,7 +134,7 @@
     "submitting": "Submitting...",
     "confirm": "Confirm appointment",
     "successToast": "Your appointment was booked successfully!",
-    "errorToast": "Something went wrong. Make sure the backend (json-server) is running.",
+    "errorToast": "Something went wrong. Make sure the backend is running.",
     "doneTitle": "Appointment booked!",
     "doneMessage": "Your appointment with {{barber}} is set for {{date}} at {{time}}. We'll be in touch soon.",
     "viewMyAppointments": "View my appointments",

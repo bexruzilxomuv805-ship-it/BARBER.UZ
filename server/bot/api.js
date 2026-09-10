@@ -1,22 +1,24 @@
 import client from '../../src/api/client.js'
 
-// json-server's --watch reloads the whole file on every write, which can
-// intermittently hang up an in-flight request ("socket hang up") if the next
-// write lands mid-reload. Callers that fire two writes back-to-back should
-// use settleAfterWrite() between them, and withRetry()/re-check ground truth
-// around the outermost call — see server/bot/index.js.
+// Left over from the old json-server backend, which reloaded its whole file
+// on every write and could intermittently hang up an in-flight request
+// ("socket hang up") if the next write landed mid-reload. The Postgres API
+// (server/pgserver.js) doesn't have that failure mode, but the retry/verify
+// pattern this enabled (withRetry()/re-check ground truth — see
+// server/bot/index.js) is cheap insurance against any transient network
+// error, so it's kept as-is.
 export function settleAfterWrite(ms = 300) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-// Thin wrapper around json-server for the Telegram bot process. Message/
+// Thin wrapper around the Postgres API for the Telegram bot process. Message/
 // conversation shapes here intentionally mirror sendMessage in
 // src/features/chat/chatSlice.js so replies sent from Telegram render
 // identically to ones sent from the admin chat panel.
 
 export async function getUnnotifiedClientMessages() {
-  // json-server can't filter on a field that's absent (older records never
-  // got tgNotified at all), so fetch client messages and filter in JS.
+  // Filtering on a boolean-absent field (`!tgNotified`) isn't an equality
+  // filter the REST API can express, so fetch client messages and filter in JS.
   const { data } = await client.get('/messages', {
     params: { sender: 'client', _sort: 'createdAt', _order: 'asc' },
   })
@@ -157,9 +159,8 @@ export async function confirmTelegramLogin(token, userId) {
 }
 
 export async function findUserByTelegramId(telegramId) {
-  // json-server returns ALL rows (not an empty list) when a filter targets a
-  // field no document has yet, so filter in JS instead — see getUnnotified*
-  // above for the same issue.
+  // Most users don't have a telegramId at all, so this can't be a plain
+  // equality query param — fetch and filter in JS instead.
   const { data } = await client.get('/users')
   return data.find((u) => String(u.telegramId) === String(telegramId)) || null
 }

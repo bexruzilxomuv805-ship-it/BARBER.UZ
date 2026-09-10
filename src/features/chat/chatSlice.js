@@ -1,9 +1,10 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
 import client from '../../api/client'
 
-// Support chat backed by json-server. There's no WebSocket server here, so
-// "real-time" is simulated with short-interval polling (see useChatPolling
-// hook) — messages persist to db.json so the conversation survives reloads.
+// Support chat backed by the Postgres API (server/pgserver.js). There's no
+// WebSocket server here, so "real-time" is simulated with short-interval
+// polling (see useChatPolling hook) — messages persist so the conversation
+// survives reloads.
 
 export const fetchConversations = createAsyncThunk(
   'chat/fetchConversations',

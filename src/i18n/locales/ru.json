@@ -33,7 +33,7 @@
     "accountTitle": "Аккаунт",
     "contactTitle": "Контакты",
     "copyright": "© {{year}} Zolotoy Barber. Все права защищены.",
-    "builtWith": "Демо-проект — создан на React, Redux Toolkit, Tailwind CSS и json-server."
+    "builtWith": "Демо-проект — создан на React, Redux Toolkit, Tailwind CSS и PostgreSQL."
   },
   "status": {
     "kutilmoqda": "Ожидается",
@@ -134,7 +134,7 @@
     "submitting": "Отправка...",
     "confirm": "Подтвердить запись",
     "successToast": "Ваша запись успешно принята!",
-    "errorToast": "Произошла ошибка. Проверьте, запущен ли бэкенд (json-server).",
+    "errorToast": "Произошла ошибка. Проверьте, запущен ли бэкенд.",
     "doneTitle": "Запись принята!",
     "doneMessage": "Ваша встреча с мастером {{barber}} назначена на {{date}} в {{time}}. Скоро мы свяжемся с вами.",
     "viewMyAppointments": "Мои записи",

@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "server": "json-server server/db.json --port 4000",
+    "server": "node server/pgserver.js",
+    "migrate": "node scripts/migrate-to-postgres.mjs",
     "bot": "node server/bot/index.js",
     "dev:all": "concurrently -n WEB,API,BOT -c blue,yellow,green \"npm run dev\" \"npm run server\" \"npm run bot\"",
     "start": "concurrently -n WEB,API,BOT -c blue,yellow,green \"npm run dev\" \"npm run server\" \"npm run bot\"",
@@ -17,10 +18,11 @@
   "dependencies": {
     "@reduxjs/toolkit": "^2.12.0",
     "axios": "^1.20.0",
+    "express": "^5.2.1",
     "framer-motion": "^13.1.1",
     "i18next": "^26.4.0",
     "i18next-browser-languagedetector": "^8.2.1",
-    "json-server": "^0.17.4",
+    "pg": "^8.23.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-i18next": "^17.0.12",

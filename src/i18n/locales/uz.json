@@ -33,7 +33,7 @@
     "accountTitle": "Hisob",
     "contactTitle": "Aloqa",
     "copyright": "© {{year}} Zolotoy Barber. Barcha huquqlar himoyalangan.",
-    "builtWith": "Namunaviy loyiha — React, Redux Toolkit, Tailwind CSS va json-server bilan yaratilgan."
+    "builtWith": "Namunaviy loyiha — React, Redux Toolkit, Tailwind CSS va PostgreSQL bilan yaratilgan."
   },
   "status": {
     "kutilmoqda": "Kutilmoqda",
@@ -134,7 +134,7 @@
     "submitting": "Yuborilmoqda...",
     "confirm": "Navbatni tasdiqlash",
     "successToast": "Navbatingiz muvaffaqiyatli qabul qilindi!",
-    "errorToast": "Xatolik yuz berdi. Backend (json-server) ishga tushganini tekshiring.",
+    "errorToast": "Xatolik yuz berdi. Backend ishga tushganini tekshiring.",
     "doneTitle": "Navbat qabul qilindi!",
     "doneMessage": "{{barber}} bilan {{date}} kuni soat {{time}} da uchrashuvingiz belgilandi. Tez orada siz bilan bog‘lanamiz.",
     "viewMyAppointments": "Navbatlarimni ko‘rish",
