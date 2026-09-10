@@ -176,6 +176,16 @@
     "waiting": "Telegramda tasdiqlang...",
     "error": "Telegram orqali kirib bo‘lmadi. Qaytadan urinib ko‘ring."
   },
+  "telegramLink": {
+    "title": "Oxirgi qadam: Telegramga ulanish",
+    "subtitle": "Navbat tasdiqlari, eslatmalar va admin bilan yozishmalar uchun Telegram botimizga ulanish shart.",
+    "openBot": "Telegram botni ochish",
+    "preparing": "Tayyorlanmoqda...",
+    "waiting": "Botda \"Start\" bosishingizni kutyapmiz...",
+    "error": "Ulanmadi. Qaytadan urinib ko‘ring.",
+    "retry": "Qaytadan urinish",
+    "mandatoryNote": "Bu qadam majburiy — ro‘yxatdan o‘tishni yakunlash uchun kerak."
+  },
   "profile": {
     "eyebrow": "Shaxsiy kabinet",
     "title": "Mening profilim",

@@ -178,6 +178,11 @@ export async function setUserPhone(id, telefon) {
   await client.patch(`/users/${id}`, { telefon })
 }
 
+export async function setUserTelegramLink(id, { telegramId, telegramUsername }) {
+  const { data } = await client.patch(`/users/${id}`, { telegramId, telegramUsername })
+  return data
+}
+
 export async function getBotUsers() {
   const { data } = await client.get('/users')
   return data.filter((u) => u.telegramId)

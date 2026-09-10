@@ -43,6 +43,7 @@ import {
   findUserByTelegramId,
   createTelegramUser,
   setUserPhone,
+  setUserTelegramLink,
   getBotUsers,
   setUserRole,
   deleteUser,
@@ -925,13 +926,67 @@ async function autoCompleteAppointments() {
   }
 }
 
+// Register.jsx's mandatory "link your Telegram" step creates a
+// telegramLogins token carrying linkUserId (the account it just created on
+// the site) instead of letting the normal login flow create/find a user by
+// Telegram id — this attaches telegramId/telegramUsername onto that exact
+// existing account instead of creating or reusing a different one.
+async function handleTelegramLinkExisting(msg, token, login) {
+  const tgUser = msg.from
+  try {
+    const clashingUser = await findUserByTelegramId(tgUser.id)
+    if (clashingUser && clashingUser.id !== login.linkUserId) {
+      await bot.sendMessage(
+        msg.chat.id,
+        "Bu Telegram akkaunt allaqachon boshqa profilga ulangan. Boshqa Telegram akkaunt bilan urinib ko'ring."
+      )
+      return
+    }
+
+    const target = await getUser(login.linkUserId).catch(() => null)
+    if (!target) {
+      await bot.sendMessage(msg.chat.id, "Sizning saytdagi profilingiz topilmadi. Qaytadan ro'yxatdan o'ting.")
+      return
+    }
+
+    const updated = await withRetry(
+      () => setUserTelegramLink(target.id, { telegramId: tgUser.id, telegramUsername: tgUser.username || '' }),
+      2,
+      800
+    )
+    await settleAfterWrite()
+    const confirmed = await confirmWithVerify(token, target.id)
+    if (!confirmed) throw new Error('confirm failed after retries')
+
+    await bot.sendMessage(
+      msg.chat.id,
+      `✅ Telegram ulandi, ${updated.ism}! Endi navbat va xabarlar haqida shu yerdan ham eslatma olasiz.`,
+      updated.role === 'admin' ? MENU_KEYBOARD : CLIENT_KEYBOARD
+    )
+  } catch (err) {
+    console.error('[bot] link existing error:', err?.message || err)
+    await bot.sendMessage(msg.chat.id, "Xatolik yuz berdi, saytda qaytadan urinib ko'ring.")
+  }
+}
+
 async function handleTelegramLoginStart(msg, token) {
   try {
+    const login = await getTelegramLogin(token)
+    if (!login || login.status !== 'pending') {
+      await bot.sendMessage(
+        msg.chat.id,
+        "Bu havola eskirgan yoki noto'g'ri. Saytda \"Telegram orqali kirish\" tugmasini qaytadan bosing."
+      )
+      return
+    }
+
+    if (login.linkUserId) {
+      await handleTelegramLinkExisting(msg, token, login)
+      return
+    }
+
     const tgUser = msg.from
     const result = await withRetry(async () => {
-      const login = await getTelegramLogin(token)
-      if (!login || login.status !== 'pending') return { expired: true }
-
       let user = await findUserByTelegramId(tgUser.id)
       if (!user) {
         const role = isSuperAdminUsername(tgUser.username) ? 'admin' : 'client'
@@ -951,7 +1006,7 @@ async function handleTelegramLoginStart(msg, token) {
       return { user }
     }, 2, 800)
 
-    if (result.expired || !result.user) {
+    if (!result.user) {
       await bot.sendMessage(
         msg.chat.id,
         "Bu havola eskirgan yoki noto'g'ri. Saytda \"Telegram orqali kirish\" tugmasini qaytadan bosing."

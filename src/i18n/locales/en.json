@@ -176,6 +176,16 @@
     "waiting": "Confirm in Telegram...",
     "error": "Couldn't sign in with Telegram. Please try again."
   },
+  "telegramLink": {
+    "title": "Last step: link Telegram",
+    "subtitle": "Linking our Telegram bot is required for booking confirmations, reminders, and messaging the admin.",
+    "openBot": "Open the Telegram bot",
+    "preparing": "Preparing...",
+    "waiting": "Waiting for you to press \"Start\" in the bot...",
+    "error": "Couldn't link. Please try again.",
+    "retry": "Try again",
+    "mandatoryNote": "This step is required to finish registration."
+  },
   "profile": {
     "eyebrow": "My account",
     "title": "My profile",
