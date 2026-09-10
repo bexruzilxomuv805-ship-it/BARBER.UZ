@@ -17,15 +17,31 @@ import useAuth from '../../hooks/useAuth'
 import { formatSum } from '../../utils/format'
 import { isBarberOff, WEEKDAY_DISPLAY_ORDER } from '../../utils/schedule'
 
-const WORK_HOURS = ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30']
+// Fallback only — used if a barber's own ishVaqti can't be parsed.
+const FALLBACK_WORK_RANGE = { start: 9 * 60, end: 19 * 60 }
+const SLOT_STEP_MIN = 30
 const DEFAULT_DURATION_MIN = 30
-// Last WORK_HOURS start (18:30) plus the shortest service — nothing should
-// run later than this.
-const CLOSING_MINUTES = 19 * 60
 
 function toMinutes(hhmm) {
   const [h, m] = hhmm.split(':').map(Number)
   return h * 60 + m
+}
+
+function minutesToHHMM(mins) {
+  const h = Math.floor(mins / 60)
+  const m = mins % 60
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+}
+
+// Barbers set their own hours as free text (e.g. "10:00 - 20:00", see
+// AdminBarbers.jsx) — pull out the two HH:MM stamps rather than assuming an
+// exact separator/spacing.
+function parseWorkRange(ishVaqti) {
+  const stamps = ishVaqti?.match(/\d{1,2}:\d{2}/g)
+  if (!stamps || stamps.length < 2) return null
+  const start = toMinutes(stamps[0])
+  const end = toMinutes(stamps[1])
+  return end > start ? { start, end } : null
 }
 
 function nextDays(count = 7) {
@@ -77,6 +93,23 @@ export default function Booking() {
   const selectedService = useMemo(() => services.find((s) => s.id === serviceId), [services, serviceId])
   const selectedBarber = useMemo(() => barbers.find((b) => b.id === barberId), [barbers, barberId])
 
+  // This barber's actual working hours — WORK_HOURS used to be one fixed
+  // list for every barber, ignoring that each one sets their own ishVaqti
+  // (see the "09:00-19:00" vs "10:00-20:00" etc. shown in step 1). Slots are
+  // regenerated from it, so editing a barber's hours in the admin panel adds
+  // or removes slots here automatically.
+  const barberWorkRange = useMemo(
+    () => parseWorkRange(selectedBarber?.ishVaqti) || FALLBACK_WORK_RANGE,
+    [selectedBarber]
+  )
+  const workHours = useMemo(() => {
+    const slots = []
+    for (let m = barberWorkRange.start; m < barberWorkRange.end; m += SLOT_STEP_MIN) {
+      slots.push(minutesToHHMM(m))
+    }
+    return slots
+  }, [barberWorkRange])
+
   // Ranges (in minutes-since-midnight) this barber is already booked for on
   // the selected date — using each existing appointment's own service
   // duration, not just its start time, so a slot inside a longer booking
@@ -99,13 +132,12 @@ export default function Booking() {
     const duration = selectedService?.davomiyligi || DEFAULT_DURATION_MIN
     const start = toMinutes(slotTime)
     const end = start + duration
-    if (end > CLOSING_MINUTES) return true
+    if (end > barberWorkRange.end) return true
     return occupiedRanges.some(([s, e]) => start < e && end > s)
   }
 
-  // Today's already-passed slots shouldn't be bookable — WORK_HOURS is a
-  // fixed list independent of the current time, so this has to be filtered
-  // in separately rather than baked into the list itself.
+  // Today's already-passed slots shouldn't be bookable — workHours has no
+  // notion of the current time, so this has to be filtered in separately.
   const isPastSlot = (slotTime) => {
     if (date !== todayIso) return false
     const now = new Date()
@@ -303,7 +335,7 @@ export default function Booking() {
 
                 <p className="mb-3 mt-8 text-sm font-medium text-ink-300">{t('booking.chooseTime')}</p>
                 <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
-                  {WORK_HOURS.map((t) => {
+                  {workHours.map((t) => {
                     const isBlocked = isSlotBlocked(t)
                     const isPast = isPastSlot(t)
                     const active = time === t
