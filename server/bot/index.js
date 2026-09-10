@@ -717,8 +717,24 @@ async function sendStatsPage(chatId, offset, { fresh = false } = {}) {
   }
 }
 
+async function notifyClientOfReminder(appointment) {
+  try {
+    const user = await getUser(appointment.mijozId)
+    if (!user?.telegramId) return
+    const barber = await getBarber(appointment.barberId)
+    await bot.sendMessage(
+      user.telegramId,
+      `⏰ Eslatma: navbatingizga sal qoldi!\n` +
+        `✂️ ${appointment.xizmatNomi || '—'}\n` +
+        `\u{1F487} Usta: ${appointment.barberIsmi || '—'}${barber?.telefon ? ` (${barber.telefon})` : ''}\n` +
+        `\u{1F553} Bugun, soat ${appointment.vaqt}da kutamiz!`
+    )
+  } catch (err) {
+    console.error('[bot] notify client reminder error:', err?.message || err)
+  }
+}
+
 async function sendReminders() {
-  if (!adminChatId) return
   try {
     const all = await getAllAppointments()
     const today = todayStr()
@@ -734,12 +750,15 @@ async function sendReminders() {
       return diffMin > 0 && diffMin <= REMINDER_WINDOW_MIN
     })
     for (const a of due) {
-      await bot.sendMessage(
-        adminChatId,
-        `⏰ Eslatma: ${a.vaqt}da navbat bor\n` +
-          `\u{1F464} ${a.mijozIsmi || 'Mijoz'} (${a.mijozTelefon || '—'})\n` +
-          `✂️ ${a.xizmatNomi || '—'} — ${a.barberIsmi || '—'}`
-      )
+      if (adminChatId) {
+        await bot.sendMessage(
+          adminChatId,
+          `⏰ Eslatma: ${a.vaqt}da navbat bor\n` +
+            `\u{1F464} ${a.mijozIsmi || 'Mijoz'} (${a.mijozTelefon || '—'})\n` +
+            `✂️ ${a.xizmatNomi || '—'} — ${a.barberIsmi || '—'}`
+        )
+      }
+      await notifyClientOfReminder(a)
       await markAppointmentReminded(a.id)
     }
   } catch (err) {
