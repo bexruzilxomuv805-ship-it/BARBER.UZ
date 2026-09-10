@@ -11,7 +11,7 @@ import { getBarberImage } from '../../assets/images'
 import { fetchBarbers, createBarber, updateBarber, removeBarber } from '../../features/barbers/barbersSlice'
 import { showToast } from '../../features/ui/uiSlice'
 import { formatSum, formatDateShort } from '../../utils/format'
-import { getWeekdayOptions, isBarberOff } from '../../utils/schedule'
+import { getWeekdayOptions, isBarberOff, toLocalDateIso } from '../../utils/schedule'
 
 const emptyForm = {
   ism: '', familiya: '', mutaxassislik: '', telefon: '', tajriba: 1,
@@ -35,7 +35,7 @@ export default function AdminBarbers() {
   }, [dispatch])
 
   const weekdayOptions = useMemo(() => getWeekdayOptions(t('common.weekdaysShort', { returnObjects: true })), [t])
-  const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), [])
+  const todayIso = useMemo(() => toLocalDateIso(), [])
 
   const openCreate = () => {
     setEditing(null)

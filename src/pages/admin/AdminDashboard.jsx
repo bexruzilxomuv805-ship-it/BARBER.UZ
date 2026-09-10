@@ -17,7 +17,7 @@ import { fetchCustomers } from '../../features/customers/customersSlice'
 import { fetchBarbers } from '../../features/barbers/barbersSlice'
 import { fetchServices } from '../../features/services/servicesSlice'
 import { formatSum, STATUS_LABELS } from '../../utils/format'
-import { getWeekdayOptions } from '../../utils/schedule'
+import { getWeekdayOptions, toLocalDateIso } from '../../utils/schedule'
 
 const COLORS = ['#c9a227', '#38bdf8', '#34d399', '#f87171', '#a78bfa']
 const HEATMAP_HOURS = ['09', '10', '11', '12', '14', '15', '16', '17', '18']
@@ -39,7 +39,7 @@ export default function AdminDashboard() {
     dispatch(fetchServices())
   }, [dispatch])
 
-  const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), [])
+  const todayStr = useMemo(() => toLocalDateIso(), [])
 
   const stats = useMemo(() => {
     const totalRevenue = payments.reduce((sum, p) => sum + (p.summa || 0), 0)

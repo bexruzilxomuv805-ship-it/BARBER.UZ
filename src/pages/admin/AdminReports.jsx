@@ -14,6 +14,7 @@ import { fetchPayments } from '../../features/payments/paymentsSlice'
 import { fetchServices } from '../../features/services/servicesSlice'
 import { fetchBarbers } from '../../features/barbers/barbersSlice'
 import { formatSum } from '../../utils/format'
+import { toLocalDateIso } from '../../utils/schedule'
 
 const COLORS = ['#c9a227', '#38bdf8', '#34d399', '#f87171', '#a78bfa', '#fb923c', '#f472b6', '#22d3ee']
 
@@ -40,17 +41,21 @@ export default function AdminReports() {
     dispatch(fetchBarbers())
   }, [dispatch])
 
-  const cutoff = useMemo(() => {
+  // Compared as ISO date *strings* rather than Date objects — `new
+  // Date('2026-09-10')` parses as UTC midnight, which sits on the wrong side
+  // of the cutoff for anyone in a timezone ahead of UTC (Uzbekistan, UTC+5)
+  // right around day boundaries.
+  const cutoffIso = useMemo(() => {
     const d = new Date()
     d.setDate(d.getDate() - range)
-    return d
+    return toLocalDateIso(d)
   }, [range])
 
   const scopedAppointments = useMemo(
-    () => appointments.filter((a) => new Date(a.sana) >= cutoff),
-    [appointments, cutoff]
+    () => appointments.filter((a) => a.sana >= cutoffIso),
+    [appointments, cutoffIso]
   )
-  const scopedPayments = useMemo(() => payments.filter((p) => new Date(p.sana) >= cutoff), [payments, cutoff])
+  const scopedPayments = useMemo(() => payments.filter((p) => p.sana >= cutoffIso), [payments, cutoffIso])
 
   const serviceCounts = useMemo(() => {
     const counts = {}

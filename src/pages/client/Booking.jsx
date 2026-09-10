@@ -15,7 +15,7 @@ import { fetchAppointments, createAppointment } from '../../features/appointment
 import { showToast } from '../../features/ui/uiSlice'
 import useAuth from '../../hooks/useAuth'
 import { formatSum } from '../../utils/format'
-import { isBarberOff, WEEKDAY_DISPLAY_ORDER } from '../../utils/schedule'
+import { isBarberOff, toLocalDateIso, WEEKDAY_DISPLAY_ORDER } from '../../utils/schedule'
 
 // Fallback only — used if a barber's own ishVaqti can't be parsed.
 const FALLBACK_WORK_RANGE = { start: 9 * 60, end: 19 * 60 }
@@ -89,7 +89,7 @@ export default function Booking() {
   }, [dispatch])
 
   const days = useMemo(() => nextDays(7), [])
-  const todayIso = days[0]?.toISOString().slice(0, 10)
+  const todayIso = toLocalDateIso(days[0])
   const selectedService = useMemo(() => services.find((s) => s.id === serviceId), [services, serviceId])
   const selectedBarber = useMemo(() => barbers.find((b) => b.id === barberId), [barbers, barberId])
 
@@ -308,7 +308,7 @@ export default function Booking() {
                 <p className="mb-3 flex items-center gap-2 text-sm font-medium text-ink-300"><FaCalendarAlt className="text-gold-400" /> {t('booking.chooseDate')}</p>
                 <div className="flex gap-3 overflow-x-auto pb-2">
                   {days.map((d) => {
-                    const iso = d.toISOString().slice(0, 10)
+                    const iso = toLocalDateIso(d)
                     const active = date === iso
                     const off = isBarberOff(selectedBarber, iso)
                     return (
