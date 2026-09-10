@@ -1,5 +1,14 @@
 import client from '../../src/api/client.js'
 
+// json-server's --watch reloads the whole file on every write, which can
+// intermittently hang up an in-flight request ("socket hang up") if the next
+// write lands mid-reload. Callers that fire two writes back-to-back should
+// use settleAfterWrite() between them, and withRetry()/re-check ground truth
+// around the outermost call — see server/bot/index.js.
+export function settleAfterWrite(ms = 300) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 // Thin wrapper around json-server for the Telegram bot process. Message/
 // conversation shapes here intentionally mirror sendMessage in
 // src/features/chat/chatSlice.js so replies sent from Telegram render
@@ -120,7 +129,137 @@ export async function findUserByTelegramId(telegramId) {
   return data.find((u) => String(u.telegramId) === String(telegramId)) || null
 }
 
-export async function createTelegramUser(tgUser) {
+export async function setUserPhone(id, telefon) {
+  await client.patch(`/users/${id}`, { telefon })
+}
+
+export async function getBotUsers() {
+  const { data } = await client.get('/users')
+  return data.filter((u) => u.telegramId)
+}
+
+export async function setUserRole(id, role) {
+  const { data } = await client.patch(`/users/${id}`, { role })
+  return data
+}
+
+export async function deleteUser(id) {
+  await client.delete(`/users/${id}`)
+}
+
+export async function getUserAppointments(userId) {
+  const { data } = await client.get('/appointments', { params: { mijozId: userId } })
+  return data
+}
+
+export async function getUser(id) {
+  try {
+    const { data } = await client.get(`/users/${id}`)
+    return data
+  } catch (err) {
+    if (err?.response?.status === 404) return null
+    throw err
+  }
+}
+
+export async function getBarber(id) {
+  try {
+    const { data } = await client.get(`/barbers/${id}`)
+    return data
+  } catch (err) {
+    if (err?.response?.status === 404) return null
+    throw err
+  }
+}
+
+export async function getContactInfo() {
+  const { data } = await client.get('/contactInfo')
+  return data
+}
+
+export async function postClientMessageFromBot({ conversationId, userId, userName, text }) {
+  const message = {
+    id: `m-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    conversationId,
+    userId,
+    userName,
+    sender: 'client',
+    text,
+    createdAt: new Date().toISOString(),
+    read: false,
+  }
+  const { data } = await client.post('/messages', message)
+
+  try {
+    await client.get(`/conversations/${conversationId}`)
+    await client.patch(`/conversations/${conversationId}`, {
+      lastMessage: text,
+      updatedAt: message.createdAt,
+      unreadForAdmin: 1,
+    })
+  } catch {
+    await client.post('/conversations', {
+      id: conversationId,
+      userId,
+      userName,
+      lastMessage: text,
+      updatedAt: message.createdAt,
+      unreadForAdmin: 1,
+      unreadForClient: 0,
+    })
+  }
+
+  return data
+}
+
+export async function getAppointmentById(id) {
+  try {
+    const { data } = await client.get(`/appointments/${id}`)
+    return data
+  } catch (err) {
+    if (err?.response?.status === 404) return null
+    throw err
+  }
+}
+
+export async function getInventory() {
+  const { data } = await client.get('/inventory')
+  return data
+}
+
+export async function markInventoryLowStockNotified(id, notified) {
+  await client.patch(`/inventory/${id}`, { tgLowStockNotified: notified })
+}
+
+export async function getUnreviewedCompletedAppointments() {
+  const { data } = await client.get('/appointments', { params: { holat: 'yakunlangan' } })
+  return data.filter((a) => !a.tgReviewRequested)
+}
+
+export async function markReviewRequested(id) {
+  await client.patch(`/appointments/${id}`, { tgReviewRequested: true })
+}
+
+export async function createReview(review) {
+  const { data } = await client.post('/reviews', review)
+  return data
+}
+
+export async function updateReview(id, changes) {
+  const { data } = await client.patch(`/reviews/${id}`, changes)
+  return data
+}
+
+export async function getReviewsByBarber(barberId) {
+  const { data } = await client.get('/reviews', { params: { barberId } })
+  return data
+}
+
+export async function setBarberRating(barberId, reyting) {
+  await client.patch(`/barbers/${barberId}`, { reyting })
+}
+
+export async function createTelegramUser(tgUser, role = 'client') {
   const newUser = {
     id: `u-tg-${tgUser.id}`,
     ism: tgUser.first_name || 'Telegram',
@@ -128,7 +267,7 @@ export async function createTelegramUser(tgUser) {
     email: '',
     telefon: '',
     parol: '',
-    role: 'client',
+    role,
     avatar: '',
     telegramId: tgUser.id,
     telegramUsername: tgUser.username || '',
