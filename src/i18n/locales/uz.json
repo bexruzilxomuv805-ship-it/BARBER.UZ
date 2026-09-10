@@ -83,6 +83,8 @@
     "viewAllBarbers": "Barcha ustalar bilan tanishing",
     "testimonialsTitle": "Mijozlarimiz fikri",
     "reviewsCount": "({{rating}} / 5, {{count}} sharh)",
+    "reviewsPrev": "Oldingi sharhlar",
+    "reviewsNext": "Keyingi sharhlar",
     "locationTitle": "Bizni toping",
     "locationSubtitle": "Toshkent markazida, qulay joylashuvda sizni kutamiz.",
     "bookNow": "Hoziroq navbat oling"

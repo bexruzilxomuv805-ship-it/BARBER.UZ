@@ -1,9 +1,12 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { motion } from 'framer-motion'
-import { FaArrowRight, FaCheckCircle, FaClock, FaMapMarkerAlt, FaPhoneAlt, FaShieldAlt, FaStar, FaGem } from 'react-icons/fa'
+import {
+  FaArrowRight, FaCheckCircle, FaChevronLeft, FaChevronRight, FaClock, FaMapMarkerAlt, FaPhoneAlt,
+  FaShieldAlt, FaStar, FaGem,
+} from 'react-icons/fa'
 import { GiRazor } from 'react-icons/gi'
 import Reveal from '../../components/Reveal'
 import AnimatedCounter from '../../components/AnimatedCounter'
@@ -19,6 +22,12 @@ import { images, getBarberImage } from '../../assets/images'
 import { formatSum } from '../../utils/format'
 
 const FEATURE_ICONS = [FaShieldAlt, FaClock, FaGem, FaCheckCircle]
+
+// Matches Tailwind's `sm` breakpoint — the reviews grid switches from 1 to
+// 2/3 columns there, so the page size switches from 3 to 6 at the same point.
+const REVIEWS_DESKTOP_QUERY = '(min-width: 640px)'
+const REVIEWS_MOBILE_PAGE_SIZE = 3
+const REVIEWS_DESKTOP_PAGE_SIZE = 6
 
 const FALLBACK_CONTACT = {
   manzil: 'Toshkent sh., Chilonzor tumani, Bunyodkor ko‘chasi 12',
@@ -53,6 +62,31 @@ export default function Home() {
     if (!reviews.length) return 5
     return (reviews.reduce((sum, r) => sum + r.baho, 0) / reviews.length).toFixed(1)
   }, [reviews])
+
+  const [reviewPageSize, setReviewPageSize] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia(REVIEWS_DESKTOP_QUERY).matches
+      ? REVIEWS_DESKTOP_PAGE_SIZE
+      : REVIEWS_MOBILE_PAGE_SIZE
+  )
+  const [reviewPage, setReviewPage] = useState(0)
+
+  useEffect(() => {
+    const mql = window.matchMedia(REVIEWS_DESKTOP_QUERY)
+    const update = () => setReviewPageSize(mql.matches ? REVIEWS_DESKTOP_PAGE_SIZE : REVIEWS_MOBILE_PAGE_SIZE)
+    update()
+    mql.addEventListener('change', update)
+    return () => mql.removeEventListener('change', update)
+  }, [])
+
+  const reviewPageCount = Math.max(1, Math.ceil(reviews.length / reviewPageSize))
+  // Clamp during render (instead of in an effect) in case the page size or
+  // review count shrinks out from under whatever page was last selected.
+  const safeReviewPage = Math.min(reviewPage, reviewPageCount - 1)
+
+  const pagedReviews = useMemo(
+    () => reviews.slice(safeReviewPage * reviewPageSize, safeReviewPage * reviewPageSize + reviewPageSize),
+    [reviews, safeReviewPage, reviewPageSize]
+  )
 
   // Real, computed stats instead of hardcoded demo numbers: years = the most
   // experienced barber's tenure, clients = completed appointment count.
@@ -271,7 +305,7 @@ export default function Home() {
               <h2 className="section-title mt-3">{t('home.testimonialsTitle')}</h2>
             </Reveal>
             <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {reviews.map((r, i) => (
+              {pagedReviews.map((r, i) => (
                 <Reveal key={r.id} delay={i * 0.08}>
                   <div className="card h-full p-6">
                     <RatingStars value={r.baho} />
@@ -283,6 +317,29 @@ export default function Home() {
                 </Reveal>
               ))}
             </div>
+            {reviewPageCount > 1 && (
+              <div className="mt-8 flex items-center justify-center gap-4">
+                <button
+                  type="button"
+                  onClick={() => setReviewPage(Math.max(0, safeReviewPage - 1))}
+                  disabled={safeReviewPage === 0}
+                  aria-label={t('home.reviewsPrev')}
+                  className="flex h-10 w-10 items-center justify-center rounded-full border border-ink-700 text-ink-300 transition-colors hover:border-gold-500 hover:text-gold-400 disabled:opacity-30 disabled:hover:border-ink-700 disabled:hover:text-ink-300"
+                >
+                  <FaChevronLeft />
+                </button>
+                <span className="text-sm text-ink-400">{safeReviewPage + 1} / {reviewPageCount}</span>
+                <button
+                  type="button"
+                  onClick={() => setReviewPage(Math.min(reviewPageCount - 1, safeReviewPage + 1))}
+                  disabled={safeReviewPage === reviewPageCount - 1}
+                  aria-label={t('home.reviewsNext')}
+                  className="flex h-10 w-10 items-center justify-center rounded-full border border-ink-700 text-ink-300 transition-colors hover:border-gold-500 hover:text-gold-400 disabled:opacity-30 disabled:hover:border-ink-700 disabled:hover:text-ink-300"
+                >
+                  <FaChevronRight />
+                </button>
+              </div>
+            )}
           </div>
         </section>
       )}

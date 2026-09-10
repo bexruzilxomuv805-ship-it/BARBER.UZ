@@ -83,6 +83,8 @@
     "viewAllBarbers": "Познакомьтесь со всеми мастерами",
     "testimonialsTitle": "Отзывы клиентов",
     "reviewsCount": "({{rating}} / 5, {{count}} отзывов)",
+    "reviewsPrev": "Предыдущие отзывы",
+    "reviewsNext": "Следующие отзывы",
     "locationTitle": "Найдите нас",
     "locationSubtitle": "Мы ждём вас в удобном месте в центре Ташкента.",
     "bookNow": "Записаться прямо сейчас"

@@ -83,6 +83,8 @@
     "viewAllBarbers": "Meet all our barbers",
     "testimonialsTitle": "What our clients say",
     "reviewsCount": "({{rating}} / 5, {{count}} reviews)",
+    "reviewsPrev": "Previous reviews",
+    "reviewsNext": "Next reviews",
     "locationTitle": "Find us",
     "locationSubtitle": "We're waiting for you at a convenient location in central Tashkent.",
     "bookNow": "Book your slot now"
