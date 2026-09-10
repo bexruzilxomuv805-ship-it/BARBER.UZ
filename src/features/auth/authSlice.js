@@ -92,6 +92,26 @@ export const completeTelegramLogin = createAsyncThunk(
   }
 )
 
+// Re-fetches the logged-in user's own record so role/profile changes made
+// elsewhere (e.g. an admin promoting them from the Mijozlar page) take
+// effect on the next page load instead of only after a full logout/login —
+// the stored user in localStorage is otherwise frozen at whatever it was
+// when they last logged in. Silently keeps the stale cached user on
+// failure (e.g. offline) rather than logging them out.
+export const refreshUser = createAsyncThunk(
+  'auth/refreshUser',
+  async (id, { rejectWithValue }) => {
+    try {
+      const { data } = await client.get(`/users/${id}`)
+      const safe = sanitize(data)
+      persistUser(safe)
+      return safe
+    } catch (err) {
+      return rejectWithValue(err?.response?.data?.message || 'refresh failed')
+    }
+  }
+)
+
 export const updateProfile = createAsyncThunk(
   'auth/updateProfile',
   async ({ id, changes }, { rejectWithValue }) => {
@@ -171,6 +191,10 @@ const authSlice = createSlice({
       })
       .addCase(updateProfile.fulfilled, (state, action) => {
         state.user = action.payload
+      })
+      .addCase(refreshUser.fulfilled, (state, action) => {
+        state.user = action.payload
+        state.isAuthenticated = true
       })
   },
 })
