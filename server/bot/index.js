@@ -41,6 +41,7 @@ import {
   getTelegramLogin,
   confirmTelegramLogin,
   findUserByTelegramId,
+  findUserByPhone,
   createTelegramUser,
   setUserPhone,
   setUserTelegramLink,
@@ -185,6 +186,12 @@ const conversationByTelegramMsgId = new Map()
 // wait for the user to share their phone number. The login token is only
 // confirmed (site login unlocked) once the phone is on file.
 const awaitingPhoneForChat = new Map()
+
+// chatId set — a plain /start (no login token) from a Telegram account we
+// don't recognize offered "I already have a profile — link by phone"; set
+// while we wait for them to share their contact so we can match it against
+// an existing site account instead of assuming they have none at all.
+const awaitingPhoneForAccountMatch = new Set()
 
 // telegramId -> reviewId, set after a rating is tapped while we wait for an
 // optional follow-up text comment on that review.
@@ -1052,7 +1059,64 @@ async function handleTelegramLoginStart(msg, token) {
   }
 }
 
+// Handles the "📞 Profilim bor — ulash" flow: a Telegram account we don't
+// recognize (findUserByTelegramId found nothing) claims to already have a
+// site account. Matches by phone instead of creating a second, duplicate
+// account for the same person — the exact mess plain re-registration would
+// otherwise cause.
+async function handlePhoneAccountMatch(msg) {
+  if (msg.contact.user_id && msg.contact.user_id !== msg.from.id) {
+    await bot.sendMessage(msg.chat.id, "Iltimos, o'zingizning raqamingizni yuboring.")
+    return
+  }
+
+  try {
+    const phone = normalizePhone(msg.contact.phone_number)
+    const match = await withRetry(() => findUserByPhone(phone), 2, 800)
+    awaitingPhoneForAccountMatch.delete(msg.chat.id)
+
+    if (!match) {
+      await bot.sendMessage(
+        msg.chat.id,
+        "\u{274C} Bu raqam bilan hisob topilmadi. Yangi mijoz sifatida ro'yxatdan o'tish uchun saytdagi \"Telegram orqali kirish\" tugmasini bosing.",
+        SITE_LINK_BUTTON
+      )
+      return
+    }
+
+    if (match.telegramId && String(match.telegramId) !== String(msg.from.id)) {
+      // Someone else's phone number, or this same person's account is
+      // already linked to a *different* Telegram identity — don't silently
+      // steal the link, point them at a human instead.
+      await bot.sendMessage(
+        msg.chat.id,
+        "\u{26A0}️ Bu profil allaqachon boshqa Telegram akkauntga ulangan. Agar bu xato bo'lsa, administrator bilan bog'laning."
+      )
+      return
+    }
+
+    const updated = await withRetry(
+      () => setUserTelegramLink(match.id, { telegramId: msg.from.id, telegramUsername: msg.from.username || '' }),
+      2,
+      800
+    )
+    await bot.sendMessage(
+      msg.chat.id,
+      `\u{2705} Profilingiz topildi va ulandi, ${updated.ism}! Endi navbat va xabarlar haqida shu yerdan ham eslatma olasiz.`,
+      updated.role === 'admin' ? MENU_KEYBOARD : CLIENT_KEYBOARD
+    )
+  } catch (err) {
+    console.error('[bot] phone account match error:', err?.message || err)
+    await bot.sendMessage(msg.chat.id, "Xatolik yuz berdi. Qaytadan urinib ko'ring.")
+  }
+}
+
 async function handleContact(msg) {
+  if (awaitingPhoneForAccountMatch.has(msg.chat.id)) {
+    await handlePhoneAccountMatch(msg)
+    return
+  }
+
   const pending = awaitingPhoneForChat.get(msg.chat.id)
   if (!pending) return
 
@@ -1115,9 +1179,22 @@ bot.onText(/^\/start(?:\s+(\S+))?/, safeHandler(async (msg, match) => {
       await bot.sendMessage(msg.chat.id, "Yangi navbat olish yoki profilingizni ko'rish uchun saytga o'ting:", SITE_LINK_BUTTON)
       return
     }
+    // This exact Telegram account has never been seen before — but that
+    // doesn't mean the *person* has no account: they may have registered on
+    // the site (with its own mandatory Telegram-link step) using a
+    // different Telegram account/device than the one messaging right now.
+    // Offer to match by phone instead of flatly telling them to register,
+    // which would be wrong for that case.
     await bot.sendMessage(
       msg.chat.id,
-      "Salom! Bu Zolotoy Barber boti. Saytga kirish uchun saytdagi \"Telegram orqali kirish\" tugmasini bosing."
+      "Salom! Bu Zolotoy Barber boti.\n\n" +
+        "\u{1F464} Agar saytda allaqachon ro'yxatdan o'tgan bo'lsangiz — pastdagi tugma orqali telefon raqamingiz bilan ulanishingiz mumkin.\n" +
+        "\u{1F195} Yangi mijozmisiz — saytdagi \"Telegram orqali kirish\" tugmasini bosing.",
+      {
+        reply_markup: {
+          inline_keyboard: [[{ text: "\u{1F4DE} Profilim bor — ulash", callback_data: 'linkbyphone:start' }]],
+        },
+      }
     )
     await bot.sendMessage(msg.chat.id, 'Sayt shu yerda:', SITE_LINK_BUTTON)
     return
@@ -1518,6 +1595,19 @@ bot.on('callback_query', safeHandler(async (query) => {
   const parts = (query.data || '').split(':')
   const [action, id] = parts
   if (!id) return
+
+  if (action === 'linkbyphone') {
+    awaitingPhoneForAccountMatch.add(query.message.chat.id)
+    await bot.answerCallbackQuery(query.id)
+    await bot.sendMessage(query.message.chat.id, "\u{1F464} Ulash uchun telefon raqamingizni yuboring:", {
+      reply_markup: {
+        keyboard: [[{ text: "\u{1F4DE} Raqamni yuborish", request_contact: true }]],
+        resize_keyboard: true,
+        one_time_keyboard: true,
+      },
+    })
+    return
+  }
 
   if (action === 'confirm' || action === 'cancel' || action === 'complete') {
     try {

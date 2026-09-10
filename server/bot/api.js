@@ -174,6 +174,17 @@ export async function findUserByTelegramId(telegramId) {
   return data.find((u) => String(u.telegramId) === String(telegramId)) || null
 }
 
+// Lets a site-registered user (created via Register.jsx, or one whose
+// TelegramLinkGate step never completed) self-link an unrecognized Telegram
+// account by phone number instead of being told to "register on the site"
+// as if they have no account at all — see handlePhoneAccountMatch.
+export async function findUserByPhone(telefon) {
+  const digits = String(telefon || '').replace(/[^\d]/g, '')
+  if (!digits) return null
+  const { data } = await client.get('/users')
+  return data.find((u) => String(u.telefon || '').replace(/[^\d]/g, '') === digits) || null
+}
+
 export async function setUserPhone(id, telefon) {
   await client.patch(`/users/${id}`, { telefon })
 }
