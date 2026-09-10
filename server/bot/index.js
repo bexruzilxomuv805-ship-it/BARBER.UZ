@@ -513,6 +513,15 @@ function formatMoney(n) {
   return `${(n || 0).toLocaleString('ru-RU')} so'm`
 }
 
+// Telegram's shared-contact phone_number comes back as digits only, no "+"
+// (e.g. "998901234567") — the site's own forms always ask for "+998 ..." —
+// so numbers saved via the bot need this to match that format everywhere
+// (admin's Mijozlar list, etc.) instead of only the bot-registered ones.
+function normalizePhone(phone) {
+  const digits = String(phone || '').replace(/[^\d]/g, '')
+  return digits ? `+${digits}` : ''
+}
+
 const BTN_BUGUN = "\u{1F4C5} Bugungi navbatlar"
 const BTN_NAVBATLAR = "\u{1F5D3}️ Kelayotgan navbatlar"
 const BTN_STATS = "\u{1F4CA} Statistika"
@@ -1026,7 +1035,7 @@ async function handleContact(msg) {
   }
 
   try {
-    await withRetry(() => setUserPhone(pending.userId, msg.contact.phone_number), 2, 800)
+    await withRetry(() => setUserPhone(pending.userId, normalizePhone(msg.contact.phone_number)), 2, 800)
     await settleAfterWrite()
     const confirmed = await confirmWithVerify(pending.token, pending.userId)
     if (!confirmed) throw new Error('confirm failed after retries')
