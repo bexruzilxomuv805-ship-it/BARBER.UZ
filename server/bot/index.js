@@ -155,7 +155,10 @@ function buildPremiumEntities(text) {
 
 function withPremiumEmoji(text, options) {
   if (options?.parse_mode) return options // entities and parse_mode are mutually exclusive
-  const entities = buildPremiumEntities(text)
+  // Merge with (not overwrite) any entities a caller already built — e.g. a
+  // tap-to-call text_link on a phone number, see handleHelp — rather than
+  // silently dropping them.
+  const entities = [...(options?.entities || []), ...buildPremiumEntities(text)].sort((a, b) => a.offset - b.offset)
   if (!entities.length) return options
   return { ...(options || {}), entities }
 }
@@ -502,14 +505,6 @@ function tashkentTimeToday(hour, minute) {
 function todayStr() {
   const { year, month, day } = getTashkentNow()
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-}
-
-// Only needed for the handful of messages sent with parse_mode: 'HTML' (e.g.
-// tap-to-copy <code> numbers) — escapes admin-entered free text (manzil,
-// ishVaqti, ...) that gets interpolated alongside those tags, so a stray
-// "&"/"<"/">" in it can't break the HTML parsing of the rest of the message.
-function escapeHtml(str) {
-  return String(str ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]))
 }
 
 function formatMoney(n) {
@@ -1280,11 +1275,23 @@ async function handleHelp(msg) {
   const lines = [
     'ℹ️ Yordam',
     '',
-    `\u{1F4DE} Telefon: ${phone ? `<code>${escapeHtml(phone)}</code>` : '—'}`,
-    `\u{1F4CD} Manzil: ${escapeHtml(info?.manzil) || '—'}`,
-    `\u{1F550} Ish vaqti: ${escapeHtml(info?.ishVaqti) || '—'}`,
+    `\u{1F4DE} Telefon: ${phone || '—'}`,
+    `\u{1F4CD} Manzil: ${info?.manzil || '—'}`,
+    `\u{1F550} Ish vaqti: ${info?.ishVaqti || '—'}`,
   ]
-  await bot.sendMessage(msg.chat.id, lines.join('\n'), { parse_mode: 'HTML' })
+  const text = lines.join('\n')
+
+  // A tel: text_link (not parse_mode/<code>) so the number is tap-to-call —
+  // and, since it skips parse_mode, withPremiumEmoji can still merge its own
+  // custom_emoji entities into the same message (see above).
+  const options = {}
+  const telHref = phone.replace(/[^\d+]/g, '')
+  const offset = phone ? text.indexOf(phone) : -1
+  if (offset !== -1 && telHref) {
+    options.entities = [{ type: 'text_link', offset, length: phone.length, url: `tel:${telHref}` }]
+  }
+
+  await bot.sendMessage(msg.chat.id, text, options)
 }
 
 async function handleClientChatMessage(msg) {
