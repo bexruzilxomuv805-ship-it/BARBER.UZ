@@ -26,6 +26,10 @@ export default function AdminCustomers() {
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState(emptyForm)
   const [toDelete, setToDelete] = useState(null)
+  // Telegram-registered accounts never collect a familiya/email (the bot
+  // only asks for a phone number) — only require those two for accounts
+  // created through the site's own Register form / this admin form itself.
+  const isTelegramUser = !!editing?.telegramId
 
   useEffect(() => {
     dispatch(fetchCustomers())
@@ -221,12 +225,12 @@ export default function AdminCustomers() {
             </div>
             <div>
               <label className="mb-1.5 block text-xs text-ink-500">{t('admin.customers.lastNameLabel')}</label>
-              <input required value={form.familiya} onChange={(e) => setForm((f) => ({ ...f, familiya: e.target.value }))} placeholder={t('admin.customers.lastNameLabel')} className="input-field !py-2 text-sm" />
+              <input required={!isTelegramUser} value={form.familiya} onChange={(e) => setForm((f) => ({ ...f, familiya: e.target.value }))} placeholder={t('admin.customers.lastNameLabel')} className="input-field !py-2 text-sm" />
             </div>
           </div>
           <div>
             <label className="mb-1.5 block text-xs text-ink-500">{t('admin.customers.emailLabel')}</label>
-            <input required type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} placeholder="email@example.com" className="input-field !py-2 text-sm" />
+            <input required={!isTelegramUser} type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} placeholder="email@example.com" className="input-field !py-2 text-sm" />
           </div>
           <div>
             <label className="mb-1.5 block text-xs text-ink-500">{t('admin.customers.phoneLabel')}</label>
