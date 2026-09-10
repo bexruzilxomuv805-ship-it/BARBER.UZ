@@ -40,8 +40,9 @@ import {
   setUserRole,
   deleteUser,
   markMessageForwarded,
-  getEditedForwardedClientMessages,
+  getEditedForwardedMessages,
   markMessageEditSynced,
+  getUnnotifiedAdminMessages,
   getUserAppointments,
   settleAfterWrite,
   getUser,
@@ -263,6 +264,10 @@ function formatClientChatMessage(message) {
   return `\u{1F4AC} ${message.userName || 'Mijoz'}\n${message.text}`
 }
 
+function formatAdminChatMessage(message) {
+  return `\u{1F464} Admin:\n${message.text}`
+}
+
 async function forwardClientMessages() {
   const messages = await getUnnotifiedClientMessages()
   for (const message of messages) {
@@ -273,20 +278,42 @@ async function forwardClientMessages() {
   }
 }
 
-// A client can edit an already-forwarded message from the site's chat widget
-// (see ChatWidget.jsx) — this mirrors that edit into the admin's Telegram
-// chat by editing the same message in place, instead of leaving the stale
-// original text sitting there forever.
-async function syncEditedClientMessages() {
-  const edited = await getEditedForwardedClientMessages()
+// Admin replies typed on the site's Support chat page (AdminChat.jsx) only
+// ever get saved to json-server — unlike replies typed directly in Telegram
+// (which mirror to the client immediately, see postAdminReply below), these
+// never reached the client's Telegram chat at all. This pushes them out.
+async function forwardAdminMessages() {
+  const messages = await getUnnotifiedAdminMessages()
+  for (const message of messages) {
+    const user = await getUser(message.userId).catch(() => null)
+    if (user?.telegramId) {
+      try {
+        const sent = await bot.sendMessage(user.telegramId, formatAdminChatMessage(message))
+        await markMessageForwarded(message.id, { chatId: user.telegramId, messageId: sent.message_id, text: message.text })
+        continue
+      } catch (err) {
+        console.error('[bot] forward admin message error:', message.id, err?.message || err)
+      }
+    }
+    // No linked Telegram account (or the send failed) — mark it notified
+    // anyway so it isn't retried forever; tgChatId/tgMessageId stay unset,
+    // so it's simply skipped by syncEditedMessages below.
+    await markMessageForwarded(message.id, { chatId: null, messageId: null, text: message.text })
+  }
+}
+
+// A client or admin can edit an already-forwarded message from the site's
+// chat UI (ChatWidget.jsx / AdminChat.jsx) — this mirrors that edit into
+// whichever Telegram chat it was forwarded to, by editing that same message
+// in place, instead of leaving the stale original text sitting there.
+async function syncEditedMessages() {
+  const edited = await getEditedForwardedMessages()
   for (const message of edited) {
     try {
-      await bot.editMessageText(formatClientChatMessage(message), {
-        chat_id: message.tgChatId,
-        message_id: message.tgMessageId,
-      })
+      const text = message.sender === 'admin' ? formatAdminChatMessage(message) : formatClientChatMessage(message)
+      await bot.editMessageText(text, { chat_id: message.tgChatId, message_id: message.tgMessageId })
     } catch (err) {
-      console.error('[bot] sync edited client message error:', message.id, err?.message || err)
+      console.error('[bot] sync edited message error:', message.id, err?.message || err)
     }
     await markMessageEditSynced(message.id, message.text)
   }
@@ -420,7 +447,8 @@ async function maybeSendDailyDigest() {
 async function poll() {
   try {
     await forwardClientMessages()
-    await syncEditedClientMessages()
+    await forwardAdminMessages()
+    await syncEditedMessages()
     await forwardAppointments()
     await forwardNewClients()
     await requestReviews()

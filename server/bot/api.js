@@ -40,15 +40,26 @@ export async function markMessageForwarded(id, { chatId, messageId, text }) {
   })
 }
 
-export async function getEditedForwardedClientMessages() {
-  const { data } = await client.get('/messages', {
-    params: { sender: 'client', _sort: 'createdAt', _order: 'asc' },
-  })
+// Not sender-scoped — covers edits to messages forwarded in either direction
+// (client -> admin's Telegram, or admin -> client's Telegram).
+export async function getEditedForwardedMessages() {
+  const { data } = await client.get('/messages', { params: { _sort: 'createdAt', _order: 'asc' } })
   return data.filter((m) => m.tgMessageId && m.text !== m.tgSyncedText)
 }
 
 export async function markMessageEditSynced(id, text) {
   await client.patch(`/messages/${id}`, { tgSyncedText: text })
+}
+
+// Admin replies typed on the site (AdminChat.jsx) — as opposed to ones typed
+// directly in Telegram (which postAdminReply already marks tgNotified since
+// they originated there) — still need to be pushed out to the client's
+// Telegram chat.
+export async function getUnnotifiedAdminMessages() {
+  const { data } = await client.get('/messages', {
+    params: { sender: 'admin', _sort: 'createdAt', _order: 'asc' },
+  })
+  return data.filter((m) => !m.tgNotified)
 }
 
 export async function postAdminReply({ conversationId, userId, userName, text }) {
