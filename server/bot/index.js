@@ -29,6 +29,8 @@ import {
   setAppointmentStatus,
   getAllAppointments,
   markAppointmentReminded,
+  markAppointmentArrivalAsked,
+  setAppointmentArrival,
   getUnnotifiedNewClients,
   markUserNotified,
   getTelegramLogin,
@@ -62,7 +64,7 @@ import {
 
 const POLL_MS = 5000
 const REMINDER_POLL_MS = 60000
-const REMINDER_WINDOW_MIN = 60
+const REMINDER_WINDOW_MIN = 15
 const DIGEST_HOUR = 22
 const { TELEGRAM_BOT_TOKEN, TELEGRAM_ADMIN_CHAT_ID, TELEGRAM_SUPER_ADMIN_USERNAME } = process.env
 
@@ -724,7 +726,7 @@ async function notifyClientOfReminder(appointment) {
     const barber = await getBarber(appointment.barberId)
     await bot.sendMessage(
       user.telegramId,
-      `⏰ Eslatma: navbatingizga sal qoldi!\n` +
+      `⏰ Eslatma: navbatingizga ${REMINDER_WINDOW_MIN} daqiqadan kam vaqt qoldi!\n` +
         `✂️ ${appointment.xizmatNomi || '—'}\n` +
         `\u{1F487} Usta: ${appointment.barberIsmi || '—'}${barber?.telefon ? ` (${barber.telefon})` : ''}\n` +
         `\u{1F553} Bugun, soat ${appointment.vaqt}da kutamiz!`
@@ -753,7 +755,7 @@ async function sendReminders() {
       if (adminChatId) {
         await bot.sendMessage(
           adminChatId,
-          `⏰ Eslatma: ${a.vaqt}da navbat bor\n` +
+          `⏰ Eslatma: ${a.vaqt}da navbat bor (${REMINDER_WINDOW_MIN} daqiqadan kamroq qoldi)\n` +
             `\u{1F464} ${a.mijozIsmi || 'Mijoz'} (${a.mijozTelefon || '—'})\n` +
             `✂️ ${a.xizmatNomi || '—'} — ${a.barberIsmi || '—'}`
         )
@@ -763,6 +765,52 @@ async function sendReminders() {
     }
   } catch (err) {
     console.error('[bot] reminder error:', err?.message || err)
+  }
+}
+
+// At the exact moment an appointment was due to start, ask the admin (who
+// runs the front desk in Telegram) whether the client actually showed up —
+// easy to forget by the time the day gets busy, and this keeps a record
+// (kelganmi) without touching the appointment's confirm/complete/cancel
+// status, which stays a separate concern.
+async function checkArrivals() {
+  if (!adminChatId) return
+  try {
+    const all = await getAllAppointments()
+    const today = todayStr()
+    const now = new Date()
+    const due = all.filter((a) => {
+      if (a.tgArrivalAsked) return false
+      if (a.sana !== today) return false
+      if (a.holat !== 'kutilmoqda' && a.holat !== 'tasdiqlangan') return false
+      const [h, m] = (a.vaqt || '').split(':').map(Number)
+      if (Number.isNaN(h) || Number.isNaN(m)) return false
+      const apptTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m)
+      return now >= apptTime
+    })
+    for (const a of due) {
+      await bot.sendMessage(
+        adminChatId,
+        `⏰ Tekshiruv vaqti!\n` +
+          `\u{1F464} ${a.mijozIsmi || 'Mijoz'} (${a.mijozTelefon || '—'})\n` +
+          `✂️ ${a.xizmatNomi || '—'} — ${a.barberIsmi || '—'}\n` +
+          `\u{1F553} ${a.vaqt}\n\n` +
+          `Mijoz keldimi?`,
+        {
+          reply_markup: {
+            inline_keyboard: [
+              [
+                { text: '✅ Ha, keldi', callback_data: `arrived:${a.id}` },
+                { text: "❌ Yo'q, kelmadi", callback_data: `noshow:${a.id}` },
+              ],
+            ],
+          },
+        }
+      )
+      await markAppointmentArrivalAsked(a.id)
+    }
+  } catch (err) {
+    console.error('[bot] arrival check error:', err?.message || err)
   }
 }
 
@@ -1357,6 +1405,28 @@ bot.on('callback_query', safeHandler(async (query) => {
     return
   }
 
+  if (action === 'arrived' || action === 'noshow') {
+    if (!isFromAdmin(query.message)) {
+      await bot.answerCallbackQuery(query.id, { text: "Ruxsat yo'q", show_alert: true })
+      return
+    }
+    try {
+      const kelganmi = action === 'arrived'
+      await setAppointmentArrival(id, kelganmi)
+      const label = kelganmi ? '✅ Keldi deb belgilandi' : "❌ Kelmadi deb belgilandi"
+      const originalText = query.message?.text || ''
+      await bot.editMessageText(`${originalText}\n\n${label}`, {
+        chat_id: query.message.chat.id,
+        message_id: query.message.message_id,
+      })
+      await bot.answerCallbackQuery(query.id, { text: label })
+    } catch (err) {
+      console.error('[bot] arrival response error:', err?.message || err)
+      await bot.answerCallbackQuery(query.id, { text: 'Xatolik yuz berdi', show_alert: true })
+    }
+    return
+  }
+
   if (action === 'rate') {
     const rating = Number(parts[2])
     try {
@@ -1549,6 +1619,7 @@ if (!adminChatId) {
 
 async function periodicChecks() {
   await sendReminders()
+  await checkArrivals()
   await checkLowStock()
   await maybeSendDailyDigest()
 }
