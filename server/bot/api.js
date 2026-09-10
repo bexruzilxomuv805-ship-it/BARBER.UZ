@@ -27,6 +27,30 @@ export async function markMessageNotified(id) {
   await client.patch(`/messages/${id}`, { tgNotified: true })
 }
 
+// Records which Telegram message a forwarded client message became, plus the
+// text it was forwarded with (tgSyncedText) — later polls diff the live
+// `text` against tgSyncedText to detect site-side edits that still need to
+// be pushed into Telegram via editMessageText.
+export async function markMessageForwarded(id, { chatId, messageId, text }) {
+  await client.patch(`/messages/${id}`, {
+    tgNotified: true,
+    tgChatId: chatId,
+    tgMessageId: messageId,
+    tgSyncedText: text,
+  })
+}
+
+export async function getEditedForwardedClientMessages() {
+  const { data } = await client.get('/messages', {
+    params: { sender: 'client', _sort: 'createdAt', _order: 'asc' },
+  })
+  return data.filter((m) => m.tgMessageId && m.text !== m.tgSyncedText)
+}
+
+export async function markMessageEditSynced(id, text) {
+  await client.patch(`/messages/${id}`, { tgSyncedText: text })
+}
+
 export async function postAdminReply({ conversationId, userId, userName, text }) {
   const message = {
     id: `m-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,

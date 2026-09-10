@@ -22,7 +22,6 @@ process.on('uncaughtException', (err) => {
 })
 import {
   getUnnotifiedClientMessages,
-  markMessageNotified,
   postAdminReply,
   getConversation,
   getUnnotifiedPendingAppointments,
@@ -40,6 +39,9 @@ import {
   getBotUsers,
   setUserRole,
   deleteUser,
+  markMessageForwarded,
+  getEditedForwardedClientMessages,
+  markMessageEditSynced,
   getUserAppointments,
   settleAfterWrite,
   getUser,
@@ -257,16 +259,36 @@ function formatBotUser(u) {
   )
 }
 
+function formatClientChatMessage(message) {
+  return `\u{1F4AC} ${message.userName || 'Mijoz'}\n${message.text}`
+}
+
 async function forwardClientMessages() {
   const messages = await getUnnotifiedClientMessages()
   for (const message of messages) {
     if (!adminChatId) break
-    const sent = await bot.sendMessage(
-      adminChatId,
-      `\u{1F4AC} ${message.userName || 'Mijoz'}\n${message.text}`
-    )
+    const sent = await bot.sendMessage(adminChatId, formatClientChatMessage(message))
     conversationByTelegramMsgId.set(sent.message_id, message.conversationId)
-    await markMessageNotified(message.id)
+    await markMessageForwarded(message.id, { chatId: adminChatId, messageId: sent.message_id, text: message.text })
+  }
+}
+
+// A client can edit an already-forwarded message from the site's chat widget
+// (see ChatWidget.jsx) — this mirrors that edit into the admin's Telegram
+// chat by editing the same message in place, instead of leaving the stale
+// original text sitting there forever.
+async function syncEditedClientMessages() {
+  const edited = await getEditedForwardedClientMessages()
+  for (const message of edited) {
+    try {
+      await bot.editMessageText(formatClientChatMessage(message), {
+        chat_id: message.tgChatId,
+        message_id: message.tgMessageId,
+      })
+    } catch (err) {
+      console.error('[bot] sync edited client message error:', message.id, err?.message || err)
+    }
+    await markMessageEditSynced(message.id, message.text)
   }
 }
 
@@ -398,6 +420,7 @@ async function maybeSendDailyDigest() {
 async function poll() {
   try {
     await forwardClientMessages()
+    await syncEditedClientMessages()
     await forwardAppointments()
     await forwardNewClients()
     await requestReviews()
