@@ -2148,12 +2148,29 @@ bot.on('callback_query', safeHandler(async (query) => {
 
 bot.on('polling_error', (err) => console.error('[bot] polling error:', err?.message || err))
 
-bot.setMyCommands([
-  { command: 'start', description: "Chat ID va yordam" },
-  { command: 'bugun', description: 'Bugungi navbatlar' },
-  { command: 'navbatlar', description: 'Kelayotgan navbatlar' },
-  { command: 'stats', description: 'Bugungi statistika' },
-]).catch((err) => console.error('[bot] setMyCommands error:', err?.message || err))
+// /bugun, /navbatlar, /stats are gated behind isFromAdmin anyway (an
+// ordinary client typing them just gets ignored), but leaving them in the
+// DEFAULT command scope still showed them as tappable "/" suggestions to
+// every regular customer. A per-chat scope for the admin's own chat keeps
+// the full list there while the default (everyone else) only ever offers
+// /start.
+bot
+  .setMyCommands([{ command: 'start', description: "Chat ID va yordam" }])
+  .catch((err) => console.error('[bot] setMyCommands (default) error:', err?.message || err))
+
+if (adminChatId) {
+  bot
+    .setMyCommands(
+      [
+        { command: 'start', description: "Chat ID va yordam" },
+        { command: 'bugun', description: 'Bugungi navbatlar' },
+        { command: 'navbatlar', description: 'Kelayotgan navbatlar' },
+        { command: 'stats', description: 'Bugungi statistika' },
+      ],
+      { scope: { type: 'chat', chat_id: adminChatId } }
+    )
+    .catch((err) => console.error('[bot] setMyCommands (admin) error:', err?.message || err))
+}
 
 bot
   .setMyShortDescription({
