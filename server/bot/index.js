@@ -1287,6 +1287,19 @@ bot.onText(/^\/start(?:\s+(\S+))?/, safeHandler(async (msg, match) => {
       await bot.sendMessage(msg.chat.id, "Yangi navbat olish yoki profilingizni ko'rish uchun saytga o'ting:", SITE_LINK_BUTTON)
       return
     }
+
+    // Not found by findUserByTelegramId (which excludes deleted accounts) —
+    // check whether that's because they're deactivated rather than never
+    // registered, so they still get the menu (Yordam / Admin bilan chat stay
+    // usable, Mening navbatlarim stays blocked — see sendMyAppointmentsPage)
+    // instead of being funneled into the "link by phone or register" flow
+    // below as if they had no account at all.
+    const deletedAccount = await findAnyUserByTelegramId(msg.from.id).catch(() => null)
+    if (deletedAccount?.deleted) {
+      await bot.sendMessage(msg.chat.id, formatAccountDeletedMessage(), CLIENT_KEYBOARD)
+      return
+    }
+
     // This exact Telegram account has never been seen before — but that
     // doesn't mean the *person* has no account: they may have registered on
     // the site (with its own mandatory Telegram-link step) using a
@@ -1488,6 +1501,14 @@ bot.onText(/^\/xabar(?:\s+([\s\S]+))?/, safeHandler(async (msg, match) => {
 async function sendMyAppointmentsPage(chatId, fromTelegramId, offset, { fresh = false } = {}) {
   const user = await findUserByTelegramId(fromTelegramId)
   if (!user) {
+    // Tell a deactivated account apart from someone who genuinely never
+    // registered — "Mening navbatlarim" stays blocked either way, but a
+    // deleted account gets told why instead of the misleading "go register".
+    const existingAny = await findAnyUserByTelegramId(fromTelegramId).catch(() => null)
+    if (existingAny?.deleted) {
+      await bot.sendMessage(chatId, formatAccountDeletedMessage())
+      return
+    }
     await bot.sendMessage(
       chatId,
       "Sizni topa olmadim. Avval saytda \"Telegram orqali kirish\" tugmasi orqali ro'yxatdan o'ting."
@@ -1565,8 +1586,12 @@ async function handleHelp(msg) {
   }
 }
 
+// Deliberately findAnyUserByTelegramId, not findUserByTelegramId: a
+// deactivated account must still be able to reach the admin (to ask why, or
+// dispute it) even while "Mening navbatlarim" stays blocked — only someone
+// who genuinely never registered gets turned away here.
 async function handleClientChatMessage(msg) {
-  const user = await findUserByTelegramId(msg.from.id)
+  const user = await findAnyUserByTelegramId(msg.from.id)
   if (!user) {
     await bot.sendMessage(
       msg.chat.id,
