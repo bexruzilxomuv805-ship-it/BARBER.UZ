@@ -259,6 +259,13 @@
     "deleteChatConfirmText": "Only the messages in this chat will be deleted. No other data will be affected. This action cannot be undone.",
     "chatDeletedToast": "Chat deleted."
   },
+  "pwaInstall": {
+    "title": "Install the app",
+    "subtitle": "Install Zolotoy Barber on your phone — it opens faster and stays one tap away on your home screen.",
+    "installButton": "Install",
+    "iosStep1": "Tap the \"Share\" button at the bottom of the screen",
+    "iosStep2": "Choose \"Add to Home Screen\""
+  },
   "authErrors": {
     "invalidCredentials": "Incorrect email or password.",
     "accountDeleted": "This account has been deleted. Contact the administrator.",

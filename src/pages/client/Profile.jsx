@@ -6,6 +6,7 @@ import PageHero from '../../components/PageHero'
 import Loader from '../../components/Loader'
 import StatusBadge from '../../components/StatusBadge'
 import Modal from '../../components/admin/Modal'
+import InstallPwaPrompt from '../../components/InstallPwaPrompt'
 import useAuth from '../../hooks/useAuth'
 import { fetchAppointments, updateAppointment } from '../../features/appointments/appointmentsSlice'
 import { updateProfile } from '../../features/auth/authSlice'
@@ -137,6 +138,8 @@ export default function Profile() {
               <p className="text-[11px] text-ink-500 mt-1">{t('profile.statSpent')}</p>
             </div>
           </div>
+
+          <InstallPwaPrompt variant="card" />
         </div>
 
         <div className="lg:col-span-2">

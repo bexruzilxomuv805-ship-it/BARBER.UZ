@@ -14,6 +14,7 @@ import RatingStars from '../../components/RatingStars'
 import ServiceIcon from '../../components/ServiceIcon'
 import Loader from '../../components/Loader'
 import AutoText from '../../components/AutoText'
+import InstallPwaPrompt from '../../components/InstallPwaPrompt'
 import { fetchServices } from '../../features/services/servicesSlice'
 import { fetchBarbers } from '../../features/barbers/barbersSlice'
 import { fetchReviews } from '../../features/reviews/reviewsSlice'
@@ -101,6 +102,10 @@ export default function Home() {
 
   return (
     <div>
+      <div className="container-x pt-4">
+        <InstallPwaPrompt variant="banner" />
+      </div>
+
       {/* HERO */}
       <section className="relative overflow-hidden pt-16 pb-24 sm:pt-24 sm:pb-32">
         <div className="pointer-events-none absolute inset-0 bg-barber-radial" />

@@ -259,6 +259,13 @@
     "deleteChatConfirmText": "Faqat shu suhbatdagi xabarlar butunlay o‘chiriladi. Boshqa hech qanday ma’lumotga ta’sir qilmaydi. Bu amalni ortga qaytarib bo‘lmaydi.",
     "chatDeletedToast": "Suhbat o‘chirildi."
   },
+  "pwaInstall": {
+    "title": "Ilovani o‘rnating",
+    "subtitle": "Zolotoy Barber’ni telefoningizga o‘rnating — tezroq ochiladi va bosh ekranda doim qo‘lingizda turadi.",
+    "installButton": "O‘rnatish",
+    "iosStep1": "Pastdagi \"Ulashish\" (share) tugmasini bosing",
+    "iosStep2": "\"Bosh ekranga qo‘shish\"ni tanlang"
+  },
   "authErrors": {
     "invalidCredentials": "Email yoki parol noto‘g‘ri.",
     "accountDeleted": "Bu hisob o‘chirilgan. Administratorga murojaat qiling.",
