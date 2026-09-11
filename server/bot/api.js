@@ -176,6 +176,18 @@ export async function findUserByTelegramId(telegramId) {
   return data.find((u) => String(u.telegramId) === String(telegramId) && !u.deleted) || null
 }
 
+// Unfiltered counterpart to findUserByTelegramId — used only where the
+// caller must tell "no account at all" apart from "there IS an account here,
+// it's just deleted" (see handleTelegramLoginStart / handleTelegramLinkExisting
+// in server/bot/index.js). Telegram ids are stable, so createTelegramUser
+// would otherwise try to INSERT a new row with the same `u-tg-<id>` primary
+// key as the deleted one and hit a duplicate-key error instead of telling
+// the person their account was deactivated.
+export async function findAnyUserByTelegramId(telegramId) {
+  const { data } = await client.get('/users')
+  return data.find((u) => String(u.telegramId) === String(telegramId)) || null
+}
+
 // Lets a site-registered user (created via Register.jsx, or one whose
 // TelegramLinkGate step never completed) self-link an unrecognized Telegram
 // account by phone number instead of being told to "register on the site"
@@ -185,6 +197,16 @@ export async function findUserByPhone(telefon) {
   if (!digits) return null
   const { data } = await client.get('/users')
   return data.find((u) => String(u.telefon || '').replace(/[^\d]/g, '') === digits && !u.deleted) || null
+}
+
+// Unfiltered counterpart to findUserByPhone — see findAnyUserByTelegramId;
+// same reasoning, so handlePhoneAccountMatch can say "your account was
+// deactivated" instead of the misleading "no account found, register as new".
+export async function findAnyUserByPhone(telefon) {
+  const digits = String(telefon || '').replace(/[^\d]/g, '')
+  if (!digits) return null
+  const { data } = await client.get('/users')
+  return data.find((u) => String(u.telefon || '').replace(/[^\d]/g, '') === digits) || null
 }
 
 export async function setUserPhone(id, telefon) {
@@ -209,19 +231,50 @@ export async function setUserRole(id, role) {
 // Soft delete: flags the row instead of removing it, so restoreUser can bring
 // the account (and everything tied to its id — appointments, messages,
 // reviews, payments, which a hard DELETE never touched anyway) back 100%.
+// deleteNotified:false arms the one-time Telegram DM sent by
+// forwardAccountStatusChanges() (server/bot/index.js) on the next poll,
+// however the delete was triggered — from this same bot action or from the
+// site's admin panel, since both write to the same users row.
 export async function deleteUser(id) {
-  const { data } = await client.patch(`/users/${id}`, { deleted: true, deletedAt: new Date().toISOString() })
+  const { data } = await client.patch(`/users/${id}`, {
+    deleted: true,
+    deletedAt: new Date().toISOString(),
+    deleteNotified: false,
+  })
   return data
 }
 
 export async function restoreUser(id) {
-  const { data } = await client.patch(`/users/${id}`, { deleted: false, deletedAt: null })
+  const { data } = await client.patch(`/users/${id}`, {
+    deleted: false,
+    deletedAt: null,
+    deleteNotified: null,
+    restoreNotified: false,
+  })
   return data
 }
 
 export async function getDeletedUsers() {
   const { data } = await client.get('/users')
   return data.filter((u) => u.deleted)
+}
+
+export async function getUsersPendingDeleteNotice() {
+  const { data } = await client.get('/users')
+  return data.filter((u) => u.deleted && u.telegramId && u.deleteNotified === false)
+}
+
+export async function markUserDeleteNotified(id) {
+  await client.patch(`/users/${id}`, { deleteNotified: true })
+}
+
+export async function getUsersPendingRestoreNotice() {
+  const { data } = await client.get('/users')
+  return data.filter((u) => !u.deleted && u.telegramId && u.restoreNotified === false)
+}
+
+export async function markUserRestoreNotified(id) {
+  await client.patch(`/users/${id}`, { restoreNotified: true })
 }
 
 export async function getUserAppointments(userId) {

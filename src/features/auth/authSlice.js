@@ -95,17 +95,29 @@ export const completeTelegramLogin = createAsyncThunk(
   }
 )
 
+// Sentinel rejection value for refreshUser — lets App.jsx's poll (and the
+// slice's own reducer below) tell "this account was deleted out from under
+// an active session" apart from a plain network hiccup.
+export const ACCOUNT_DELETED = 'ACCOUNT_DELETED'
+
 // Re-fetches the logged-in user's own record so role/profile changes made
 // elsewhere (e.g. an admin promoting them from the Mijozlar page) take
-// effect on the next page load instead of only after a full logout/login —
-// the stored user in localStorage is otherwise frozen at whatever it was
-// when they last logged in. Silently keeps the stale cached user on
-// failure (e.g. offline) rather than logging them out.
+// effect without requiring a full logout/login — the stored user in
+// localStorage is otherwise frozen at whatever it was when they last logged
+// in. App.jsx polls this periodically (not just on mount) specifically so a
+// session gets force-logged-out within seconds of an admin deleting that
+// account elsewhere (site or bot), instead of the person only finding out
+// the next time they happen to reload the page. Silently keeps the stale
+// cached user on a network failure rather than logging them out for that.
 export const refreshUser = createAsyncThunk(
   'auth/refreshUser',
   async (id, { rejectWithValue }) => {
     try {
       const { data } = await client.get(`/users/${id}`)
+      if (data.deleted) {
+        persistUser(null)
+        return rejectWithValue(ACCOUNT_DELETED)
+      }
       const safe = sanitize(data)
       persistUser(safe)
       return safe
@@ -198,6 +210,14 @@ const authSlice = createSlice({
       .addCase(refreshUser.fulfilled, (state, action) => {
         state.user = action.payload
         state.isAuthenticated = true
+      })
+      .addCase(refreshUser.rejected, (state, action) => {
+        if (action.payload === ACCOUNT_DELETED) {
+          state.user = null
+          state.isAuthenticated = false
+          state.status = 'idle'
+          state.error = null
+        }
       })
   },
 })

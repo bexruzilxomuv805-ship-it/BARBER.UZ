@@ -259,6 +259,7 @@
   "authErrors": {
     "invalidCredentials": "Email yoki parol noto‘g‘ri.",
     "accountDeleted": "Bu hisob o‘chirilgan. Administratorga murojaat qiling.",
+    "sessionRevoked": "Hisobingiz administrator tomonidan faolsizlantirildi. Xavfsizlik uchun tizimdan chiqarildingiz.",
     "networkError": "Backend serverga ulanib bo‘lmadi. \"npm run server\" ishga tushirilganini tekshiring (port 4000).",
     "loginFailed": "Kirishda xatolik yuz berdi.",
     "emailTaken": "Bu email bilan foydalanuvchi allaqachon ro‘yxatdan o‘tgan.",

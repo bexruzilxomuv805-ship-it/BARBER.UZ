@@ -41,7 +41,9 @@ import {
   getTelegramLogin,
   confirmTelegramLogin,
   findUserByTelegramId,
+  findAnyUserByTelegramId,
   findUserByPhone,
+  findAnyUserByPhone,
   createTelegramUser,
   setUserPhone,
   setUserTelegramLink,
@@ -50,6 +52,10 @@ import {
   deleteUser,
   restoreUser,
   getDeletedUsers,
+  getUsersPendingDeleteNotice,
+  markUserDeleteNotified,
+  getUsersPendingRestoreNotice,
+  markUserRestoreNotified,
   markMessageForwarded,
   getEditedForwardedMessages,
   markMessageEditSynced,
@@ -409,6 +415,51 @@ async function forwardNewClients() {
   }
 }
 
+function formatAccountDeletedMessage() {
+  return (
+    "\u{26A0}️ Hurmatli mijoz!\n\n" +
+    'Sizning hisobingiz administrator tomonidan vaqtincha faolsizlantirildi. ' +
+    "Shu sababli saytga kirish va botning ba'zi funksiyalaridan foydalanish hozircha imkonsiz.\n\n" +
+    "Buni xato deb hisoblasangiz yoki savolingiz bo'lsa — administrator bilan bog'laning."
+  )
+}
+
+function formatAccountRestoredMessage() {
+  return (
+    "✅ Hurmatli mijoz!\n\n" +
+    "Sizning hisobingiz administrator tomonidan qayta tiklandi — profilingiz, navbatlar tarixi va boshqa " +
+    "barcha ma'lumotlaringiz to'liq saqlanib qolgan.\n\n" +
+    "Endi saytga va botga yana bemalol kirishingiz mumkin. Xush kelibsiz! \u{1F44B}"
+  )
+}
+
+// Notifies a user by Telegram DM the moment their account is deleted or
+// restored — whichever side triggered it (this bot's own "O'chirish"/
+// "Qaytarish" buttons, or the site's admin Mijozlar page), since both just
+// flip the same `deleted` flag on the same users row and arm the matching
+// *Notified:false marker for this to pick up on the next poll.
+async function forwardAccountStatusChanges() {
+  const deleted = await getUsersPendingDeleteNotice()
+  for (const u of deleted) {
+    try {
+      await bot.sendMessage(u.telegramId, formatAccountDeletedMessage())
+    } catch (err) {
+      console.error('[bot] account-deleted notice error:', u.id, err?.message || err)
+    }
+    await markUserDeleteNotified(u.id)
+  }
+
+  const restored = await getUsersPendingRestoreNotice()
+  for (const u of restored) {
+    try {
+      await bot.sendMessage(u.telegramId, formatAccountRestoredMessage())
+    } catch (err) {
+      console.error('[bot] account-restored notice error:', u.id, err?.message || err)
+    }
+    await markUserRestoreNotified(u.id)
+  }
+}
+
 async function requestReviews() {
   const appointments = await getUnreviewedCompletedAppointments()
   for (const a of appointments) {
@@ -478,6 +529,7 @@ async function poll() {
     await syncEditedMessages()
     await forwardAppointments()
     await forwardNewClients()
+    await forwardAccountStatusChanges()
     await requestReviews()
   } catch (err) {
     console.error('[bot] poll error:', err?.message || err)
@@ -958,6 +1010,10 @@ async function handleTelegramLinkExisting(msg, token, login) {
       await bot.sendMessage(msg.chat.id, "Sizning saytdagi profilingiz topilmadi. Qaytadan ro'yxatdan o'ting.")
       return
     }
+    if (target.deleted) {
+      await bot.sendMessage(msg.chat.id, formatAccountDeletedMessage())
+      return
+    }
 
     const updated = await withRetry(
       () => setUserTelegramLink(target.id, { telegramId: tgUser.id, telegramUsername: tgUser.username || '' }),
@@ -996,6 +1052,18 @@ async function handleTelegramLoginStart(msg, token) {
     }
 
     const tgUser = msg.from
+
+    // findUserByTelegramId excludes deleted accounts, but their id
+    // (`u-tg-<telegramId>`) is deterministic — falling through to
+    // createTelegramUser below would try to INSERT a row that already
+    // exists (just soft-deleted) and crash on a duplicate-key error instead
+    // of telling this person their account was deactivated.
+    const existingAny = await findAnyUserByTelegramId(tgUser.id)
+    if (existingAny?.deleted) {
+      await bot.sendMessage(msg.chat.id, formatAccountDeletedMessage())
+      return
+    }
+
     const result = await withRetry(async () => {
       let user = await findUserByTelegramId(tgUser.id)
       if (!user) {
@@ -1079,6 +1147,14 @@ async function handlePhoneAccountMatch(msg) {
     awaitingPhoneForAccountMatch.delete(msg.chat.id)
 
     if (!match) {
+      // findUserByPhone excludes deleted accounts — check separately so a
+      // deactivated person is told the actual reason instead of the
+      // misleading "no account found, register as new".
+      const deletedMatch = await findAnyUserByPhone(phone).catch(() => null)
+      if (deletedMatch?.deleted) {
+        await bot.sendMessage(msg.chat.id, formatAccountDeletedMessage())
+        return
+      }
       await bot.sendMessage(
         msg.chat.id,
         "\u{274C} Bu raqam bilan hisob topilmadi. Yangi mijoz sifatida ro'yxatdan o'tish uchun saytdagi \"Telegram orqali kirish\" tugmasini bosing.",
