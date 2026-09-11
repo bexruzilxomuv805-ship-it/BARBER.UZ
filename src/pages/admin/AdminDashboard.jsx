@@ -56,7 +56,7 @@ export default function AdminDashboard() {
     const totalRevenue = payments.reduce((sum, p) => sum + (p.summa || 0), 0)
     const appointmentsToday = appointments.filter((a) => a.sana === todayStr)
     const cancelled = appointments.filter((a) => a.holat === 'bekor qilingan')
-    const clients = customers.filter((c) => c.role === 'client')
+    const clients = customers.filter((c) => c.role === 'client' && !c.deleted)
     return { totalRevenue, appointmentsToday: appointmentsToday.length, cancelled: cancelled.length, clients: clients.length }
   }, [payments, appointments, customers, todayStr])
 

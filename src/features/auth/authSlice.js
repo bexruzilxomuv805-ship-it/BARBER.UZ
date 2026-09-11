@@ -66,6 +66,9 @@ export const loginUser = createAsyncThunk(
       if (!user || user.parol !== parol) {
         return rejectWithValue(i18n.t('authErrors.invalidCredentials'))
       }
+      if (user.deleted) {
+        return rejectWithValue(i18n.t('authErrors.accountDeleted'))
+      }
       const safe = sanitize(user)
       persistUser(safe)
       return safe

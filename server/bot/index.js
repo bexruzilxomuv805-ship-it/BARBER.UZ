@@ -48,6 +48,8 @@ import {
   getBotUsers,
   setUserRole,
   deleteUser,
+  restoreUser,
+  getDeletedUsers,
   markMessageForwarded,
   getEditedForwardedMessages,
   markMessageEditSynced,
@@ -535,6 +537,7 @@ const BTN_BUGUN = "\u{1F4C5} Bugungi navbatlar"
 const BTN_NAVBATLAR = "\u{1F5D3}️ Kelayotgan navbatlar"
 const BTN_STATS = "\u{1F4CA} Statistika"
 const BTN_USERS = "\u{1F465} Foydalanuvchilar"
+const BTN_DELETED_USERS = "\u{1F5D1}️ O'chirilganlar"
 const BTN_BROADCAST = "\u{1F4E2} Xabar yuborish"
 
 const MENU_KEYBOARD = {
@@ -542,7 +545,7 @@ const MENU_KEYBOARD = {
     keyboard: [
       [{ text: BTN_BUGUN }, { text: BTN_NAVBATLAR }],
       [{ text: BTN_STATS }, { text: BTN_USERS }],
-      [{ text: BTN_BROADCAST }],
+      [{ text: BTN_DELETED_USERS }, { text: BTN_BROADCAST }],
     ],
     resize_keyboard: true,
     is_persistent: true,
@@ -1203,7 +1206,7 @@ bot.onText(/^\/start(?:\s+(\S+))?/, safeHandler(async (msg, match) => {
   bot.sendMessage(
     msg.chat.id,
     `Salom! Botga xush kelibsiz.\n\n` +
-      `Pastdagi menyudan yoki buyruqlardan foydalaning:\n/bugun /navbatlar /stats /foydalanuvchilar /xabar\n\n` +
+      `Pastdagi menyudan yoki buyruqlardan foydalaning:\n/bugun /navbatlar /stats /foydalanuvchilar /ochirilganlar /xabar\n\n` +
       `Eslatma: mijozga javob yozish uchun uning xabariga shu yerda albatta "Reply" qilib yozing.`,
     MENU_KEYBOARD
   )
@@ -1278,6 +1281,51 @@ async function sendUsersPage(chatId, offset, { fresh = false } = {}) {
 bot.onText(/^\/foydalanuvchilar/, safeHandler(async (msg) => {
   if (!isSuperAdmin(msg)) return
   await sendUsersPage(msg.chat.id, 0, { fresh: true })
+}))
+
+async function sendDeletedUsersPage(chatId, offset, { fresh = false } = {}) {
+  const users = await getDeletedUsers()
+  if (!users.length) {
+    await bot.sendMessage(chatId, "O'chirilgan foydalanuvchilar yo'q.")
+    return
+  }
+  const page = users.slice(offset, offset + USERS_PAGE_SIZE)
+  if (!page.length) {
+    await bot.sendMessage(chatId, "Boshqa foydalanuvchi yo'q.")
+    return
+  }
+
+  await clearListCards(chatId, 'deletedusers')
+  if (fresh) {
+    await bot.sendMessage(chatId, `\u{1F5D1}️ O'chirilgan foydalanuvchilar (${users.length} ta):`)
+  }
+
+  const cardIds = []
+  for (const u of page) {
+    const sent = await bot.sendMessage(chatId, formatBotUser(u), {
+      reply_markup: {
+        inline_keyboard: [[{ text: '♻️ Qaytarish', callback_data: `restoreuser:${u.id}` }]],
+      },
+    })
+    cardIds.push(sent.message_id)
+  }
+
+  const navRow = buildPageNavRow('deletedpage', offset, USERS_PAGE_SIZE, users.length)
+  if (navRow.length) {
+    const sentBtn = await bot.sendMessage(
+      chatId,
+      `${offset + 1}-${Math.min(offset + USERS_PAGE_SIZE, users.length)} / ${users.length}`,
+      { reply_markup: { inline_keyboard: [navRow] } }
+    )
+    cardIds.push(sentBtn.message_id)
+  }
+
+  activeListCards.set(`${chatId}:deletedusers`, cardIds)
+}
+
+bot.onText(/^\/ochirilganlar/, safeHandler(async (msg) => {
+  if (!isSuperAdmin(msg)) return
+  await sendDeletedUsersPage(msg.chat.id, 0, { fresh: true })
 }))
 
 // broadcastId -> { text, targets: [{ chatId, messageId }] } — kept in memory
@@ -1512,6 +1560,14 @@ bot.on('message', safeHandler(async (msg) => {
       return
     }
     await sendUsersPage(msg.chat.id, 0, { fresh: true })
+    return
+  }
+  if (msg.text === BTN_DELETED_USERS) {
+    if (!isSuperAdmin(msg)) {
+      await bot.sendMessage(msg.chat.id, "Ruxsat yo'q.")
+      return
+    }
+    await sendDeletedUsersPage(msg.chat.id, 0, { fresh: true })
     return
   }
   if (msg.text === BTN_BROADCAST) {
@@ -1831,6 +1887,16 @@ bot.on('callback_query', safeHandler(async (query) => {
     return
   }
 
+  if (action === 'deletedpage') {
+    if (!isSuperAdmin(query)) {
+      await bot.answerCallbackQuery(query.id, { text: "Ruxsat yo'q", show_alert: true })
+      return
+    }
+    await bot.answerCallbackQuery(query.id)
+    await sendDeletedUsersPage(query.message.chat.id, Number(id) || 0)
+    return
+  }
+
   if (action === 'navbatlarpage') {
     if (!isFromAdmin(query.message)) {
       await bot.answerCallbackQuery(query.id, { text: "Ruxsat yo'q", show_alert: true })
@@ -1900,7 +1966,7 @@ bot.on('callback_query', safeHandler(async (query) => {
     return
   }
 
-  if (action === 'promote' || action === 'demote' || action === 'deleteuser') {
+  if (action === 'promote' || action === 'demote' || action === 'deleteuser' || action === 'restoreuser') {
     if (!isSuperAdmin(query)) {
       await bot.answerCallbackQuery(query.id, { text: "Ruxsat yo'q", show_alert: true })
       return
@@ -1914,9 +1980,12 @@ bot.on('callback_query', safeHandler(async (query) => {
       } else if (action === 'demote') {
         await setUserRole(id, 'client')
         label = '⬇️ Admindan olindi'
-      } else {
+      } else if (action === 'deleteuser') {
         await deleteUser(id)
         label = "❌ O'chirildi"
+      } else {
+        await restoreUser(id)
+        label = "♻️ Qaytarildi — sayt va botda to'liq tiklandi"
       }
       await bot.editMessageText(`${originalText}\n\n${label}`, {
         chat_id: query.message.chat.id,

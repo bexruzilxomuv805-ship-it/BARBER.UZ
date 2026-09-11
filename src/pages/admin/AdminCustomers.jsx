@@ -2,12 +2,12 @@ import { useEffect, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { FaSearch, FaEdit, FaTrash, FaUserPlus, FaUserCircle, FaUserShield, FaTelegramPlane, FaComments } from 'react-icons/fa'
+import { FaSearch, FaEdit, FaTrash, FaUserPlus, FaUserCircle, FaUserShield, FaTelegramPlane, FaComments, FaTrashRestore } from 'react-icons/fa'
 import Loader from '../../components/Loader'
 import Modal from '../../components/admin/Modal'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import {
-  fetchCustomers, createCustomer, updateCustomer, removeCustomer,
+  fetchCustomers, createCustomer, updateCustomer,
 } from '../../features/customers/customersSlice'
 import { fetchAppointments } from '../../features/appointments/appointmentsSlice'
 import { showToast } from '../../features/ui/uiSlice'
@@ -29,6 +29,7 @@ export default function AdminCustomers() {
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState(emptyForm)
   const [toDelete, setToDelete] = useState(null)
+  const [view, setView] = useState('active') // 'active' | 'deleted'
   // Telegram-registered accounts never collect a familiya/email (the bot
   // only asks for a phone number) — only require those two for accounts
   // created through the site's own Register form / this admin form itself.
@@ -46,11 +47,14 @@ export default function AdminCustomers() {
     dispatch(fetchAppointments())
   }, POLL_MS)
 
+  const activeUsers = useMemo(() => users.filter((c) => !c.deleted), [users])
+  const deletedUsers = useMemo(() => users.filter((c) => c.deleted), [users])
+
   // Everyone who signed up (client or promoted admin) — promoting someone to
   // admin should not make them vanish from this list, so we don't filter by
   // role here.
   const withStats = useMemo(() => {
-    return users
+    return (view === 'active' ? activeUsers : deletedUsers)
       .filter((c) =>
         search ? `${c.ism} ${c.familiya} ${c.email}`.toLowerCase().includes(search.toLowerCase()) : true
       )
@@ -61,7 +65,7 @@ export default function AdminCustomers() {
           .reduce((sum, a) => sum + (a.narxi || 0), 0)
         return { ...c, visits: myAppointments.length, spent }
       })
-  }, [users, appointments, search])
+  }, [activeUsers, deletedUsers, view, appointments, search])
 
   const openCreate = () => {
     setEditing(null)
@@ -88,9 +92,17 @@ export default function AdminCustomers() {
     setModalOpen(false)
   }
 
+  // Soft delete: flags the account instead of removing it, so it shows up
+  // under "O'chirilganlar" and can be fully restored from there (or from the
+  // bot's matching menu) — see handleRestore.
   const handleDelete = (id) => {
-    dispatch(removeCustomer(id))
+    dispatch(updateCustomer({ id, changes: { deleted: true, deletedAt: new Date().toISOString() } }))
     dispatch(showToast({ type: 'success', text: t('admin.customers.deletedToast') }))
+  }
+
+  const handleRestore = (c) => {
+    dispatch(updateCustomer({ id: c.id, changes: { deleted: false, deletedAt: null } }))
+    dispatch(showToast({ type: 'success', text: t('admin.customers.restoredToast', { name: c.ism }) }))
   }
 
   const handlePromote = (c) => {
@@ -107,22 +119,50 @@ export default function AdminCustomers() {
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl font-bold text-white">{t('admin.customers.title')}</h1>
-          <p className="text-sm text-ink-500 mt-1">{t('admin.customers.subtitle', { count: users.length })}</p>
+          <h1 className="font-display text-2xl font-bold text-white">
+            {view === 'active' ? t('admin.customers.title') : t('admin.customers.deletedTitle')}
+          </h1>
+          <p className="text-sm text-ink-500 mt-1">
+            {view === 'active'
+              ? t('admin.customers.subtitle', { count: activeUsers.length })
+              : t('admin.customers.deletedSubtitle', { count: deletedUsers.length })}
+          </p>
         </div>
-        <button onClick={openCreate} className="btn-gold !py-2 text-sm">
-          <FaUserPlus /> {t('admin.customers.addCustomer')}
-        </button>
+        {view === 'active' && (
+          <button onClick={openCreate} className="btn-gold !py-2 text-sm">
+            <FaUserPlus /> {t('admin.customers.addCustomer')}
+          </button>
+        )}
       </div>
 
-      <div className="relative mb-4 max-w-sm">
-        <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-500 text-sm" />
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder={t('admin.customers.searchPlaceholder')}
-          className="input-field !py-2.5 pl-10 text-sm"
-        />
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="relative max-w-sm flex-1">
+          <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-500 text-sm" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={t('admin.customers.searchPlaceholder')}
+            className="input-field !py-2.5 pl-10 text-sm"
+          />
+        </div>
+        <div className="flex gap-1.5 rounded-lg bg-ink-800/60 p-1 text-sm">
+          <button
+            onClick={() => setView('active')}
+            className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
+              view === 'active' ? 'bg-gold-500/10 text-gold-400' : 'text-ink-400 hover:text-white'
+            }`}
+          >
+            {t('admin.customers.title')}
+          </button>
+          <button
+            onClick={() => setView('deleted')}
+            className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
+              view === 'deleted' ? 'bg-gold-500/10 text-gold-400' : 'text-ink-400 hover:text-white'
+            }`}
+          >
+            {t('admin.customers.deletedTab', { count: deletedUsers.length })}
+          </button>
+        </div>
       </div>
 
       {status === 'loading' ? (
@@ -196,7 +236,15 @@ export default function AdminCustomers() {
                     <td className="px-4 py-3 text-gold-400 font-medium">{formatSum(c.spent)}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1.5">
-                        {isSelf ? (
+                        {view === 'deleted' ? (
+                          <button
+                            onClick={() => handleRestore(c)}
+                            title={t('admin.customers.restore')}
+                            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-emerald-400 hover:bg-emerald-500/10"
+                          >
+                            <FaTrashRestore /> {t('admin.customers.restore')}
+                          </button>
+                        ) : isSelf ? (
                           <span className="px-2 text-xs text-ink-500">{t('admin.customers.you')}</span>
                         ) : (
                           <>
@@ -222,7 +270,9 @@ export default function AdminCustomers() {
               })}
               {withStats.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-ink-500">{t('admin.customers.notFound')}</td>
+                  <td colSpan={6} className="px-4 py-10 text-center text-ink-500">
+                    {view === 'deleted' ? t('admin.customers.deletedEmpty') : t('admin.customers.notFound')}
+                  </td>
                 </tr>
               )}
             </tbody>

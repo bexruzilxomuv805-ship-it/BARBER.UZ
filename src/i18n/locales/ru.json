@@ -258,6 +258,7 @@
   },
   "authErrors": {
     "invalidCredentials": "Неверный email или пароль.",
+    "accountDeleted": "Этот аккаунт удалён. Обратитесь к администратору.",
     "networkError": "Не удалось подключиться к серверу. Проверьте, запущена ли команда \"npm run server\" (порт 4000).",
     "loginFailed": "Ошибка при входе.",
     "emailTaken": "Пользователь с таким email уже зарегистрирован.",
@@ -343,7 +344,7 @@
       "emailLabel": "Email",
       "phoneLabel": "Телефон",
       "passwordLabel": "Пароль",
-      "deleteConfirmText": "Клиент и его аккаунт будут удалены безвозвратно.",
+      "deleteConfirmText": "Клиент будет перемещён в список «Удалённые» — его можно полностью восстановить в любой момент.",
       "updatedToast": "Клиент обновлён.",
       "addedToast": "Клиент добавлен.",
       "deletedToast": "Клиент удалён.",
@@ -355,7 +356,13 @@
       "roleAdmin": "Админ",
       "roleClient": "Клиент",
       "you": "Вы",
-      "openChat": "Открыть чат"
+      "openChat": "Открыть чат",
+      "deletedTitle": "Удалённые клиенты",
+      "deletedSubtitle": "Всего удалённых клиентов: {{count}}.",
+      "deletedTab": "Удалённые ({{count}})",
+      "deletedEmpty": "Удалённых клиентов нет.",
+      "restore": "Восстановить",
+      "restoredToast": "{{name}} полностью восстановлен."
     },
     "barbers": {
       "title": "Мастера",

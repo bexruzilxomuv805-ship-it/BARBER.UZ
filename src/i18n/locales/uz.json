@@ -258,6 +258,7 @@
   },
   "authErrors": {
     "invalidCredentials": "Email yoki parol noto‘g‘ri.",
+    "accountDeleted": "Bu hisob o‘chirilgan. Administratorga murojaat qiling.",
     "networkError": "Backend serverga ulanib bo‘lmadi. \"npm run server\" ishga tushirilganini tekshiring (port 4000).",
     "loginFailed": "Kirishda xatolik yuz berdi.",
     "emailTaken": "Bu email bilan foydalanuvchi allaqachon ro‘yxatdan o‘tgan.",
@@ -343,7 +344,7 @@
       "emailLabel": "Email",
       "phoneLabel": "Telefon",
       "passwordLabel": "Parol",
-      "deleteConfirmText": "Mijoz va uning hisobi butunlay o‘chiriladi.",
+      "deleteConfirmText": "Mijoz \"O‘chirilganlar\" ro‘yxatiga o‘tkaziladi — istalgan vaqt to‘liq qaytarish mumkin.",
       "updatedToast": "Mijoz yangilandi.",
       "addedToast": "Mijoz qo‘shildi.",
       "deletedToast": "Mijoz o‘chirildi.",
@@ -355,7 +356,13 @@
       "roleAdmin": "Admin",
       "roleClient": "Mijoz",
       "you": "Siz",
-      "openChat": "Chatga o'tish"
+      "openChat": "Chatga o'tish",
+      "deletedTitle": "O‘chirilgan mijozlar",
+      "deletedSubtitle": "Jami {{count}} ta o‘chirilgan mijoz.",
+      "deletedTab": "O‘chirilganlar ({{count}})",
+      "deletedEmpty": "O‘chirilgan mijozlar yo‘q.",
+      "restore": "Qaytarish",
+      "restoredToast": "{{name}} to‘liq qaytarildi."
     },
     "barbers": {
       "title": "Ustalar",

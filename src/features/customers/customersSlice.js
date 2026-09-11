@@ -1,7 +1,10 @@
 import { createCrudSlice } from '../common/createCrudSlice'
 
 // "Customers" reuses the /users endpoint, filtered to role=client in selectors.
-const { slice, fetchAll, createItem, updateItem, removeItem } = createCrudSlice({
+// There's no removeCustomer here: deleting a customer must stay recoverable
+// (see AdminCustomers' restore button), so it's done via updateCustomer
+// setting `deleted`/`deletedAt` instead of a real DELETE.
+const { slice, fetchAll, createItem, updateItem } = createCrudSlice({
   name: 'customers',
   endpoint: '/users',
 })
@@ -9,5 +12,4 @@ const { slice, fetchAll, createItem, updateItem, removeItem } = createCrudSlice(
 export const fetchCustomers = fetchAll
 export const createCustomer = createItem
 export const updateCustomer = updateItem
-export const removeCustomer = removeItem
 export default slice.reducer

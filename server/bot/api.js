@@ -146,7 +146,7 @@ export async function setAppointmentArrival(id, kelganmi) {
 
 export async function getUnnotifiedNewClients() {
   const { data } = await client.get('/users', { params: { role: 'client' } })
-  return data.filter((u) => !u.tgNotified)
+  return data.filter((u) => !u.tgNotified && !u.deleted)
 }
 
 export async function markUserNotified(id) {
@@ -171,7 +171,9 @@ export async function findUserByTelegramId(telegramId) {
   // Most users don't have a telegramId at all, so this can't be a plain
   // equality query param — fetch and filter in JS instead.
   const { data } = await client.get('/users')
-  return data.find((u) => String(u.telegramId) === String(telegramId)) || null
+  // A deleted account must not resolve to anything usable until an admin
+  // restores it (see restoreUser) — treat it the same as "no account".
+  return data.find((u) => String(u.telegramId) === String(telegramId) && !u.deleted) || null
 }
 
 // Lets a site-registered user (created via Register.jsx, or one whose
@@ -182,7 +184,7 @@ export async function findUserByPhone(telefon) {
   const digits = String(telefon || '').replace(/[^\d]/g, '')
   if (!digits) return null
   const { data } = await client.get('/users')
-  return data.find((u) => String(u.telefon || '').replace(/[^\d]/g, '') === digits) || null
+  return data.find((u) => String(u.telefon || '').replace(/[^\d]/g, '') === digits && !u.deleted) || null
 }
 
 export async function setUserPhone(id, telefon) {
@@ -196,7 +198,7 @@ export async function setUserTelegramLink(id, { telegramId, telegramUsername }) 
 
 export async function getBotUsers() {
   const { data } = await client.get('/users')
-  return data.filter((u) => u.telegramId)
+  return data.filter((u) => u.telegramId && !u.deleted)
 }
 
 export async function setUserRole(id, role) {
@@ -204,8 +206,22 @@ export async function setUserRole(id, role) {
   return data
 }
 
+// Soft delete: flags the row instead of removing it, so restoreUser can bring
+// the account (and everything tied to its id — appointments, messages,
+// reviews, payments, which a hard DELETE never touched anyway) back 100%.
 export async function deleteUser(id) {
-  await client.delete(`/users/${id}`)
+  const { data } = await client.patch(`/users/${id}`, { deleted: true, deletedAt: new Date().toISOString() })
+  return data
+}
+
+export async function restoreUser(id) {
+  const { data } = await client.patch(`/users/${id}`, { deleted: false, deletedAt: null })
+  return data
+}
+
+export async function getDeletedUsers() {
+  const { data } = await client.get('/users')
+  return data.filter((u) => u.deleted)
 }
 
 export async function getUserAppointments(userId) {
