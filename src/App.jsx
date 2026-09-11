@@ -36,21 +36,39 @@ export default function App() {
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const { t } = useTranslation()
-  const userId = useSelector((s) => s.auth.user?.id)
+  const user = useSelector((s) => s.auth.user)
+  const userId = user?.id
 
   // Sync role/profile changes an admin made elsewhere (e.g. promoting this
   // user from Mijozlar) onto this browser's cached session, so a plain page
-  // reload picks them up instead of requiring a full logout/login. Also
-  // catches an admin deleting THIS account while the person is still
-  // actively using the site — refreshUser rejects with ACCOUNT_DELETED (see
-  // authSlice.js), which force-logs-out an already-open session within one
-  // poll instead of leaving it looking normal until something breaks.
+  // reload picks them up instead of requiring a full logout/login — and
+  // surfaces a toast the moment that role actually changes (promoted to
+  // admin or demoted back to client), whichever side made the change (this
+  // poll just reads the row; server/bot's forwardRoleChanges reads the same
+  // row to DM the person on Telegram). Also catches an admin deleting THIS
+  // account while the person is still actively using the site —
+  // refreshUser rejects with ACCOUNT_DELETED (see authSlice.js), which
+  // force-logs-out an already-open session within one poll instead of
+  // leaving it looking normal until something breaks.
   const checkSession = async () => {
     if (!userId) return
+    const prevRole = user?.role
     const result = await dispatch(refreshUser(userId))
     if (refreshUser.rejected.match(result) && result.payload === ACCOUNT_DELETED) {
       dispatch(showToast({ type: 'error', text: t('authErrors.sessionRevoked') }))
       navigate('/kirish')
+      return
+    }
+    if (refreshUser.fulfilled.match(result)) {
+      const newRole = result.payload.role
+      if (prevRole && newRole && newRole !== prevRole) {
+        dispatch(
+          showToast({
+            type: 'success',
+            text: newRole === 'admin' ? t('authErrors.roleUpgraded') : t('authErrors.roleDowngraded'),
+          })
+        )
+      }
     }
   }
 

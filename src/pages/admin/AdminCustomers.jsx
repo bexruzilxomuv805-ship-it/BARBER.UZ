@@ -115,13 +115,18 @@ export default function AdminCustomers() {
     dispatch(showToast({ type: 'success', text: t('admin.customers.restoredToast', { name: c.ism }) }))
   }
 
+  // roleNotified:false mirrors server/bot/api.js's setUserRoleWithNotice() —
+  // it's what arms the bot's one-time "you're now an admin"/"no longer an
+  // admin" Telegram DM (forwardRoleChanges), same reasoning as
+  // deleteNotified above: the site and the bot are separate processes and
+  // only share this DB row, not code.
   const handlePromote = (c) => {
-    dispatch(updateCustomer({ id: c.id, changes: { role: 'admin' } }))
+    dispatch(updateCustomer({ id: c.id, changes: { role: 'admin', roleNotified: false } }))
     dispatch(showToast({ type: 'success', text: t('admin.customers.promotedToast', { name: c.ism }) }))
   }
 
   const handleDemote = (c) => {
-    dispatch(updateCustomer({ id: c.id, changes: { role: 'client' } }))
+    dispatch(updateCustomer({ id: c.id, changes: { role: 'client', roleNotified: false } }))
     dispatch(showToast({ type: 'success', text: t('admin.customers.demotedToast', { name: c.ism }) }))
   }
 

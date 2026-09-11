@@ -223,9 +223,31 @@ export async function getBotUsers() {
   return data.filter((u) => u.telegramId && !u.deleted)
 }
 
+// Bare role change, no notification armed — used only for the automatic
+// TELEGRAM_SUPER_ADMIN_USERNAME sync in handleTelegramLoginStart (server/bot/
+// index.js), which isn't a deliberate "someone promoted you" admin action.
 export async function setUserRole(id, role) {
   const { data } = await client.patch(`/users/${id}`, { role })
   return data
+}
+
+// Deliberate role change by an admin (bot's ⭐/⬇️ buttons) — arms the
+// one-time "you're now an admin"/"you're no longer an admin" Telegram DM
+// sent by forwardRoleChanges(). AdminCustomers.jsx's handlePromote/
+// handleDemote arm the same roleNotified:false flag directly since the site
+// and bot are separate processes sharing only this DB row.
+export async function setUserRoleWithNotice(id, role) {
+  const { data } = await client.patch(`/users/${id}`, { role, roleNotified: false })
+  return data
+}
+
+export async function getUsersPendingRoleNotice() {
+  const { data } = await client.get('/users')
+  return data.filter((u) => u.telegramId && u.roleNotified === false)
+}
+
+export async function markUserRoleNotified(id) {
+  await client.patch(`/users/${id}`, { roleNotified: true })
 }
 
 // Soft delete: flags the row instead of removing it, so restoreUser can bring

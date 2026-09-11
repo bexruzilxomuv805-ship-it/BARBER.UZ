@@ -260,6 +260,8 @@
     "invalidCredentials": "Incorrect email or password.",
     "accountDeleted": "This account has been deleted. Contact the administrator.",
     "sessionRevoked": "Your account was deactivated by the administrator. You've been signed out for security.",
+    "roleUpgraded": "You've been granted administrator rights!",
+    "roleDowngraded": "Your administrator rights have been revoked.",
     "networkError": "Could not connect to the backend. Make sure \"npm run server\" is running (port 4000).",
     "loginFailed": "Something went wrong while signing in.",
     "emailTaken": "A user with this email is already registered.",

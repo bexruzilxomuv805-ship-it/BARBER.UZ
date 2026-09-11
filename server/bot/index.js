@@ -49,6 +49,9 @@ import {
   setUserTelegramLink,
   getBotUsers,
   setUserRole,
+  setUserRoleWithNotice,
+  getUsersPendingRoleNotice,
+  markUserRoleNotified,
   deleteUser,
   restoreUser,
   getDeletedUsers,
@@ -506,6 +509,37 @@ async function forwardAccountStatusChanges() {
   }
 }
 
+function formatRolePromotedMessage() {
+  return (
+    "⭐ Tabriklaymiz!\n\n" +
+    "Sizga administrator huquqi berildi. Endi botning boshqaruv menyusidan " +
+    "(Bugungi navbatlar, Statistika, Foydalanuvchilar va boshqalar) foydalanishingiz mumkin."
+  )
+}
+
+function formatRoleDemotedMessage() {
+  return (
+    "ℹ️ Xabar\n\n" +
+    "Sizning administrator huquqingiz administrator tomonidan olib tashlandi. " +
+    "Endi oddiy mijoz sifatida davom etasiz."
+  )
+}
+
+// Notifies a user by Telegram DM the moment their role changes (client <->
+// admin) — whichever side triggered it (this bot's own ⭐/⬇️ buttons via
+// setUserRoleWithNotice, or the site's admin Mijozlar page), since both just
+// arm roleNotified:false on the same users row for this to pick up on the
+// next 5s poll. Unlike the auto TELEGRAM_SUPER_ADMIN_USERNAME sync (plain
+// setUserRole in handleTelegramLoginStart), which never arms this at all.
+async function forwardRoleChanges() {
+  const pending = await getUsersPendingRoleNotice()
+  for (const u of pending) {
+    const text = u.role === 'admin' ? formatRolePromotedMessage() : formatRoleDemotedMessage()
+    await notifyAccountHolder(u, text)
+    await markUserRoleNotified(u.id)
+  }
+}
+
 async function requestReviews() {
   const appointments = await getUnreviewedCompletedAppointments()
   for (const a of appointments) {
@@ -576,6 +610,7 @@ async function poll() {
     await forwardAppointments()
     await forwardNewClients()
     await forwardAccountStatusChanges()
+    await forwardRoleChanges()
     await requestReviews()
   } catch (err) {
     console.error('[bot] poll error:', err?.message || err)
@@ -2122,10 +2157,10 @@ bot.on('callback_query', safeHandler(async (query) => {
       const originalText = query.message?.text || ''
       let label
       if (action === 'promote') {
-        await setUserRole(id, 'admin')
+        await setUserRoleWithNotice(id, 'admin')
         label = '⭐ Admin qilindi'
       } else if (action === 'demote') {
-        await setUserRole(id, 'client')
+        await setUserRoleWithNotice(id, 'client')
         label = '⬇️ Admindan olindi'
       } else if (action === 'deleteuser') {
         await deleteUser(id)
