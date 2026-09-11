@@ -433,28 +433,57 @@ function formatAccountRestoredMessage() {
   )
 }
 
-// Notifies a user by Telegram DM the moment their account is deleted or
-// restored — whichever side triggered it (this bot's own "O'chirish"/
-// "Qaytarish" buttons, or the site's admin Mijozlar page), since both just
-// flip the same `deleted` flag on the same users row and arm the matching
-// *Notified:false marker for this to pick up on the next poll.
+function formatUserLine(u) {
+  return (
+    `${u.ism || ''} ${u.familiya || ''}`.trim() +
+    (u.telegramUsername ? ` (@${u.telegramUsername})` : '') +
+    `\n\u{1F4DE} ${u.telefon || '—'}`
+  )
+}
+
+function formatAdminDeleteNotice(u) {
+  return `\u{1F5D1}️ Hisob o'chirildi\n\n${formatUserLine(u)}`
+}
+
+function formatAdminRestoreNotice(u) {
+  return `♻️ Hisob tiklandi\n\n${formatUserLine(u)}`
+}
+
+// Notifies the affected user by Telegram DM (when they have one linked) AND
+// the admin chat (always, so this is visible in Telegram no matter which
+// side — this bot's own "O'chirish"/"Qaytarish" buttons, or the site's admin
+// Mijozlar page — made the change) the moment an account is deleted or
+// restored. Both sides just flip the same `deleted` flag and arm the
+// matching *Notified:false marker on the same users row for this to pick up
+// on the next 5s poll — see deleteUser/restoreUser above and
+// AdminCustomers.jsx's handleDelete/handleRestore.
 async function forwardAccountStatusChanges() {
   const deleted = await getUsersPendingDeleteNotice()
   for (const u of deleted) {
-    try {
-      await bot.sendMessage(u.telegramId, formatAccountDeletedMessage())
-    } catch (err) {
-      console.error('[bot] account-deleted notice error:', u.id, err?.message || err)
+    if (u.telegramId) {
+      await bot
+        .sendMessage(u.telegramId, formatAccountDeletedMessage())
+        .catch((err) => console.error('[bot] account-deleted notice error:', u.id, err?.message || err))
+    }
+    if (adminChatId) {
+      await bot
+        .sendMessage(adminChatId, formatAdminDeleteNotice(u))
+        .catch((err) => console.error('[bot] admin delete notice error:', u.id, err?.message || err))
     }
     await markUserDeleteNotified(u.id)
   }
 
   const restored = await getUsersPendingRestoreNotice()
   for (const u of restored) {
-    try {
-      await bot.sendMessage(u.telegramId, formatAccountRestoredMessage())
-    } catch (err) {
-      console.error('[bot] account-restored notice error:', u.id, err?.message || err)
+    if (u.telegramId) {
+      await bot
+        .sendMessage(u.telegramId, formatAccountRestoredMessage())
+        .catch((err) => console.error('[bot] account-restored notice error:', u.id, err?.message || err))
+    }
+    if (adminChatId) {
+      await bot
+        .sendMessage(adminChatId, formatAdminRestoreNotice(u))
+        .catch((err) => console.error('[bot] admin restore notice error:', u.id, err?.message || err))
     }
     await markUserRestoreNotified(u.id)
   }

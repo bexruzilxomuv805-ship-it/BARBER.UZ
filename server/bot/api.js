@@ -259,18 +259,34 @@ export async function getDeletedUsers() {
   return data.filter((u) => u.deleted)
 }
 
+// Not filtered to u.telegramId — forwardAccountStatusChanges (server/bot/
+// index.js) always tells the admin about this regardless of whether the
+// affected account has a Telegram link, and only DMs the account holder
+// itself when it does.
+//
+// `!== true` rather than `=== false`: already gated by u.deleted, so this
+// only ever matches currently-deleted accounts, and it deliberately catches
+// ones deleted before this notice system existed (deleteNotified missing
+// entirely) or before AdminCustomers.jsx started setting it — those would
+// otherwise sit deleted forever with nobody, including the admin, ever told.
 export async function getUsersPendingDeleteNotice() {
   const { data } = await client.get('/users')
-  return data.filter((u) => u.deleted && u.telegramId && u.deleteNotified === false)
+  return data.filter((u) => u.deleted && u.deleteNotified !== true)
 }
 
 export async function markUserDeleteNotified(id) {
   await client.patch(`/users/${id}`, { deleteNotified: true })
 }
 
+// Deliberately strict `=== false` here, unlike the delete-notice query above
+// — `!u.deleted` alone matches essentially every normal, never-deleted user
+// in the system, so relaxing this to `!== true` would queue every one of
+// them for a bogus "your account was restored!" DM the moment this code
+// first runs. Only restoreUser()/AdminCustomers' handleRestore ever set
+// restoreNotified to false, so this stays scoped to actual restorations.
 export async function getUsersPendingRestoreNotice() {
   const { data } = await client.get('/users')
-  return data.filter((u) => !u.deleted && u.telegramId && u.restoreNotified === false)
+  return data.filter((u) => !u.deleted && u.restoreNotified === false)
 }
 
 export async function markUserRestoreNotified(id) {
