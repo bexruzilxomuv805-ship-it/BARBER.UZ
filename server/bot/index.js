@@ -441,12 +441,37 @@ function formatUserLine(u) {
   )
 }
 
-function formatAdminDeleteNotice(u) {
-  return `\u{1F5D1}️ Hisob o'chirildi\n\n${formatUserLine(u)}`
+// Whether the account holder's own DM actually went out is otherwise
+// invisible to the admin — sendMessage rejecting (blocked the bot, deleted
+// their Telegram account, etc.) only ever showed up in this process's own
+// console logs. Reporting it back in the admin notice below turns "why
+// didn't they get notified?" into something the admin can see directly in
+// Telegram instead of having to ask.
+async function notifyAccountHolder(u, text) {
+  if (!u.telegramId) return 'no-telegram'
+  try {
+    await bot.sendMessage(u.telegramId, text)
+    return 'sent'
+  } catch (err) {
+    console.error('[bot] account status DM error:', u.id, err?.message || err)
+    return 'failed'
+  }
 }
 
-function formatAdminRestoreNotice(u) {
-  return `♻️ Hisob tiklandi\n\n${formatUserLine(u)}`
+function formatDeliveryStatusLine(status) {
+  if (status === 'sent') return "\u{1F4E9} Foydalanuvchiga Telegram xabari yuborildi."
+  if (status === 'failed') {
+    return "⚠️ Foydalanuvchiga Telegram xabari YUBORILMADI (botni bloklagan yoki chat topilmadi bo'lishi mumkin)."
+  }
+  return "ℹ️ Bu foydalanuvchining Telegram akkaunti ulanmagan — DM yuborilmadi."
+}
+
+function formatAdminDeleteNotice(u, dmStatus) {
+  return `\u{1F5D1}️ Hisob o'chirildi\n\n${formatUserLine(u)}\n\n${formatDeliveryStatusLine(dmStatus)}`
+}
+
+function formatAdminRestoreNotice(u, dmStatus) {
+  return `♻️ Hisob tiklandi\n\n${formatUserLine(u)}\n\n${formatDeliveryStatusLine(dmStatus)}`
 }
 
 // Notifies the affected user by Telegram DM (when they have one linked) AND
@@ -460,14 +485,10 @@ function formatAdminRestoreNotice(u) {
 async function forwardAccountStatusChanges() {
   const deleted = await getUsersPendingDeleteNotice()
   for (const u of deleted) {
-    if (u.telegramId) {
-      await bot
-        .sendMessage(u.telegramId, formatAccountDeletedMessage())
-        .catch((err) => console.error('[bot] account-deleted notice error:', u.id, err?.message || err))
-    }
+    const dmStatus = await notifyAccountHolder(u, formatAccountDeletedMessage())
     if (adminChatId) {
       await bot
-        .sendMessage(adminChatId, formatAdminDeleteNotice(u))
+        .sendMessage(adminChatId, formatAdminDeleteNotice(u, dmStatus))
         .catch((err) => console.error('[bot] admin delete notice error:', u.id, err?.message || err))
     }
     await markUserDeleteNotified(u.id)
@@ -475,14 +496,10 @@ async function forwardAccountStatusChanges() {
 
   const restored = await getUsersPendingRestoreNotice()
   for (const u of restored) {
-    if (u.telegramId) {
-      await bot
-        .sendMessage(u.telegramId, formatAccountRestoredMessage())
-        .catch((err) => console.error('[bot] account-restored notice error:', u.id, err?.message || err))
-    }
+    const dmStatus = await notifyAccountHolder(u, formatAccountRestoredMessage())
     if (adminChatId) {
       await bot
-        .sendMessage(adminChatId, formatAdminRestoreNotice(u))
+        .sendMessage(adminChatId, formatAdminRestoreNotice(u, dmStatus))
         .catch((err) => console.error('[bot] admin restore notice error:', u.id, err?.message || err))
     }
     await markUserRestoreNotified(u.id)
