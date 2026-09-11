@@ -450,10 +450,10 @@ function formatUserLine(u) {
 // console logs. Reporting it back in the admin notice below turns "why
 // didn't they get notified?" into something the admin can see directly in
 // Telegram instead of having to ask.
-async function notifyAccountHolder(u, text) {
+async function notifyAccountHolder(u, text, options) {
   if (!u.telegramId) return 'no-telegram'
   try {
-    await bot.sendMessage(u.telegramId, text)
+    await bot.sendMessage(u.telegramId, text, options)
     return 'sent'
   } catch (err) {
     console.error('[bot] account status DM error:', u.id, err?.message || err)
@@ -534,8 +534,15 @@ function formatRoleDemotedMessage() {
 async function forwardRoleChanges() {
   const pending = await getUsersPendingRoleNotice()
   for (const u of pending) {
-    const text = u.role === 'admin' ? formatRolePromotedMessage() : formatRoleDemotedMessage()
-    await notifyAccountHolder(u, text)
+    const isAdmin = u.role === 'admin'
+    const text = isAdmin ? formatRolePromotedMessage() : formatRoleDemotedMessage()
+    // A Telegram reply keyboard, once shown, sits on the person's device
+    // unchanged until the bot sends a NEW message with a different
+    // reply_markup — there's no way to push a keyboard swap into an idle
+    // chat. Attaching the correct keyboard to this exact DM is what makes
+    // the menu switch in real time instead of only updating the next time
+    // they happen to press /start.
+    await notifyAccountHolder(u, text, isAdmin ? MENU_KEYBOARD : CLIENT_KEYBOARD)
     await markUserRoleNotified(u.id)
   }
 }
