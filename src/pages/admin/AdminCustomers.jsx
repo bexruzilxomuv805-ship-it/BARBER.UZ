@@ -94,14 +94,24 @@ export default function AdminCustomers() {
 
   // Soft delete: flags the account instead of removing it, so it shows up
   // under "O'chirilganlar" and can be fully restored from there (or from the
-  // bot's matching menu) — see handleRestore.
+  // bot's matching menu) — see handleRestore. deleteNotified:false mirrors
+  // exactly what server/bot/api.js's deleteUser() writes — it's what arms
+  // the bot's one-time "your account was deactivated" Telegram DM
+  // (forwardAccountStatusChanges in server/bot/index.js), since the site and
+  // the bot are separate processes and only share this DB row, not code.
   const handleDelete = (id) => {
-    dispatch(updateCustomer({ id, changes: { deleted: true, deletedAt: new Date().toISOString() } }))
+    dispatch(updateCustomer({
+      id,
+      changes: { deleted: true, deletedAt: new Date().toISOString(), deleteNotified: false },
+    }))
     dispatch(showToast({ type: 'success', text: t('admin.customers.deletedToast') }))
   }
 
   const handleRestore = (c) => {
-    dispatch(updateCustomer({ id: c.id, changes: { deleted: false, deletedAt: null } }))
+    dispatch(updateCustomer({
+      id: c.id,
+      changes: { deleted: false, deletedAt: null, deleteNotified: null, restoreNotified: false },
+    }))
     dispatch(showToast({ type: 'success', text: t('admin.customers.restoredToast', { name: c.ism }) }))
   }
 
