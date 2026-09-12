@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { refreshUser, ACCOUNT_DELETED } from './features/auth/authSlice'
 import { showToast } from './features/ui/uiSlice'
 import usePolling from './hooks/usePolling'
+import ScrollToTop from './components/ScrollToTop'
 import ClientLayout from './layouts/ClientLayout'
 import AdminLayout from './layouts/AdminLayout'
 import AdminRoute from './routes/AdminRoute'
@@ -80,40 +81,43 @@ export default function App() {
   usePolling(checkSession, userId ? SESSION_CHECK_MS : null)
 
   return (
-    <Routes>
-      {/* Public / client-facing site */}
-      <Route element={<ClientLayout />}>
-        <Route path="/" element={<Home />} />
-        <Route path="/xizmatlar" element={<Services />} />
-        <Route path="/ustalar" element={<Barbers />} />
-        <Route path="/aloqa" element={<Contact />} />
-        <Route path="/navbat-olish" element={<Booking />} />
-        <Route path="/kirish" element={<Login />} />
-        <Route path="/royxatdan-otish" element={<Register />} />
-        <Route path="/profil" element={<Profile />} />
-        <Route path="*" element={<NotFound />} />
-      </Route>
+    <>
+      <ScrollToTop />
+      <Routes>
+        {/* Public / client-facing site */}
+        <Route element={<ClientLayout />}>
+          <Route path="/" element={<Home />} />
+          <Route path="/xizmatlar" element={<Services />} />
+          <Route path="/ustalar" element={<Barbers />} />
+          <Route path="/aloqa" element={<Contact />} />
+          <Route path="/navbat-olish" element={<Booking />} />
+          <Route path="/kirish" element={<Login />} />
+          <Route path="/royxatdan-otish" element={<Register />} />
+          <Route path="/profil" element={<Profile />} />
+          <Route path="*" element={<NotFound />} />
+        </Route>
 
-      {/* Admin panel */}
-      <Route
-        path="/admin"
-        element={
-          <AdminRoute>
-            <AdminLayout />
-          </AdminRoute>
-        }
-      >
-        <Route index element={<AdminDashboard />} />
-        <Route path="navbatlar" element={<AdminAppointments />} />
-        <Route path="mijozlar" element={<AdminCustomers />} />
-        <Route path="ustalar" element={<AdminBarbers />} />
-        <Route path="xizmatlar" element={<AdminServices />} />
-        <Route path="ombor" element={<AdminInventory />} />
-        <Route path="tolovlar" element={<AdminPayments />} />
-        <Route path="hisobotlar" element={<AdminReports />} />
-        <Route path="chat" element={<AdminChat />} />
-        <Route path="sozlamalar" element={<AdminSettings />} />
-      </Route>
-    </Routes>
+        {/* Admin panel */}
+        <Route
+          path="/admin"
+          element={
+            <AdminRoute>
+              <AdminLayout />
+            </AdminRoute>
+          }
+        >
+          <Route index element={<AdminDashboard />} />
+          <Route path="navbatlar" element={<AdminAppointments />} />
+          <Route path="mijozlar" element={<AdminCustomers />} />
+          <Route path="ustalar" element={<AdminBarbers />} />
+          <Route path="xizmatlar" element={<AdminServices />} />
+          <Route path="ombor" element={<AdminInventory />} />
+          <Route path="tolovlar" element={<AdminPayments />} />
+          <Route path="hisobotlar" element={<AdminReports />} />
+          <Route path="chat" element={<AdminChat />} />
+          <Route path="sozlamalar" element={<AdminSettings />} />
+        </Route>
+      </Routes>
+    </>
   )
 }
