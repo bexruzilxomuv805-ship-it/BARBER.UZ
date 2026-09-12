@@ -33,11 +33,11 @@ function dismissForToday() {
 // or an already-standalone display-mode check).
 export default function InstallPwaPrompt({ variant = 'banner' }) {
   const { t } = useTranslation()
-  const { installed, isIOS, canInstall, promptInstall } = usePwaInstall()
+  const { installed, isIOS, isMobileOrTablet, canInstall, promptInstall } = usePwaInstall()
   const [dismissed, setDismissed] = useState(() => variant === 'banner' && isDismissedToday())
   const [showIosSteps, setShowIosSteps] = useState(false)
 
-  if (installed || dismissed || (!canInstall && !isIOS)) return null
+  if (!isMobileOrTablet || installed || dismissed || (!canInstall && !isIOS)) return null
 
   const handleInstallClick = async () => {
     if (canInstall) {

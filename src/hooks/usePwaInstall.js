@@ -1,10 +1,22 @@
 import { useCallback, useEffect, useState } from 'react'
 
 const IOS_REGEX = /iphone|ipad|ipod/i
+const MOBILE_REGEX = /android|iphone|ipod|ipad|windows phone|mobile|tablet/i
 
 function isStandalone() {
   if (typeof window === 'undefined') return false
   return Boolean(window.matchMedia?.('(display-mode: standalone)')?.matches || window.navigator.standalone)
+}
+
+// Desktop Chrome/Edge fire `beforeinstallprompt` too, but this prompt should
+// only ever show on phones/tablets — never on a notebook/PC. iPadOS 13+
+// reports its UA as "Macintosh", so a touch-capable "Mac" is treated as a
+// tablet here rather than a desktop.
+function isMobileOrTablet() {
+  if (typeof navigator === 'undefined') return false
+  const ua = navigator.userAgent || ''
+  if (MOBILE_REGEX.test(ua)) return true
+  return /macintosh/i.test(ua) && navigator.maxTouchPoints > 1
 }
 
 // Wraps the browser's native PWA install flow. Android/desktop Chrome and
@@ -50,6 +62,7 @@ export default function usePwaInstall() {
   return {
     installed,
     isIOS,
+    isMobileOrTablet: isMobileOrTablet(),
     canInstall: Boolean(deferredPrompt),
     promptInstall,
   }
