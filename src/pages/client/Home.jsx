@@ -9,7 +9,6 @@ import {
 } from 'react-icons/fa'
 import { GiRazor } from 'react-icons/gi'
 import Reveal from '../../components/Reveal'
-import BarberPole from '../../components/BarberPole'
 import AnimatedCounter from '../../components/AnimatedCounter'
 import RatingStars from '../../components/RatingStars'
 import ServiceIcon from '../../components/ServiceIcon'
@@ -20,7 +19,7 @@ import { fetchServices } from '../../features/services/servicesSlice'
 import { fetchBarbers } from '../../features/barbers/barbersSlice'
 import { fetchReviews } from '../../features/reviews/reviewsSlice'
 import { fetchAppointments } from '../../features/appointments/appointmentsSlice'
-import { getBarberImage } from '../../assets/images'
+import { images, getBarberImage } from '../../assets/images'
 import { formatSum } from '../../utils/format'
 
 const FEATURE_ICONS = [FaShieldAlt, FaClock, FaGem, FaCheckCircle]
@@ -165,7 +164,7 @@ export default function Home() {
             transition={{ duration: 0.8, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
             className="relative mx-auto max-w-md"
           >
-            <BarberPole />
+            <img src={images.hero} alt="Zolotoy Barber" className="w-full animate-spinSlow drop-shadow-2xl" />
             <motion.div
               className="absolute top-6 -left-6 card px-4 py-3 shadow-xl"
               animate={{ y: [0, -12, 0] }}

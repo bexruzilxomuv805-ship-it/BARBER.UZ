@@ -64,10 +64,6 @@ export default {
           '70%': { boxShadow: '0 0 0 14px rgba(201,162,39,0)' },
           '100%': { boxShadow: '0 0 0 0 rgba(201,162,39,0)' },
         },
-        poleSpin: {
-          from: { backgroundPosition: '0 0' },
-          to: { backgroundPosition: '0 108px' },
-        },
       },
       animation: {
         float: 'float 6s ease-in-out infinite',
@@ -75,7 +71,6 @@ export default {
         spinSlow: 'spinSlow 12s linear infinite',
         shimmer: 'shimmer 2.5s linear infinite',
         pulseRing: 'pulseRing 2s infinite',
-        poleSpin: 'poleSpin 1.4s linear infinite',
       },
     },
   },
