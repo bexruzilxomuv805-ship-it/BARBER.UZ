@@ -2,10 +2,33 @@ import { useCallback, useEffect, useState } from 'react'
 
 const IOS_REGEX = /iphone|ipad|ipod/i
 const MOBILE_REGEX = /android|iphone|ipod|ipad|windows phone|mobile|tablet/i
+const INSTALLED_KEY = 'zolotoy_pwa_installed'
 
 function isStandalone() {
   if (typeof window === 'undefined') return false
   return Boolean(window.matchMedia?.('(display-mode: standalone)')?.matches || window.navigator.standalone)
+}
+
+// iOS has no `appinstalled` event and no API to ask "is this already on the
+// home screen?" — the only signal is that a standalone launch happened at
+// least once. So the first time we see standalone mode, we remember it for
+// good; otherwise reopening the same install later via a plain Safari tab
+// (display-mode back to "browser") would look uninstalled again and the
+// card would wrongly reappear.
+function wasEverInstalled() {
+  if (isStandalone()) {
+    try {
+      localStorage.setItem(INSTALLED_KEY, '1')
+    } catch {
+      /* ignore storage errors (private mode, etc.) */
+    }
+    return true
+  }
+  try {
+    return localStorage.getItem(INSTALLED_KEY) === '1'
+  } catch {
+    return false
+  }
 }
 
 // Desktop Chrome/Edge fire `beforeinstallprompt` too, but this prompt should
@@ -30,7 +53,7 @@ function isMobileOrTablet() {
 // would otherwise silently do nothing.
 export default function usePwaInstall() {
   const [deferredPrompt, setDeferredPrompt] = useState(null)
-  const [installed, setInstalled] = useState(isStandalone)
+  const [installed, setInstalled] = useState(wasEverInstalled)
 
   useEffect(() => {
     const onBeforeInstallPrompt = (e) => {
@@ -38,6 +61,11 @@ export default function usePwaInstall() {
       setDeferredPrompt(e)
     }
     const onInstalled = () => {
+      try {
+        localStorage.setItem(INSTALLED_KEY, '1')
+      } catch {
+        /* ignore storage errors (private mode, etc.) */
+      }
       setInstalled(true)
       setDeferredPrompt(null)
     }
