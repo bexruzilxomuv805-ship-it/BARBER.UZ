@@ -65,7 +65,7 @@
     "statClients": "Mamnun mijoz",
     "statRating": "O‘rtacha reyting",
     "todaySlotsLabel": "Bugungi bo‘sh joy",
-    "todaySlotsValue": "7 ta vaqt",
+    "todaySlotsValue": "{{count}} ta vaqt",
     "testimonialQuote": "“Ajoyib xizmat!”",
     "featuresTitle": "Nega aynan biz?",
     "featuresSubtitle": "Har bir tashrifingizni maxsus tajribaga aylantiramiz.",

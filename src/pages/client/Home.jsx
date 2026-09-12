@@ -22,6 +22,9 @@ import { fetchReviews } from '../../features/reviews/reviewsSlice'
 import { fetchAppointments } from '../../features/appointments/appointmentsSlice'
 import { getBarberImage } from '../../assets/images'
 import { formatSum } from '../../utils/format'
+import {
+  isBarberOff, toLocalDateIso, FALLBACK_WORK_RANGE, SLOT_STEP_MIN, DEFAULT_DURATION_MIN, toMinutes, parseWorkRange,
+} from '../../utils/schedule'
 
 const FEATURE_ICONS = [FaShieldAlt, FaClock, FaGem, FaCheckCircle]
 
@@ -101,6 +104,45 @@ export default function Home() {
     [appointments]
   )
 
+  // Real remaining slot count for today, across every working barber — not a
+  // hardcoded "7 ta vaqt". Mirrors Booking.jsx's own per-barber slot math
+  // (see utils/schedule.js), just summed over all barbers instead of one.
+  const todayAvailableSlots = useMemo(() => {
+    const todayIso = toLocalDateIso()
+    const now = new Date()
+    const nowMinutes = now.getHours() * 60 + now.getMinutes()
+    let count = 0
+    barbers.forEach((barber) => {
+      if (isBarberOff(barber, todayIso)) return
+      const range = parseWorkRange(barber.ishVaqti) || FALLBACK_WORK_RANGE
+      const occupied = appointments
+        .filter((a) => a.barberId === barber.id && a.sana === todayIso && a.holat !== 'bekor qilingan')
+        .map((a) => {
+          const duration = services.find((s) => s.id === a.xizmatId)?.davomiyligi || DEFAULT_DURATION_MIN
+          const start = toMinutes(a.vaqt)
+          return [start, start + duration]
+        })
+      for (let m = range.start; m < range.end; m += SLOT_STEP_MIN) {
+        if (m <= nowMinutes) continue
+        const end = m + DEFAULT_DURATION_MIN
+        if (end > range.end) continue
+        const blocked = occupied.some(([s, e]) => m < e && end > s)
+        if (!blocked) count++
+      }
+    })
+    return count
+  }, [barbers, appointments, services])
+
+  // Most recent real review with actual text, so the hero testimonial isn't
+  // a hardcoded quote — falls back to any review (even a text-less rating)
+  // if nobody has left a written one yet.
+  const latestReview = useMemo(() => {
+    if (!reviews.length) return null
+    const withText = reviews.filter((r) => r.matn?.trim())
+    const pool = withText.length ? withText : reviews
+    return [...pool].sort((a, b) => (b.sana || '').localeCompare(a.sana || ''))[0]
+  }, [reviews])
+
   return (
     <div>
       <div className="container-x pt-4">
@@ -172,7 +214,9 @@ export default function Home() {
               transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
             >
               <p className="text-xs text-ink-400">{t('home.todaySlotsLabel')}</p>
-              <p className="text-lg font-bold text-gold-400">{t('home.todaySlotsValue')}</p>
+              <p className="text-lg font-bold text-gold-400">
+                {t('home.todaySlotsValue', { count: todayAvailableSlots })}
+              </p>
             </motion.div>
             <motion.div
               className="absolute bottom-10 -right-6 card px-4 py-3 shadow-xl"
@@ -180,9 +224,14 @@ export default function Home() {
               transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
             >
               <div className="flex items-center gap-2">
-                <RatingStars value={5} />
+                <RatingStars value={latestReview?.baho ?? 5} />
               </div>
-              <p className="text-xs text-ink-400 mt-1">{t('home.testimonialQuote')}</p>
+              <p className="text-xs text-ink-400 mt-1 max-w-[11rem] line-clamp-2">
+                {latestReview?.matn ? `“${latestReview.matn}”` : t('home.testimonialQuote')}
+              </p>
+              {latestReview?.mijozIsmi && (
+                <p className="text-[10px] text-ink-500 mt-1">— {latestReview.mijozIsmi.split(' ')[0]}</p>
+              )}
             </motion.div>
           </motion.div>
         </div>

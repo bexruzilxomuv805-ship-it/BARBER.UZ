@@ -65,7 +65,7 @@
     "statClients": "Довольных клиентов",
     "statRating": "Средний рейтинг",
     "todaySlotsLabel": "Свободно сегодня",
-    "todaySlotsValue": "7 мест",
+    "todaySlotsValue": "{{count}} мест",
     "testimonialQuote": "«Отличный сервис!»",
     "featuresTitle": "Почему именно мы?",
     "featuresSubtitle": "Каждый ваш визит превращаем в особый опыт.",

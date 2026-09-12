@@ -15,34 +15,17 @@ import { fetchAppointments, createAppointment } from '../../features/appointment
 import { showToast } from '../../features/ui/uiSlice'
 import useAuth from '../../hooks/useAuth'
 import { formatSum } from '../../utils/format'
-import { isBarberOff, toLocalDateIso, WEEKDAY_DISPLAY_ORDER } from '../../utils/schedule'
-
-// Fallback only — used if a barber's own ishVaqti can't be parsed.
-const FALLBACK_WORK_RANGE = { start: 9 * 60, end: 19 * 60 }
-const SLOT_STEP_MIN = 30
-const DEFAULT_DURATION_MIN = 30
-
-function toMinutes(hhmm) {
-  const [h, m] = hhmm.split(':').map(Number)
-  return h * 60 + m
-}
-
-function minutesToHHMM(mins) {
-  const h = Math.floor(mins / 60)
-  const m = mins % 60
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
-}
-
-// Barbers set their own hours as free text (e.g. "10:00 - 20:00", see
-// AdminBarbers.jsx) — pull out the two HH:MM stamps rather than assuming an
-// exact separator/spacing.
-function parseWorkRange(ishVaqti) {
-  const stamps = ishVaqti?.match(/\d{1,2}:\d{2}/g)
-  if (!stamps || stamps.length < 2) return null
-  const start = toMinutes(stamps[0])
-  const end = toMinutes(stamps[1])
-  return end > start ? { start, end } : null
-}
+import {
+  isBarberOff,
+  toLocalDateIso,
+  WEEKDAY_DISPLAY_ORDER,
+  FALLBACK_WORK_RANGE,
+  SLOT_STEP_MIN,
+  DEFAULT_DURATION_MIN,
+  toMinutes,
+  minutesToHHMM,
+  parseWorkRange,
+} from '../../utils/schedule'
 
 function nextDays(count = 7) {
   const days = []

@@ -65,7 +65,7 @@
     "statClients": "Happy clients",
     "statRating": "Average rating",
     "todaySlotsLabel": "Open slots today",
-    "todaySlotsValue": "7 slots",
+    "todaySlotsValue": "{{count}} slots",
     "testimonialQuote": "\"Amazing service!\"",
     "featuresTitle": "Why choose us?",
     "featuresSubtitle": "We turn every visit into a special experience.",
