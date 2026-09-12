@@ -209,7 +209,7 @@ export default function Home() {
           >
             <BarberPole />
             <motion.div
-              className="absolute top-6 -left-6 card px-4 py-3 shadow-xl"
+              className="absolute top-6 -left-24 card px-4 py-3 shadow-xl"
               animate={{ y: [0, -12, 0] }}
               transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
             >
@@ -219,7 +219,7 @@ export default function Home() {
               </p>
             </motion.div>
             <motion.div
-              className="absolute bottom-10 -right-6 card px-4 py-3 shadow-xl"
+              className="absolute bottom-10 -right-24 card px-4 py-3 shadow-xl"
               animate={{ y: [0, 14, 0] }}
               transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
             >
