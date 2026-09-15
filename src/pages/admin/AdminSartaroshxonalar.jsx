@@ -165,6 +165,7 @@ export default function AdminSartaroshxonalar() {
             lat={form.lat}
             lng={form.lng}
             onChange={({ lat, lng }) => setForm((f) => ({ ...f, lat, lng }))}
+            onAddressResolved={(manzilMatni) => setForm((f) => ({ ...f, manzilMatni }))}
           />
           <div>
             <label className="mb-1.5 block text-xs text-ink-500">{t('admin.shops.descriptionLabel')}</label>
