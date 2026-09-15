@@ -253,11 +253,11 @@ export default function Booking() {
                             <FaCalendarAlt />
                           </span>
                         )}
-                        <div className="flex-1">
-                          <p className="font-medium text-white text-sm">{s.nomi}</p>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-medium text-white text-sm">{s.nomi}</p>
                           <AutoText as="p" className="text-xs text-ink-500 truncate" text={s.manzilMatni} />
                         </div>
-                        <span className="text-xs text-ink-500">{s.ishVaqti}</span>
+                        <span className="shrink-0 text-xs text-ink-500">{s.ishVaqti}</span>
                       </button>
                     ))}
                   </div>
@@ -282,11 +282,11 @@ export default function Booking() {
                         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gold-500/10 text-gold-400 text-lg">
                           <ServiceIcon name={s.rasm} />
                         </span>
-                        <div className="flex-1">
-                          <AutoText as="p" className="font-medium text-white text-sm" text={s.nomi} />
+                        <div className="min-w-0 flex-1">
+                          <AutoText as="p" className="truncate font-medium text-white text-sm" text={s.nomi} />
                           <p className="text-xs text-ink-500">{t('booking.minutes', { count: s.davomiyligi })}</p>
                         </div>
-                        <span className="text-sm font-semibold text-gold-400">{formatSum(s.narxi)}</span>
+                        <span className="shrink-0 text-sm font-semibold text-gold-400">{formatSum(s.narxi)}</span>
                       </button>
                     ))}
                   </div>
@@ -314,16 +314,16 @@ export default function Booking() {
                           }`}
                         >
                           <img src={getBarberImage(b.rasm)} alt={b.ism} className="h-14 w-14 rounded-full object-cover shrink-0" />
-                          <div className="flex-1">
-                            <p className="font-medium text-white text-sm">{b.ism} {b.familiya}</p>
-                            <AutoText as="p" className="text-xs text-gold-400" text={b.mutaxassislik} />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate font-medium text-white text-sm">{b.ism} {b.familiya}</p>
+                            <AutoText as="p" className="truncate text-xs text-gold-400" text={b.mutaxassislik} />
                             {offDays.length > 0 && (
-                              <p className={`mt-1 text-[11px] ${alwaysOff ? 'text-red-400' : 'text-amber-400/80'}`}>
+                              <p className={`mt-1 truncate text-[11px] ${alwaysOff ? 'text-red-400' : 'text-amber-400/80'}`}>
                                 {alwaysOff ? t('booking.barberUnavailable') : `${t('booking.offDaysLabel')} ${offDays.join(', ')}`}
                               </p>
                             )}
                           </div>
-                          <span className="text-xs text-ink-500">{b.ishVaqti}</span>
+                          <span className="shrink-0 text-xs text-ink-500">{b.ishVaqti}</span>
                         </button>
                       )
                     })}
