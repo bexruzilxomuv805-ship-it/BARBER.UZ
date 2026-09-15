@@ -9,6 +9,8 @@ import AutoText from '../../components/AutoText'
 import useConversationId from '../../hooks/useConversationId'
 import { fetchContactInfo } from '../../features/contact/contactSlice'
 import { sendMessage } from '../../features/chat/chatSlice'
+import { fetchShops } from '../../features/sartaroshxonalar/sartaroshxonalarSlice'
+import ShopMap from '../../components/ShopMap'
 
 const FALLBACK_INFO = {
   manzil: 'Toshkent sh., Chilonzor tumani, Bunyodkor ko‘chasi 12',
@@ -17,12 +19,15 @@ const FALLBACK_INFO = {
   ishVaqti: 'Har kuni 09:00 – 21:00',
   instagram: '',
   telegram: '',
+  lat: 41.2855,
+  lng: 69.2354,
 }
 
 export default function Contact() {
   const { t } = useTranslation()
   const dispatch = useDispatch()
   const { info } = useSelector((s) => s.contact)
+  const { items: shops } = useSelector((s) => s.sartaroshxonalar)
   const contact = info || FALLBACK_INFO
   const conversationId = useConversationId()
   const [sent, setSent] = useState(false)
@@ -31,7 +36,10 @@ export default function Contact() {
 
   useEffect(() => {
     dispatch(fetchContactInfo())
+    dispatch(fetchShops())
   }, [dispatch])
+
+  const mapShops = shops.map((s) => ({ ...s, linkLabel: t('shops.detailsAction') }))
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -103,13 +111,12 @@ export default function Contact() {
             )}
           </div>
 
-          <div className="mt-6 overflow-hidden rounded-2xl border border-ink-800 shadow-gold">
-            <iframe
-              title={t('common.mapTitle')}
-              src="https://www.openstreetmap.org/export/embed.html?bbox=69.2154%2C41.2755%2C69.2554%2C41.2955&layer=mapnik&marker=41.2855%2C69.2354"
-              className="h-72 w-full grayscale-[40%] contrast-125"
-              loading="lazy"
-            />
+          <div className="mt-6 shadow-gold">
+            {mapShops.length > 0 ? (
+              <ShopMap shops={mapShops} className="h-72 w-full" />
+            ) : (
+              <ShopMap lat={FALLBACK_INFO.lat} lng={FALLBACK_INFO.lng} className="h-72 w-full" />
+            )}
           </div>
         </Reveal>
 

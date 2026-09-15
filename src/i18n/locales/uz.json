@@ -115,6 +115,11 @@
     "backToList": "Sartaroshxonalar ro‘yxatiga qaytish",
     "barbersTitle": "Bu yerdagi ustalar",
     "noBarbers": "Bu sartaroshxonada hozircha usta biriktirilmagan.",
+    "findNearest": "Menga eng yaqinini toping",
+    "locating": "Aniqlanmoqda...",
+    "locationError": "Joylashuvingizni aniqlab bo‘lmadi — brauzerga ruxsat berilganini tekshiring.",
+    "sortedByDistance": "Ro‘yxat sizga yaqinlik bo‘yicha saralandi.",
+    "nearestBadge": "eng yaqin",
     "tier": {
       "oddiy": "Oddiy",
       "premium": "Premium",

@@ -115,6 +115,11 @@
     "backToList": "Back to barbershops",
     "barbersTitle": "Barbers at this location",
     "noBarbers": "No barbers assigned to this shop yet.",
+    "findNearest": "Find the one nearest me",
+    "locating": "Locating...",
+    "locationError": "Couldn't get your location — check browser permissions.",
+    "sortedByDistance": "List sorted by distance from you.",
+    "nearestBadge": "nearest",
     "tier": {
       "oddiy": "Standard",
       "premium": "Premium",
