@@ -41,7 +41,13 @@ export default function ChatWidget() {
   const contact = info || FALLBACK_CONTACT
   const open = useSelector((s) => s.ui.isChatOpen)
   const chatBarberContext = useSelector((s) => s.ui.chatBarberContext)
-  const conversationId = useConversationId()
+  const barber = useSelector((s) => s.barbers.items.find((b) => b.id === chatBarberContext))
+  const userId = useConversationId()
+  // A chat opened from a barber's own profile ("Xabar yozish") gets its own
+  // persisted thread, separate from the general support conversation and
+  // from every other barber's — otherwise all of them would collapse into
+  // one mixed conversation keyed only by the client's own id.
+  const conversationId = chatBarberContext ? `${userId}__${chatBarberContext}` : userId
   const messages = useSelector((s) => s.chat.messagesByConversation[conversationId] || [])
   const myConversation = useSelector((s) => s.chat.myConversation)
   const hasUnread = myConversation?.id === conversationId && myConversation.unreadForClient > 0
@@ -80,7 +86,7 @@ export default function ChatWidget() {
     await dispatch(
       sendMessage({
         conversationId,
-        userId: conversationId,
+        userId,
         userName: user ? `${user.ism} ${user.familiya}` : t('chat.guestName'),
         sender: 'client',
         text: trimmed,
@@ -249,7 +255,9 @@ export default function ChatWidget() {
                     <FaHeadset />
                   </span>
                   <div>
-                    <p className="text-sm font-semibold text-white">{t('chat.supportLabel')}</p>
+                    <p className="text-sm font-semibold text-white">
+                      {barber ? `${barber.ism} ${barber.familiya}` : t('chat.supportLabel')}
+                    </p>
                     <p className="text-[11px] text-emerald-400 flex items-center gap-1">
                       <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" /> {t('chat.online')}
                     </p>

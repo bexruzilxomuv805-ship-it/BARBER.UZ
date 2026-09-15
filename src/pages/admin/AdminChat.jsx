@@ -402,7 +402,11 @@ export default function AdminChat() {
     await dispatch(
       sendMessage({
         conversationId: activeConversationId,
-        userId: activeConversationId,
+        // Barber-scoped conversation ids aren't the client's own user id
+        // (see ChatWidget.jsx) — use the real userId the conversation
+        // record was created with, falling back to the deep-link case
+        // where no conversation exists yet and the id really is the userId.
+        userId: conv?.userId || activeConversationId,
         userName: conv?.userName || linkedUserName || t('profile.roleClient'),
         sender: 'admin',
         text: trimmed,
