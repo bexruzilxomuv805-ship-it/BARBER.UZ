@@ -16,10 +16,12 @@ import ServiceIcon from '../../components/ServiceIcon'
 import Loader from '../../components/Loader'
 import AutoText from '../../components/AutoText'
 import InstallPwaPrompt from '../../components/InstallPwaPrompt'
+import ShopMap from '../../components/ShopMap'
 import { fetchServices } from '../../features/services/servicesSlice'
 import { fetchBarbers } from '../../features/barbers/barbersSlice'
 import { fetchReviews } from '../../features/reviews/reviewsSlice'
 import { fetchAppointments } from '../../features/appointments/appointmentsSlice'
+import { fetchShops } from '../../features/sartaroshxonalar/sartaroshxonalarSlice'
 import { getBarberImage } from '../../assets/images'
 import { formatSum } from '../../utils/format'
 import {
@@ -48,14 +50,17 @@ export default function Home() {
   const { items: reviews } = useSelector((s) => s.reviews)
   const { items: appointments } = useSelector((s) => s.appointments)
   const { info: contactInfo } = useSelector((s) => s.contact)
+  const { items: shops } = useSelector((s) => s.sartaroshxonalar)
   const contact = contactInfo || FALLBACK_CONTACT
   const features = t('home.features', { returnObjects: true }).map((f, i) => ({ ...f, icon: FEATURE_ICONS[i] }))
+  const mapShops = shops.map((s) => ({ ...s, linkLabel: t('shops.detailsAction') }))
 
   useEffect(() => {
     dispatch(fetchServices())
     dispatch(fetchBarbers())
     dispatch(fetchReviews())
     dispatch(fetchAppointments())
+    dispatch(fetchShops())
   }, [dispatch])
 
   const featuredServices = useMemo(() => services.slice(0, 6), [services])
@@ -423,13 +428,12 @@ export default function Home() {
               {t('home.bookNow')} <FaArrowRight />
             </Link>
           </Reveal>
-          <Reveal delay={0.1} className="overflow-hidden rounded-2xl border border-ink-800 shadow-gold">
-            <iframe
-              title={t('common.mapTitle')}
-              src="https://www.openstreetmap.org/export/embed.html?bbox=69.2154%2C41.2755%2C69.2554%2C41.2955&layer=mapnik&marker=41.2855%2C69.2354"
-              className="h-80 w-full grayscale-[40%] contrast-125"
-              loading="lazy"
-            />
+          <Reveal delay={0.1} className="shadow-gold">
+            {mapShops.length > 0 ? (
+              <ShopMap shops={mapShops} className="h-80 w-full" />
+            ) : (
+              <ShopMap lat={41.2855} lng={69.2354} className="h-80 w-full" />
+            )}
           </Reveal>
         </div>
       </section>
