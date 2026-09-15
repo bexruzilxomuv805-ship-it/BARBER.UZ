@@ -23,13 +23,14 @@ export default function AdminInventory() {
   const { isUsta, user } = useAuth()
   const scopeBarberId = isUsta ? user.barberId : null
   const { items: allItems, status } = useSelector((s) => s.inventory)
-  // Each usta manages their own stock, invisible to other ustas and other
-  // shops — admin's own view stays unscoped (sees everything, same as
-  // before this existed). Items created before this scoping existed have no
-  // barberId, so they simply never show up for any usta — that's correct,
-  // not a bug: nobody "owns" them retroactively.
+  // Each usta manages their own stock, private to them: an usta only sees
+  // their own barberId-tagged items, and admin's shared view only sees
+  // admin-owned (barberId-less) items — usta stock never crosses over
+  // either direction. Items created before this scoping existed have no
+  // barberId, so they show up as admin-owned; that's correct, not a bug:
+  // nobody "owns" them retroactively.
   const items = useMemo(
-    () => (scopeBarberId ? allItems.filter((i) => i.barberId === scopeBarberId) : allItems),
+    () => allItems.filter((i) => (scopeBarberId ? i.barberId === scopeBarberId : !i.barberId)),
     [allItems, scopeBarberId]
   )
   const [modalOpen, setModalOpen] = useState(false)
