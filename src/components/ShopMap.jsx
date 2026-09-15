@@ -74,7 +74,7 @@ export default function ShopMap({
   const initialCenter = points.length ? { lat: points[0].lat, lng: points[0].lng } : position
 
   return (
-    <div className={`${className} overflow-hidden rounded-xl border border-ink-800`}>
+    <div className={`${className} isolate overflow-hidden rounded-xl border border-ink-800`}>
       <MapContainer center={initialCenter} zoom={12} className="h-full w-full" ref={mapRef}>
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
