@@ -73,6 +73,16 @@ export default function Home() {
     return (reviews.reduce((sum, r) => sum + r.baho, 0) / reviews.length).toFixed(1)
   }, [reviews])
 
+  // Newest review first — the API returns them in no particular order, and
+  // a freshly submitted review should always land in the first grid slot
+  // instead of wherever the backend happened to return it. `id` (which
+  // embeds its creation timestamp, see createReview) is the tiebreaker for
+  // same-day reviews, since `sana` alone is just a date with no time.
+  const sortedReviews = useMemo(
+    () => [...reviews].sort((a, b) => (b.sana || '').localeCompare(a.sana || '') || (b.id || '').localeCompare(a.id || '')),
+    [reviews]
+  )
+
   const [reviewPageSize, setReviewPageSize] = useState(() =>
     typeof window !== 'undefined' && window.matchMedia(REVIEWS_DESKTOP_QUERY).matches
       ? REVIEWS_DESKTOP_PAGE_SIZE
@@ -94,8 +104,8 @@ export default function Home() {
   const safeReviewPage = Math.min(reviewPage, reviewPageCount - 1)
 
   const pagedReviews = useMemo(
-    () => reviews.slice(safeReviewPage * reviewPageSize, safeReviewPage * reviewPageSize + reviewPageSize),
-    [reviews, safeReviewPage, reviewPageSize]
+    () => sortedReviews.slice(safeReviewPage * reviewPageSize, safeReviewPage * reviewPageSize + reviewPageSize),
+    [sortedReviews, safeReviewPage, reviewPageSize]
   )
 
   // Real, computed stats instead of hardcoded demo numbers: years = the most
@@ -142,11 +152,10 @@ export default function Home() {
   // a hardcoded quote — falls back to any review (even a text-less rating)
   // if nobody has left a written one yet.
   const latestReview = useMemo(() => {
-    if (!reviews.length) return null
-    const withText = reviews.filter((r) => r.matn?.trim())
-    const pool = withText.length ? withText : reviews
-    return [...pool].sort((a, b) => (b.sana || '').localeCompare(a.sana || ''))[0]
-  }, [reviews])
+    if (!sortedReviews.length) return null
+    const withText = sortedReviews.filter((r) => r.matn?.trim())
+    return (withText.length ? withText : sortedReviews)[0]
+  }, [sortedReviews])
 
   return (
     <div>

@@ -627,17 +627,22 @@ async function requestReviews() {
 }
 
 async function checkLowStock() {
-  if (!adminChatId) return
   try {
     const items = await getInventory()
     for (const item of items) {
       const isLow = (item.miqdor ?? 0) <= (item.minMiqdor ?? 0)
       if (isLow && !item.tgLowStockNotified) {
-        await bot.sendMessage(
-          adminChatId,
+        const text =
           `\u{26A0}️ Omborda kam qoldi!\n${item.nomi}: ${item.miqdor} ${item.birlik} ` +
-            `(minimal: ${item.minMiqdor} ${item.birlik})`
-        )
+          `(minimal: ${item.minMiqdor} ${item.birlik})`
+        // Stock an usta added themselves (barberId set) notifies that usta
+        // specifically, not every admin/usta in the system — mirrors the
+        // same barberId-scoped routing already used for appointments/chat.
+        if (item.barberId) {
+          await notifyBarberChat(item.barberId, text)
+        } else if (adminChatId) {
+          await bot.sendMessage(adminChatId, text)
+        }
         await markInventoryLowStockNotified(item.id, true)
       } else if (!isLow && item.tgLowStockNotified) {
         await markInventoryLowStockNotified(item.id, false)

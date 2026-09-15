@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useTranslation } from 'react-i18next'
 import { FaEdit, FaTrash, FaPlus, FaBoxes } from 'react-icons/fa'
@@ -9,6 +9,7 @@ import AutoText from '../../components/AutoText'
 import { fetchInventory, createInventoryItem, updateInventoryItem, removeInventoryItem } from '../../features/inventory/inventorySlice'
 import { showToast } from '../../features/ui/uiSlice'
 import { formatSum } from '../../utils/format'
+import useAuth from '../../hooks/useAuth'
 
 const emptyForm = { nomi: '', miqdor: 0, birlik: 'dona', minMiqdor: 5, narxi: 10000 }
 
@@ -19,7 +20,18 @@ function computeHolat(miqdor, minMiqdor) {
 export default function AdminInventory() {
   const { t } = useTranslation()
   const dispatch = useDispatch()
-  const { items, status } = useSelector((s) => s.inventory)
+  const { isUsta, user } = useAuth()
+  const scopeBarberId = isUsta ? user.barberId : null
+  const { items: allItems, status } = useSelector((s) => s.inventory)
+  // Each usta manages their own stock, invisible to other ustas and other
+  // shops — admin's own view stays unscoped (sees everything, same as
+  // before this existed). Items created before this scoping existed have no
+  // barberId, so they simply never show up for any usta — that's correct,
+  // not a bug: nobody "owns" them retroactively.
+  const items = useMemo(
+    () => (scopeBarberId ? allItems.filter((i) => i.barberId === scopeBarberId) : allItems),
+    [allItems, scopeBarberId]
+  )
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState(emptyForm)
@@ -50,7 +62,7 @@ export default function AdminInventory() {
       await dispatch(updateInventoryItem({ id: editing.id, changes: payload }))
       dispatch(showToast({ type: 'success', text: t('admin.inventory.updatedToast') }))
     } else {
-      await dispatch(createInventoryItem(payload))
+      await dispatch(createInventoryItem(scopeBarberId ? { ...payload, barberId: scopeBarberId } : payload))
       dispatch(showToast({ type: 'success', text: t('admin.inventory.addedToast') }))
     }
     setModalOpen(false)

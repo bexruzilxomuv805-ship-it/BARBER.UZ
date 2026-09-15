@@ -104,18 +104,20 @@ export default function UstaProfile() {
       </div>
 
       <div className="card max-w-2xl p-5">
-        <div className="mb-5 flex flex-wrap items-center gap-4 border-b border-ink-800 pb-5">
-          <img src={getBarberImage(draft.rasm)} alt="" className="h-20 w-20 shrink-0 rounded-xl object-cover border border-ink-800" />
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-lg font-semibold text-white">{barber.ism} {barber.familiya}</p>
-            <div className="mt-1"><RatingStars value={barber.reyting} /></div>
-            {shop && (
-              <p className="mt-1 flex items-center gap-1.5 text-xs text-ink-500">
-                <FaStore className="shrink-0 text-gold-400" /> {shop.nomi}
-              </p>
-            )}
+        <div className="mb-5 border-b border-ink-800 pb-5">
+          <div className="flex items-center gap-4">
+            <img src={getBarberImage(draft.rasm)} alt="" className="h-20 w-20 shrink-0 rounded-xl object-cover border border-ink-800" />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-lg font-semibold text-white">{barber.ism} {barber.familiya}</p>
+              <div className="mt-1"><RatingStars value={barber.reyting} /></div>
+              {shop && (
+                <p className="mt-1 flex items-center gap-1.5 truncate text-xs text-ink-500">
+                  <FaStore className="shrink-0 text-gold-400" /> <span className="truncate">{shop.nomi}</span>
+                </p>
+              )}
+            </div>
           </div>
-          <label className="btn-outline !py-2 shrink-0 text-sm cursor-pointer">
+          <label className="btn-outline !py-2 mt-4 inline-flex text-sm cursor-pointer">
             <FaCamera /> {t('admin.barbers.choosePhoto')}
             <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
           </label>
