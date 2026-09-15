@@ -299,8 +299,12 @@ export default function AdminChat() {
   const { isUsta, user } = useAuth()
   const scopeBarberId = isUsta ? user.barberId : null
   const { conversations: allConversations, messagesByConversation, activeConversationId } = useSelector((s) => s.chat)
+  // A conversation scoped to a specific usta (barberId set) is that usta's
+  // own chat with the client — admin's shared inbox only carries general
+  // (barberId-less) support chats, same private-scoping as inventory/
+  // appointments elsewhere.
   const conversations = useMemo(
-    () => (scopeBarberId ? allConversations.filter((c) => c.barberId === scopeBarberId) : allConversations),
+    () => allConversations.filter((c) => (scopeBarberId ? c.barberId === scopeBarberId : !c.barberId)),
     [allConversations, scopeBarberId]
   )
   const [text, setText] = useState('')

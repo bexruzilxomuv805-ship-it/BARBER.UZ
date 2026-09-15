@@ -32,9 +32,9 @@ export default function useAdminNotifications() {
   if (!isStaff) return { unreadMessages: 0, pendingAppointments: 0 }
 
   const scopeBarberId = isUsta ? user.barberId : null
-  const scopedConversations = scopeBarberId
-    ? conversations.filter((c) => c.barberId === scopeBarberId)
-    : conversations
+  // Same private scoping as AdminChat.jsx: admin's badge only counts
+  // general (barberId-less) conversations, not an usta's own chats.
+  const scopedConversations = conversations.filter((c) => (scopeBarberId ? c.barberId === scopeBarberId : !c.barberId))
   const scopedAppointments = scopeBarberId
     ? appointments.filter((a) => a.barberId === scopeBarberId)
     : appointments

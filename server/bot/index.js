@@ -336,16 +336,20 @@ function formatAdminChatMessage(message) {
 async function forwardClientMessages() {
   const messages = await getUnnotifiedClientMessages()
   for (const message of messages) {
+    // A chat scoped to a specific usta (barberId set) is that usta's own
+    // conversation — it goes to them only, same as usta-scoped inventory/
+    // appointments elsewhere. Only barberId-less (general support) chats
+    // reach the shared admin chat.
     if (message.barberId) {
       await notifyBarberChat(message.barberId, formatClientChatMessage(message))
-    }
-    if (adminChatId) {
+      await markMessageForwarded(message.id, { chatId: null, messageId: null, text: message.text })
+    } else if (adminChatId) {
       const sent = await bot.sendMessage(adminChatId, formatClientChatMessage(message))
       conversationByTelegramMsgId.set(sent.message_id, message.conversationId)
       await markMessageForwarded(message.id, { chatId: adminChatId, messageId: sent.message_id, text: message.text })
     } else {
-      // No admin chat configured — still mark notified (barber copy, if any,
-      // already sent above) so this message isn't retried forever.
+      // No admin chat configured — still mark notified so this message
+      // isn't retried forever.
       await markMessageForwarded(message.id, { chatId: null, messageId: null, text: message.text })
     }
   }
