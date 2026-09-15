@@ -29,6 +29,7 @@ export default function AdminLayout() {
   const NAV = isUsta
     ? [
         { to: '/usta/navbatlar', label: t('admin.nav.appointments'), icon: FaCalendarAlt, badgeKey: 'pendingAppointments' },
+        { to: '/usta/profil', label: t('admin.nav.ustaProfile'), icon: GiRazor },
         { to: '/usta/ombor', label: t('admin.nav.inventory'), icon: FaBoxes },
         { to: '/usta/tolovlar', label: t('admin.nav.payments'), icon: FaMoneyBillWave },
         { to: '/usta/chat', label: t('admin.nav.chat'), icon: FaComments, badgeKey: 'unreadMessages' },

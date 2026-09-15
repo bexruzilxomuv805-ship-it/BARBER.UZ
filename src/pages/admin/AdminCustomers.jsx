@@ -34,6 +34,7 @@ export default function AdminCustomers() {
   const [form, setForm] = useState(emptyForm)
   const [toDelete, setToDelete] = useState(null)
   const [view, setView] = useState('active') // 'active' | 'deleted'
+  const [roleFilter, setRoleFilter] = useState('all') // 'all' | 'admin' | 'usta' | 'client'
   const [ustaTarget, setUstaTarget] = useState(null)
   const [ustaShopId, setUstaShopId] = useState('')
   const [ustaSaving, setUstaSaving] = useState(false)
@@ -63,6 +64,7 @@ export default function AdminCustomers() {
   // role here.
   const withStats = useMemo(() => {
     return (view === 'active' ? activeUsers : deletedUsers)
+      .filter((c) => (roleFilter === 'all' ? true : c.role === roleFilter))
       .filter((c) =>
         search ? `${c.ism} ${c.familiya} ${c.email}`.toLowerCase().includes(search.toLowerCase()) : true
       )
@@ -73,7 +75,7 @@ export default function AdminCustomers() {
           .reduce((sum, a) => sum + (a.narxi || 0), 0)
         return { ...c, visits: myAppointments.length, spent }
       })
-  }, [activeUsers, deletedUsers, view, appointments, search])
+  }, [activeUsers, deletedUsers, view, roleFilter, appointments, search])
 
   const openCreate = () => {
     setEditing(null)
@@ -238,6 +240,25 @@ export default function AdminCustomers() {
             {t('admin.customers.deletedTab', { count: deletedUsers.length })}
           </button>
         </div>
+      </div>
+
+      <div className="mb-4 flex flex-wrap gap-1.5 rounded-lg bg-ink-800/60 p-1 text-sm w-fit">
+        {[
+          { key: 'all', label: t('admin.customers.roleFilterAll') },
+          { key: 'admin', label: t('admin.customers.roleAdmin') },
+          { key: 'usta', label: t('admin.customers.roleUsta') },
+          { key: 'client', label: t('admin.customers.roleClient') },
+        ].map((r) => (
+          <button
+            key={r.key}
+            onClick={() => setRoleFilter(r.key)}
+            className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
+              roleFilter === r.key ? 'bg-gold-500/10 text-gold-400' : 'text-ink-400 hover:text-white'
+            }`}
+          >
+            {r.label}
+          </button>
+        ))}
       </div>
 
       {status === 'loading' ? (

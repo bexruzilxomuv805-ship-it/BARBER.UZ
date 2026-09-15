@@ -32,6 +32,7 @@ import AdminPayments from './pages/admin/AdminPayments'
 import AdminReports from './pages/admin/AdminReports'
 import AdminChat from './pages/admin/AdminChat'
 import AdminSettings from './pages/admin/AdminSettings'
+import UstaProfile from './pages/admin/UstaProfile'
 
 const SESSION_CHECK_MS = 15000
 
@@ -135,6 +136,7 @@ export default function App() {
         >
           <Route index element={<Navigate to="navbatlar" replace />} />
           <Route path="navbatlar" element={<AdminAppointments />} />
+          <Route path="profil" element={<UstaProfile />} />
           <Route path="ombor" element={<AdminInventory />} />
           <Route path="tolovlar" element={<AdminPayments />} />
           <Route path="chat" element={<AdminChat />} />

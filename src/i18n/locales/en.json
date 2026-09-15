@@ -306,6 +306,7 @@
       "customers": "Customers",
       "shops": "Barbershops",
       "barbers": "Barbers",
+      "ustaProfile": "My profile",
       "services": "Services",
       "inventory": "Inventory",
       "payments": "Payments",
@@ -321,6 +322,12 @@
     "delete": "Delete",
     "confirmTitle": "Are you sure?",
     "deleteDefaultText": "This action cannot be undone.",
+    "ustaProfile": {
+      "title": "My profile",
+      "subtitle": "The details clients see on your page — edit them yourself.",
+      "updatedToast": "Your details were updated.",
+      "noProfile": "No barber profile is linked to your account yet — contact the admin."
+    },
     "dashboard": {
       "title": "Dashboard",
       "subtitle": "Today's status and overall statistics.",
@@ -399,6 +406,7 @@
       "ustaAssignedToast": "{{name}} is now a barber.",
       "ustaRemovedToast": "{{name}} is now a regular customer.",
       "tableRole": "Role",
+      "roleFilterAll": "All",
       "roleAdmin": "Admin",
       "roleUsta": "Barber",
       "roleClient": "Customer",

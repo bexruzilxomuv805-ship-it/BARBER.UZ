@@ -306,6 +306,7 @@
       "customers": "Клиенты",
       "shops": "Парикмахерские",
       "barbers": "Мастера",
+      "ustaProfile": "Мой профиль",
       "services": "Услуги",
       "inventory": "Склад",
       "payments": "Платежи",
@@ -321,6 +322,12 @@
     "delete": "Удалить",
     "confirmTitle": "Вы уверены?",
     "deleteDefaultText": "Это действие нельзя отменить.",
+    "ustaProfile": {
+      "title": "Мой профиль",
+      "subtitle": "Данные, которые клиенты видят на вашей странице — редактируйте их сами.",
+      "updatedToast": "Ваши данные обновлены.",
+      "noProfile": "К вашему аккаунту пока не привязан профиль мастера — обратитесь к администратору."
+    },
     "dashboard": {
       "title": "Панель управления",
       "subtitle": "Статус на сегодня и общая статистика.",
@@ -399,6 +406,7 @@
       "ustaAssignedToast": "{{name}} теперь мастер.",
       "ustaRemovedToast": "{{name}} теперь обычный клиент.",
       "tableRole": "Роль",
+      "roleFilterAll": "Все",
       "roleAdmin": "Админ",
       "roleUsta": "Мастер",
       "roleClient": "Клиент",

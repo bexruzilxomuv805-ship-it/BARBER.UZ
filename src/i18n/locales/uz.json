@@ -306,6 +306,7 @@
       "customers": "Mijozlar",
       "shops": "Sartaroshxonalar",
       "barbers": "Ustalar",
+      "ustaProfile": "Mening kartam",
       "services": "Xizmatlar",
       "inventory": "Ombor",
       "payments": "To‘lovlar",
@@ -321,6 +322,12 @@
     "delete": "O‘chirish",
     "confirmTitle": "Ishonchingiz komilmi?",
     "deleteDefaultText": "Bu amalni ortga qaytarib bo‘lmaydi.",
+    "ustaProfile": {
+      "title": "Mening kartam",
+      "subtitle": "Sizning sahifangizda ko‘rinadigan ma’lumotlaringiz — o‘zingiz tahrirlashingiz mumkin.",
+      "updatedToast": "Ma’lumotlaringiz yangilandi.",
+      "noProfile": "Sizga hali usta profili biriktirilmagan — admin bilan bog‘laning."
+    },
     "dashboard": {
       "title": "Boshqaruv paneli",
       "subtitle": "Bugungi holat va umumiy statistika.",
@@ -399,6 +406,7 @@
       "ustaAssignedToast": "{{name}} endi usta.",
       "ustaRemovedToast": "{{name}} endi oddiy mijoz.",
       "tableRole": "Rol",
+      "roleFilterAll": "Barchasi",
       "roleAdmin": "Admin",
       "roleUsta": "Usta",
       "roleClient": "Mijoz",
