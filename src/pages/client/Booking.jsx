@@ -291,7 +291,7 @@ export default function Booking() {
                       <button
                         key={s.id}
                         onClick={() => { setShopId(s.id); setBarberId(''); setDate(''); setTime('') }}
-                        className={`card flex items-center gap-3 p-3 text-left transition-colors ${
+                        className={`card flex w-full min-w-0 items-center gap-3 p-3 text-left transition-colors ${
                           shopId === s.id ? 'border-gold-500 bg-gold-500/5' : 'hover:border-gold-500/40'
                         }`}
                       >
