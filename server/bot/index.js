@@ -558,11 +558,18 @@ function formatRolePromotedMessage() {
   )
 }
 
-function formatRoleDemotedMessage() {
+function formatRoleUstaMessage() {
+  return (
+    "✂️ Tabriklaymiz!\n\n" +
+    "Siz endi ustasiz — o'z navbatlaringiz, mijozlar bilan yozishmalaringiz va to'lovlaringizni " +
+    "saytdagi \"Usta panel\"dan boshqarishingiz mumkin."
+  )
+}
+
+function formatRoleClientMessage() {
   return (
     "ℹ️ Xabar\n\n" +
-    "Sizning administrator huquqingiz administrator tomonidan olib tashlandi. " +
-    "Endi oddiy mijoz sifatida davom etasiz."
+    "Sizning rolingiz o'zgartirildi — endi oddiy mijoz sifatida davom etasiz."
   )
 }
 
@@ -576,13 +583,18 @@ async function forwardRoleChanges() {
   const pending = await getUsersPendingRoleNotice()
   for (const u of pending) {
     const isAdmin = u.role === 'admin'
-    const text = isAdmin ? formatRolePromotedMessage() : formatRoleDemotedMessage()
+    const text =
+      u.role === 'admin' ? formatRolePromotedMessage() :
+      u.role === 'usta' ? formatRoleUstaMessage() :
+      formatRoleClientMessage()
     // A Telegram reply keyboard, once shown, sits on the person's device
     // unchanged until the bot sends a NEW message with a different
     // reply_markup — there's no way to push a keyboard swap into an idle
     // chat. Attaching the correct keyboard to this exact DM is what makes
     // the menu switch in real time instead of only updating the next time
-    // they happen to press /start.
+    // they happen to press /start. Ustas stay on CLIENT_KEYBOARD — bot
+    // slash-commands are admin-only by design, ustas use the website's
+    // /usta dashboard instead.
     await notifyAccountHolder(u, text, isAdmin ? MENU_KEYBOARD : CLIENT_KEYBOARD)
     await markUserRoleNotified(u.id)
   }
