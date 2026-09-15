@@ -8,9 +8,7 @@ import {
 } from 'recharts'
 import { FaMoneyBillWave, FaUsers, FaCalendarCheck, FaCalendarTimes, FaArrowRight } from 'react-icons/fa'
 import StatCard from '../../components/admin/StatCard'
-import StatusBadge from '../../components/StatusBadge'
 import Loader from '../../components/Loader'
-import AutoText from '../../components/AutoText'
 import { fetchAppointments } from '../../features/appointments/appointmentsSlice'
 import { fetchPayments } from '../../features/payments/paymentsSlice'
 import { fetchCustomers } from '../../features/customers/customersSlice'
@@ -88,10 +86,27 @@ export default function AdminDashboard() {
     return Object.entries(map).map(([name, summa]) => ({ name: name.split(' ')[0], summa }))
   }, [appointments])
 
-  const recentAppointments = useMemo(
-    () => [...appointments].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 6),
-    [appointments]
-  )
+  // Per-usta totals (customers served, revenue, appointment count) instead
+  // of a raw feed of individual client-to-usta bookings — an usta manages
+  // their own day-to-day appointments from their own panel; what the admin
+  // needs here is how each one is doing overall, not every single booking.
+  const ustaStats = useMemo(() => {
+    const ustaNames = Object.fromEntries(
+      customers.filter((c) => c.role === 'usta' && !c.deleted).map((c) => [c.barberId, c])
+    )
+    const map = {}
+    appointments
+      .filter((a) => ustaNames[a.barberId])
+      .forEach((a) => {
+        if (!map[a.barberId]) map[a.barberId] = { name: a.barberIsmi, customers: new Set(), count: 0, revenue: 0 }
+        map[a.barberId].count += 1
+        if (a.mijozId) map[a.barberId].customers.add(a.mijozId)
+        if (a.holat === 'yakunlangan') map[a.barberId].revenue += a.narxi || 0
+      })
+    return Object.values(map)
+      .map((v) => ({ name: v.name, customers: v.customers.size, count: v.count, revenue: v.revenue }))
+      .sort((a, b) => b.revenue - a.revenue)
+  }, [appointments, customers])
 
   const weekdayOptions = useMemo(() => getWeekdayOptions(t('common.weekdaysShort', { returnObjects: true })), [t])
 
@@ -206,20 +221,35 @@ export default function AdminDashboard() {
 
         <div className="card p-5 lg:col-span-2">
           <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-white">{t('admin.dashboard.recentAppointmentsTitle')}</h3>
-            <Link to="/admin/navbatlar" className="text-xs text-gold-400 hover:underline">{t('admin.dashboard.viewAll')}</Link>
+            <h3 className="text-sm font-semibold text-white">{t('admin.dashboard.ustaStatsTitle')}</h3>
+            <Link to="/admin/ustalar" className="text-xs text-gold-400 hover:underline">{t('admin.dashboard.viewAll')}</Link>
           </div>
-          <div className="space-y-2">
-            {recentAppointments.map((a) => (
-              <div key={a.id} className="flex items-center justify-between rounded-xl border border-ink-800 px-4 py-2.5">
-                <div>
-                  <p className="text-sm font-medium text-white">{a.mijozIsmi}</p>
-                  <p className="text-xs text-ink-500"><AutoText text={a.xizmatNomi} /> • {a.barberIsmi} • {a.sana} {a.vaqt}</p>
-                </div>
-                <StatusBadge status={a.holat} />
-              </div>
-            ))}
-          </div>
+          {ustaStats.length === 0 ? (
+            <p className="py-8 text-center text-sm text-ink-500">{t('admin.dashboard.ustaStatsEmpty')}</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-ink-800 text-left text-ink-500">
+                    <th className="px-2 py-2 font-medium">{t('admin.dashboard.ustaStatsName')}</th>
+                    <th className="px-2 py-2 font-medium">{t('admin.dashboard.ustaStatsCustomers')}</th>
+                    <th className="px-2 py-2 font-medium">{t('admin.dashboard.ustaStatsAppointments')}</th>
+                    <th className="px-2 py-2 font-medium">{t('admin.dashboard.ustaStatsRevenue')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ustaStats.map((u) => (
+                    <tr key={u.name} className="border-b border-ink-800/60">
+                      <td className="px-2 py-2.5 font-medium text-white">{u.name}</td>
+                      <td className="px-2 py-2.5 text-ink-300">{u.customers}</td>
+                      <td className="px-2 py-2.5 text-ink-300">{u.count}</td>
+                      <td className="px-2 py-2.5 text-gold-400 font-medium">{formatSum(u.revenue)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
 

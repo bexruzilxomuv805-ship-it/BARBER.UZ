@@ -9,6 +9,7 @@ import AutoText from '../../components/AutoText'
 import usePolling from '../../hooks/usePolling'
 import { fetchAppointments, updateAppointment, removeAppointment } from '../../features/appointments/appointmentsSlice'
 import { fetchPayments, createPayment } from '../../features/payments/paymentsSlice'
+import { fetchCustomers } from '../../features/customers/customersSlice'
 import { showToast } from '../../features/ui/uiSlice'
 import { formatSum, STATUS_LABELS } from '../../utils/format'
 import useAuth from '../../hooks/useAuth'
@@ -23,11 +24,8 @@ export default function AdminAppointments() {
   const { isUsta, user } = useAuth()
   const scopeBarberId = isUsta ? user.barberId : null
   const { items: allAppointments, status } = useSelector((s) => s.appointments)
-  const appointments = useMemo(
-    () => (scopeBarberId ? allAppointments.filter((a) => a.barberId === scopeBarberId) : allAppointments),
-    [allAppointments, scopeBarberId]
-  )
   const { items: payments } = useSelector((s) => s.payments)
+  const { items: customers } = useSelector((s) => s.customers)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState(ALL)
   const [toDelete, setToDelete] = useState(null)
@@ -35,14 +33,30 @@ export default function AdminAppointments() {
   useEffect(() => {
     dispatch(fetchAppointments())
     dispatch(fetchPayments())
-  }, [dispatch])
+    if (!isUsta) dispatch(fetchCustomers())
+  }, [dispatch, isUsta])
 
   // Bookings come in from the bot/site at any moment — keep this list live
   // without the admin needing to manually reload.
   usePolling(() => {
     dispatch(fetchAppointments())
     dispatch(fetchPayments())
+    if (!isUsta) dispatch(fetchCustomers())
   }, POLL_MS)
+
+  // A barber who manages their own account (role: 'usta') handles their own
+  // bookings from their own panel — the admin list is for barbers admin
+  // still runs directly, not a mixed feed of every individual client
+  // appointment across every usta. Per-usta totals (revenue, customers
+  // served) live on Hisobotlar instead of this raw list.
+  const ustaBarberIds = useMemo(
+    () => new Set(customers.filter((c) => c.role === 'usta' && !c.deleted).map((c) => c.barberId)),
+    [customers]
+  )
+  const appointments = useMemo(() => {
+    if (scopeBarberId) return allAppointments.filter((a) => a.barberId === scopeBarberId)
+    return allAppointments.filter((a) => !ustaBarberIds.has(a.barberId))
+  }, [allAppointments, scopeBarberId, ustaBarberIds])
 
   const statusLabel = (holat) => {
     const key = STATUS_LABELS[holat]?.key
