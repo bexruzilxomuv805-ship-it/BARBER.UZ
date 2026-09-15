@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { FaPhoneAlt, FaArrowRight, FaClock, FaCommentDots, FaMapMarkerAlt } from 'react-icons/fa'
+import { FaPhoneAlt, FaArrowRight, FaArrowLeft, FaClock, FaCommentDots, FaMapMarkerAlt } from 'react-icons/fa'
 import Reveal from '../../components/Reveal'
 import RatingStars from '../../components/RatingStars'
 import Loader from '../../components/Loader'
@@ -58,7 +58,13 @@ export default function SartaroshxonaDetail() {
     <div>
       <PageHero eyebrow={t('shops.eyebrow')} title={shop.nomi} subtitle={shop.tavsif} />
 
-      <section className="container-x pb-16">
+      <div className="container-x pt-6">
+        <Link to="/sartaroshxonalar" className="inline-flex items-center gap-2 text-sm text-ink-400 hover:text-gold-400">
+          <FaArrowLeft className="text-xs" /> {t('shops.backToList')}
+        </Link>
+      </div>
+
+      <section className="container-x pb-16 pt-4">
         <div className="grid gap-8 lg:grid-cols-2">
           <div>
             {shop.rasmlar?.length > 0 ? (
