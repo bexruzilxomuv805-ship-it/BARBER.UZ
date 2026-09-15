@@ -57,13 +57,16 @@ export default function AdminSartaroshxonalar() {
       lat: form.lat != null ? Number(form.lat) : null,
       lng: form.lng != null ? Number(form.lng) : null,
     }
-    if (editing) {
-      await dispatch(updateShop({ id: editing.id, changes: payload }))
-      dispatch(showToast({ type: 'success', text: t('admin.shops.updatedToast') }))
-    } else {
-      await dispatch(createShop({ ...payload, createdAt: new Date().toISOString() }))
-      dispatch(showToast({ type: 'success', text: t('admin.shops.addedToast') }))
+    const result = editing
+      ? await dispatch(updateShop({ id: editing.id, changes: payload }))
+      : await dispatch(createShop({ ...payload, createdAt: new Date().toISOString() }))
+
+    const succeeded = editing ? updateShop.fulfilled.match(result) : createShop.fulfilled.match(result)
+    if (!succeeded) {
+      dispatch(showToast({ type: 'error', text: result.payload || t('admin.shops.saveError') }))
+      return
     }
+    dispatch(showToast({ type: 'success', text: t(editing ? 'admin.shops.updatedToast' : 'admin.shops.addedToast') }))
     setModalOpen(false)
   }
 

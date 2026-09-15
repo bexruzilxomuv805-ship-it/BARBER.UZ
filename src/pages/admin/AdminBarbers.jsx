@@ -88,13 +88,16 @@ export default function AdminBarbers() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     const payload = { ...form, tajriba: Number(form.tajriba), reyting: Number(form.reyting), narxBoshlanishi: Number(form.narxBoshlanishi) }
-    if (editing) {
-      await dispatch(updateBarber({ id: editing.id, changes: payload }))
-      dispatch(showToast({ type: 'success', text: t('admin.barbers.updatedToast') }))
-    } else {
-      await dispatch(createBarber(payload))
-      dispatch(showToast({ type: 'success', text: t('admin.barbers.addedToast') }))
+    const result = editing
+      ? await dispatch(updateBarber({ id: editing.id, changes: payload }))
+      : await dispatch(createBarber(payload))
+
+    const succeeded = editing ? updateBarber.fulfilled.match(result) : createBarber.fulfilled.match(result)
+    if (!succeeded) {
+      dispatch(showToast({ type: 'error', text: result.payload || t('admin.barbers.saveError') }))
+      return
     }
+    dispatch(showToast({ type: 'success', text: t(editing ? 'admin.barbers.updatedToast' : 'admin.barbers.addedToast') }))
     setModalOpen(false)
   }
 

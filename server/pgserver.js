@@ -25,7 +25,12 @@ const COLLECTIONS = [
 ]
 
 const app = express()
-app.use(express.json())
+// Express's default json() body limit is 100kb — barbers/shops store photos
+// as base64 data URLs directly in the JSONB row (no blob storage in this
+// project), and a shop can have up to 10 of them, so the default silently
+// rejected any request with even one real photo attached. 20mb comfortably
+// covers that; Postgres JSONB itself has no meaningful size concern here.
+app.use(express.json({ limit: '20mb' }))
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*')
   res.header('Access-Control-Allow-Methods', 'GET,POST,PATCH,DELETE,OPTIONS')

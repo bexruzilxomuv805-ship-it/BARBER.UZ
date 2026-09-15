@@ -430,6 +430,7 @@
       "updatedToast": "Barber details updated.",
       "addedToast": "New barber added.",
       "deletedToast": "Barber deleted.",
+      "saveError": "Something went wrong while saving. Please try again.",
       "credentialsAction": "Login credentials",
       "credentialsTitle": "Login credentials for {{name}}",
       "credentialsIntro": "This barber can't sign in yet — create a login for them below.",
@@ -470,6 +471,7 @@
       "addedToast": "New barbershop added.",
       "updatedToast": "Barbershop details updated.",
       "deletedToast": "Barbershop deleted.",
+      "saveError": "Something went wrong while saving. Please try again.",
       "deleteConfirmText": "This barbershop will be permanently removed from the list.",
       "notFound": "No barbershops added yet."
     },

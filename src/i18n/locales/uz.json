@@ -430,6 +430,7 @@
       "updatedToast": "Usta ma’lumotlari yangilandi.",
       "addedToast": "Yangi usta qo‘shildi.",
       "deletedToast": "Usta o‘chirildi.",
+      "saveError": "Saqlashda xatolik yuz berdi. Qaytadan urinib ko‘ring.",
       "credentialsAction": "Kirish ma’lumotlari",
       "credentialsTitle": "{{name}} uchun kirish ma’lumotlari",
       "credentialsIntro": "Bu usta hali saytga kira olmaydi — quyida unga login yarating.",
@@ -470,6 +471,7 @@
       "addedToast": "Yangi sartaroshxona qo‘shildi.",
       "updatedToast": "Sartaroshxona ma’lumotlari yangilandi.",
       "deletedToast": "Sartaroshxona o‘chirildi.",
+      "saveError": "Saqlashda xatolik yuz berdi. Qaytadan urinib ko‘ring.",
       "deleteConfirmText": "Bu sartaroshxona ro‘yxatdan butunlay o‘chiriladi.",
       "notFound": "Hozircha sartaroshxonalar qo‘shilmagan."
     },
