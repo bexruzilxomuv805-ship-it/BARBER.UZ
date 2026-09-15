@@ -7,6 +7,7 @@ import StatusBadge from '../../components/StatusBadge'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import AutoText from '../../components/AutoText'
 import usePolling from '../../hooks/usePolling'
+import useDebouncedValue from '../../hooks/useDebouncedValue'
 import { fetchAppointments, updateAppointment, removeAppointment } from '../../features/appointments/appointmentsSlice'
 import { fetchPayments, createPayment } from '../../features/payments/paymentsSlice'
 import { fetchCustomers } from '../../features/customers/customersSlice'
@@ -27,6 +28,7 @@ export default function AdminAppointments() {
   const { items: payments } = useSelector((s) => s.payments)
   const { items: customers } = useSelector((s) => s.customers)
   const [search, setSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search)
   const [statusFilter, setStatusFilter] = useState(ALL)
   const [toDelete, setToDelete] = useState(null)
 
@@ -67,12 +69,12 @@ export default function AdminAppointments() {
     return appointments
       .filter((a) => (statusFilter === ALL ? true : a.holat === statusFilter))
       .filter((a) =>
-        search
-          ? `${a.mijozIsmi} ${a.barberIsmi} ${a.xizmatNomi}`.toLowerCase().includes(search.toLowerCase())
+        debouncedSearch
+          ? `${a.mijozIsmi} ${a.barberIsmi} ${a.xizmatNomi}`.toLowerCase().includes(debouncedSearch.toLowerCase())
           : true
       )
       .sort((a, b) => new Date(`${b.sana}T${b.vaqt}`) - new Date(`${a.sana}T${a.vaqt}`))
-  }, [appointments, search, statusFilter])
+  }, [appointments, debouncedSearch, statusFilter])
 
   const handleStatusChange = (id, holat) => {
     dispatch(updateAppointment({ id, changes: { holat } }))

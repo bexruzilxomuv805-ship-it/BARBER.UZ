@@ -12,6 +12,7 @@ import {
   markConversationRead, setActiveConversation, removeConversation,
 } from '../../features/chat/chatSlice'
 import useAuth from '../../hooks/useAuth'
+import useDebouncedValue from '../../hooks/useDebouncedValue'
 
 const POLL_MS = 3000
 const TIME_LOCALE = { uz: 'uz-UZ', ru: 'ru-RU', en: 'en-US' }
@@ -309,6 +310,7 @@ export default function AdminChat() {
   )
   const [text, setText] = useState('')
   const [search, setSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search)
   const [loadingList, setLoadingList] = useState(true)
   const [editingId, setEditingId] = useState(null)
   const [editText, setEditText] = useState('')
@@ -328,10 +330,10 @@ export default function AdminChat() {
   const displayConversation = activeConversation || (linkedUserId ? { id: linkedUserId, userName: linkedUserName } : null)
 
   const filteredConversations = useMemo(() => {
-    if (!search.trim()) return conversations
-    const q = search.trim().toLowerCase()
+    if (!debouncedSearch.trim()) return conversations
+    const q = debouncedSearch.trim().toLowerCase()
     return conversations.filter((c) => (c.userName || '').toLowerCase().includes(q))
-  }, [conversations, search])
+  }, [conversations, debouncedSearch])
 
   useEffect(() => {
     if (linkedUserId) dispatch(setActiveConversation(linkedUserId))

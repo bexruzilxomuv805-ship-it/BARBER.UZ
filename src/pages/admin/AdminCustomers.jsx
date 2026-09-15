@@ -17,6 +17,7 @@ import { showToast } from '../../features/ui/uiSlice'
 import { formatSum } from '../../utils/format'
 import useAuth from '../../hooks/useAuth'
 import usePolling from '../../hooks/usePolling'
+import useDebouncedValue from '../../hooks/useDebouncedValue'
 
 const emptyForm = { ism: '', familiya: '', email: '', telefon: '', parol: '1234' }
 const POLL_MS = 8000
@@ -29,6 +30,7 @@ export default function AdminCustomers() {
   const { items: appointments } = useSelector((s) => s.appointments)
   const { items: shops } = useSelector((s) => s.sartaroshxonalar)
   const [search, setSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search)
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState(emptyForm)
@@ -66,7 +68,7 @@ export default function AdminCustomers() {
     return (view === 'active' ? activeUsers : deletedUsers)
       .filter((c) => (roleFilter === 'all' ? true : c.role === roleFilter))
       .filter((c) =>
-        search ? `${c.ism} ${c.familiya} ${c.email}`.toLowerCase().includes(search.toLowerCase()) : true
+        debouncedSearch ? `${c.ism} ${c.familiya} ${c.email}`.toLowerCase().includes(debouncedSearch.toLowerCase()) : true
       )
       .map((c) => {
         const myAppointments = appointments.filter((a) => a.mijozId === c.id)
@@ -75,7 +77,7 @@ export default function AdminCustomers() {
           .reduce((sum, a) => sum + (a.narxi || 0), 0)
         return { ...c, visits: myAppointments.length, spent }
       })
-  }, [activeUsers, deletedUsers, view, roleFilter, appointments, search])
+  }, [activeUsers, deletedUsers, view, roleFilter, appointments, debouncedSearch])
 
   const openCreate = () => {
     setEditing(null)

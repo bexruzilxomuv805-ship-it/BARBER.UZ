@@ -10,6 +10,7 @@ import { fetchAppointments } from '../../features/appointments/appointmentsSlice
 import { showToast } from '../../features/ui/uiSlice'
 import useAuth from '../../hooks/useAuth'
 import usePolling from '../../hooks/usePolling'
+import useDebouncedValue from '../../hooks/useDebouncedValue'
 import { formatSum, PAYMENT_METHOD_LABELS, PAYMENT_STATUS_LABELS } from '../../utils/format'
 import { toLocalDateIso } from '../../utils/schedule'
 
@@ -29,6 +30,7 @@ export default function AdminPayments() {
   const { items: payments, status } = useSelector((s) => s.payments)
   const { items: appointments } = useSelector((s) => s.appointments)
   const [search, setSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search)
   const [toDelete, setToDelete] = useState(null)
 
   useEffect(() => {
@@ -55,9 +57,9 @@ export default function AdminPayments() {
   const filtered = useMemo(
     () =>
       scopedPayments
-        .filter((p) => (search ? p.mijozIsmi.toLowerCase().includes(search.toLowerCase()) : true))
+        .filter((p) => (debouncedSearch ? p.mijozIsmi.toLowerCase().includes(debouncedSearch.toLowerCase()) : true))
         .sort((a, b) => new Date(b.sana) - new Date(a.sana)),
-    [scopedPayments, search]
+    [scopedPayments, debouncedSearch]
   )
 
   const total = useMemo(() => filtered.reduce((sum, p) => sum + p.summa, 0), [filtered])
