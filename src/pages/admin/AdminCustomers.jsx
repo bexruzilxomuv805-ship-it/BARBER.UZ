@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { FaSearch, FaEdit, FaTrash, FaUserPlus, FaUserCircle, FaUserShield, FaTelegramPlane, FaComments, FaTrashRestore } from 'react-icons/fa'
+import { FaSearch, FaEdit, FaTrash, FaUserPlus, FaUserCircle, FaUserShield, FaUserSlash, FaTelegramPlane, FaComments, FaTrashRestore } from 'react-icons/fa'
+import { GiRazor } from 'react-icons/gi'
 import Loader from '../../components/Loader'
 import Modal from '../../components/admin/Modal'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
@@ -10,6 +11,7 @@ import {
   fetchCustomers, createCustomer, updateCustomer,
 } from '../../features/customers/customersSlice'
 import { fetchAppointments } from '../../features/appointments/appointmentsSlice'
+import { fetchBarbers } from '../../features/barbers/barbersSlice'
 import { showToast } from '../../features/ui/uiSlice'
 import { formatSum } from '../../utils/format'
 import useAuth from '../../hooks/useAuth'
@@ -24,12 +26,15 @@ export default function AdminCustomers() {
   const { user: currentUser } = useAuth()
   const { items: users, status } = useSelector((s) => s.customers)
   const { items: appointments } = useSelector((s) => s.appointments)
+  const { items: barbers } = useSelector((s) => s.barbers)
   const [search, setSearch] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState(emptyForm)
   const [toDelete, setToDelete] = useState(null)
   const [view, setView] = useState('active') // 'active' | 'deleted'
+  const [ustaTarget, setUstaTarget] = useState(null)
+  const [ustaBarberId, setUstaBarberId] = useState('')
   // Telegram-registered accounts never collect a familiya/email (the bot
   // only asks for a phone number) — only require those two for accounts
   // created through the site's own Register form / this admin form itself.
@@ -38,6 +43,7 @@ export default function AdminCustomers() {
   useEffect(() => {
     dispatch(fetchCustomers())
     dispatch(fetchAppointments())
+    dispatch(fetchBarbers())
   }, [dispatch])
 
   // New signups (site or bot) and role changes should show up without a
@@ -46,6 +52,17 @@ export default function AdminCustomers() {
     dispatch(fetchCustomers())
     dispatch(fetchAppointments())
   }, POLL_MS)
+
+  // A barber can only have one linked usta account at a time (AdminBarbers.jsx
+  // enforces the same rule from its side) — offer only unlinked barbers here.
+  const linkedBarberIds = useMemo(
+    () => new Set(users.filter((u) => u.role === 'usta' && !u.deleted).map((u) => u.barberId)),
+    [users]
+  )
+  const availableBarbers = useMemo(
+    () => barbers.filter((b) => !linkedBarberIds.has(b.id)),
+    [barbers, linkedBarberIds]
+  )
 
   const activeUsers = useMemo(() => users.filter((c) => !c.deleted), [users])
   const deletedUsers = useMemo(() => users.filter((c) => c.deleted), [users])
@@ -128,6 +145,24 @@ export default function AdminCustomers() {
   const handleDemote = (c) => {
     dispatch(updateCustomer({ id: c.id, changes: { role: 'client', roleNotified: false } }))
     dispatch(showToast({ type: 'success', text: t('admin.customers.demotedToast', { name: c.ism }) }))
+  }
+
+  const openMakeUsta = (c) => {
+    setUstaTarget(c)
+    setUstaBarberId('')
+  }
+
+  const confirmMakeUsta = (e) => {
+    e.preventDefault()
+    if (!ustaBarberId) return
+    dispatch(updateCustomer({ id: ustaTarget.id, changes: { role: 'usta', barberId: ustaBarberId, roleNotified: false } }))
+    dispatch(showToast({ type: 'success', text: t('admin.customers.ustaAssignedToast', { name: ustaTarget.ism }) }))
+    setUstaTarget(null)
+  }
+
+  const handleRemoveUsta = (c) => {
+    dispatch(updateCustomer({ id: c.id, changes: { role: 'client', barberId: null, roleNotified: false } }))
+    dispatch(showToast({ type: 'success', text: t('admin.customers.ustaRemovedToast', { name: c.ism }) }))
   }
 
   return (
@@ -277,6 +312,25 @@ export default function AdminCustomers() {
                                 <FaUserShield />
                               </button>
                             )}
+                            {isUstaRole ? (
+                              <button
+                                onClick={() => handleRemoveUsta(c)}
+                                title={t('admin.customers.removeUsta')}
+                                className="rounded-lg p-2 text-sky-400 hover:bg-sky-500/10"
+                              >
+                                <FaUserSlash />
+                              </button>
+                            ) : (
+                              !isAdminRole && (
+                                <button
+                                  onClick={() => openMakeUsta(c)}
+                                  title={t('admin.customers.makeUsta')}
+                                  className="rounded-lg p-2 text-sky-400 hover:bg-sky-500/10"
+                                >
+                                  <GiRazor />
+                                </button>
+                              )
+                            )}
                             <button onClick={() => openEdit(c)} className="rounded-lg p-2 text-sky-400 hover:bg-sky-500/10">
                               <FaEdit />
                             </button>
@@ -338,6 +392,30 @@ export default function AdminCustomers() {
         onConfirm={() => handleDelete(toDelete)}
         text={t('admin.customers.deleteConfirmText')}
       />
+
+      <Modal open={!!ustaTarget} onClose={() => setUstaTarget(null)} title={t('admin.customers.makeUstaTitle', { name: ustaTarget?.ism })}>
+        {availableBarbers.length === 0 ? (
+          <p className="text-sm text-ink-400">{t('admin.customers.noAvailableBarbers')}</p>
+        ) : (
+          <form onSubmit={confirmMakeUsta} className="space-y-3">
+            <div>
+              <label className="mb-1.5 block text-xs text-ink-500">{t('admin.customers.chooseBarberLabel')}</label>
+              <select
+                required
+                value={ustaBarberId}
+                onChange={(e) => setUstaBarberId(e.target.value)}
+                className="input-field !py-2 text-sm"
+              >
+                <option value="" disabled>{t('admin.customers.chooseBarberPlaceholder')}</option>
+                {availableBarbers.map((b) => (
+                  <option key={b.id} value={b.id}>{b.ism} {b.familiya}</option>
+                ))}
+              </select>
+            </div>
+            <button type="submit" className="btn-gold w-full !py-2.5 text-sm">{t('admin.customers.makeUsta')}</button>
+          </form>
+        )}
+      </Modal>
     </div>
   )
 }
