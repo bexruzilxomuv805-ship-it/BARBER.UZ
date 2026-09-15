@@ -291,14 +291,14 @@ export default function Booking() {
                       <button
                         key={s.id}
                         onClick={() => { setShopId(s.id); setBarberId(''); setDate(''); setTime('') }}
-                        className={`card flex items-center gap-4 p-4 text-left transition-colors ${
+                        className={`card flex items-center gap-3 p-3 text-left transition-colors ${
                           shopId === s.id ? 'border-gold-500 bg-gold-500/5' : 'hover:border-gold-500/40'
                         }`}
                       >
                         {s.rasmlar?.[0] ? (
-                          <img src={s.rasmlar[0]} alt={s.nomi} className="h-14 w-14 shrink-0 rounded-xl object-cover" />
+                          <img src={s.rasmlar[0]} alt={s.nomi} className="h-11 w-11 shrink-0 rounded-lg object-cover" />
                         ) : (
-                          <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-gold-500/10 text-gold-400 text-lg">
+                          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-gold-500/10 text-gold-400 text-base">
                             <FaCalendarAlt />
                           </span>
                         )}
