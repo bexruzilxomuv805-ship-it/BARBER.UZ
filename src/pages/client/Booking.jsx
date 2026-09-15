@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence } from 'framer-motion'
-import { FaCheckCircle, FaArrowLeft, FaArrowRight, FaCalendarAlt } from 'react-icons/fa'
+import { FaCheckCircle, FaArrowLeft, FaArrowRight, FaCalendarAlt, FaLocationArrow } from 'react-icons/fa'
 import PageHero from '../../components/PageHero'
 import Loader from '../../components/Loader'
 import ServiceIcon from '../../components/ServiceIcon'
@@ -16,6 +16,8 @@ import { fetchAppointments, createAppointment } from '../../features/appointment
 import { showToast } from '../../features/ui/uiSlice'
 import useAuth from '../../hooks/useAuth'
 import { formatSum } from '../../utils/format'
+import { getCurrentPosition } from '../../utils/geocode'
+import { distanceKm, formatDistanceKm } from '../../utils/distance'
 import {
   isBarberOff,
   toLocalDateIso,
@@ -67,6 +69,9 @@ export default function Booking() {
   })
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState(false)
+  const [userLocation, setUserLocation] = useState(null)
+  const [locating, setLocating] = useState(false)
+  const [locationError, setLocationError] = useState('')
 
   useEffect(() => {
     dispatch(fetchServices())
@@ -78,6 +83,36 @@ export default function Booking() {
   const days = useMemo(() => nextDays(7), [])
   const todayIso = toLocalDateIso(days[0])
   const selectedShop = useMemo(() => shops.find((s) => s.id === shopId), [shops, shopId])
+
+  // Same "find the one nearest me" feature as the standalone Sartaroshxonalar
+  // list page — repeated here so it's available right at the point of
+  // booking too, not just when browsing.
+  const sortedShops = useMemo(() => {
+    if (!userLocation) return shops
+    const withDistance = shops.map((s) => ({
+      ...s,
+      distance: s.lat != null && s.lng != null ? distanceKm(userLocation, { lat: s.lat, lng: s.lng }) : null,
+    }))
+    return [...withDistance].sort((a, b) => {
+      if (a.distance == null && b.distance == null) return 0
+      if (a.distance == null) return 1
+      if (b.distance == null) return -1
+      return a.distance - b.distance
+    })
+  }, [shops, userLocation])
+
+  const handleFindNearest = async () => {
+    setLocationError('')
+    setLocating(true)
+    try {
+      const pos = await getCurrentPosition()
+      setUserLocation(pos)
+    } catch {
+      setLocationError(t('shops.locationError'))
+    } finally {
+      setLocating(false)
+    }
+  }
   const shopBarbers = useMemo(() => barbers.filter((b) => b.sartaroshxonaId === shopId), [barbers, shopId])
   const selectedService = useMemo(() => services.find((s) => s.id === serviceId), [services, serviceId])
   const selectedBarber = useMemo(() => barbers.find((b) => b.id === barberId), [barbers, barberId])
@@ -232,13 +267,27 @@ export default function Booking() {
           >
             {step === 0 && (
               <div>
+                {shops.length > 0 && (
+                  <div className="mb-4 flex flex-col items-start gap-2">
+                    <button
+                      type="button"
+                      onClick={handleFindNearest}
+                      disabled={locating}
+                      className="btn-outline !py-2 text-sm disabled:opacity-50"
+                    >
+                      <FaLocationArrow /> {locating ? t('shops.locating') : t('shops.findNearest')}
+                    </button>
+                    {locationError && <p className="text-xs text-red-400">{locationError}</p>}
+                    {userLocation && !locationError && <p className="text-xs text-ink-500">{t('shops.sortedByDistance')}</p>}
+                  </div>
+                )}
                 {shopsStatus === 'loading' ? (
                   <Loader />
                 ) : shops.length === 0 ? (
                   <p className="text-sm text-ink-500">{t('booking.noShops')}</p>
                 ) : (
                   <div className="grid gap-4 sm:grid-cols-2">
-                    {shops.map((s) => (
+                    {sortedShops.map((s) => (
                       <button
                         key={s.id}
                         onClick={() => { setShopId(s.id); setBarberId(''); setDate(''); setTime('') }}
@@ -256,7 +305,12 @@ export default function Booking() {
                         <div className="min-w-0 flex-1">
                           <p className="truncate font-medium text-white text-sm">{s.nomi}</p>
                           <AutoText as="p" className="text-xs text-ink-500 truncate" text={s.manzilMatni} />
-                          <p className="mt-0.5 truncate text-xs text-ink-500">{s.ishVaqti}</p>
+                          <p className="mt-0.5 truncate text-xs text-ink-500">
+                            {s.distance != null ? (
+                              <span className="text-gold-400">{formatDistanceKm(s.distance)} · </span>
+                            ) : null}
+                            {s.ishVaqti}
+                          </p>
                         </div>
                       </button>
                     ))}
