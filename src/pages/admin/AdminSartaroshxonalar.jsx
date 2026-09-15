@@ -33,6 +33,7 @@ export default function AdminSartaroshxonalar() {
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState(emptyForm)
   const [toDelete, setToDelete] = useState(null)
+  const [photosProcessing, setPhotosProcessing] = useState(false)
 
   useEffect(() => {
     dispatch(fetchShops())
@@ -76,8 +77,21 @@ export default function AdminSartaroshxonalar() {
     if (!files.length) return
     const room = MAX_PHOTOS - form.rasmlar.length
     const toAdd = files.slice(0, room)
-    const resized = await Promise.all(toAdd.map((f) => resizeImageFile(f)))
-    setForm((f) => ({ ...f, rasmlar: [...f.rasmlar, ...resized] }))
+    setPhotosProcessing(true)
+    // One bad file (e.g. an iPhone HEIC photo many browsers can't decode via
+    // <img>) must not sink every other photo in the batch — settle each
+    // independently instead of Promise.all, which would reject the whole
+    // thing and silently add nothing at all.
+    const results = await Promise.allSettled(toAdd.map((f) => resizeImageFile(f)))
+    setPhotosProcessing(false)
+    const resized = results.filter((r) => r.status === 'fulfilled').map((r) => r.value)
+    const failedCount = results.length - resized.length
+    if (resized.length) {
+      setForm((f) => ({ ...f, rasmlar: [...f.rasmlar, ...resized] }))
+    }
+    if (failedCount > 0) {
+      dispatch(showToast({ type: 'error', text: t('admin.shops.photoFailedToast', { count: failedCount }) }))
+    }
   }
 
   const removePhoto = (idx) => {
@@ -196,9 +210,16 @@ export default function AdminSartaroshxonalar() {
               </div>
             )}
             {form.rasmlar.length < MAX_PHOTOS && (
-              <label className="btn-outline w-fit !py-2 text-sm cursor-pointer">
-                <FaCamera /> {t('admin.shops.addPhoto')}
-                <input type="file" accept="image/*" multiple onChange={handleAddPhotos} className="hidden" />
+              <label className={`btn-outline w-fit !py-2 text-sm cursor-pointer ${photosProcessing ? 'pointer-events-none opacity-60' : ''}`}>
+                <FaCamera /> {photosProcessing ? t('admin.shops.processingPhotos') : t('admin.shops.addPhoto')}
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  disabled={photosProcessing}
+                  onChange={handleAddPhotos}
+                  className="hidden"
+                />
               </label>
             )}
           </div>

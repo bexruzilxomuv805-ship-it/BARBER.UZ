@@ -461,6 +461,8 @@
       "descriptionPlaceholder": "Sartaroshxona haqida qisqacha ma’lumot",
       "photosLabel": "Rasmlar",
       "addPhoto": "Rasm qo‘shish",
+      "processingPhotos": "Yuklanmoqda...",
+      "photoFailedToast": "{{count}} ta rasm yuklanmadi — format qo‘llab-quvvatlanmasligi mumkin (masalan HEIC). JPEG yoki PNG bilan urinib ko‘ring.",
       "findLocation": "Joylashuvni aniqlash",
       "locating": "Qidirilmoqda...",
       "useMyLocation": "Joriy joylashuvim",

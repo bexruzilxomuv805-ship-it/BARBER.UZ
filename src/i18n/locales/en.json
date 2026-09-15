@@ -461,6 +461,8 @@
       "descriptionPlaceholder": "A short description of the barbershop",
       "photosLabel": "Photos",
       "addPhoto": "Add photo",
+      "processingPhotos": "Processing...",
+      "photoFailedToast": "{{count}} photo(s) couldn't be uploaded — the format may be unsupported (e.g. HEIC). Try JPEG or PNG instead.",
       "findLocation": "Find location",
       "locating": "Locating...",
       "useMyLocation": "Use my location",

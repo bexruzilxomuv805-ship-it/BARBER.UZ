@@ -461,6 +461,8 @@
       "descriptionPlaceholder": "Краткое описание парикмахерской",
       "photosLabel": "Фотографии",
       "addPhoto": "Добавить фото",
+      "processingPhotos": "Загрузка...",
+      "photoFailedToast": "{{count}} фото не загружено — формат может не поддерживаться (например HEIC). Попробуйте JPEG или PNG.",
       "findLocation": "Найти местоположение",
       "locating": "Поиск...",
       "useMyLocation": "Моё местоположение",
