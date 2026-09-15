@@ -20,7 +20,7 @@ if (!DATABASE_URL) {
 const pool = new Pool({ connectionString: DATABASE_URL })
 
 const COLLECTIONS = [
-  'users', 'barbers', 'services', 'appointments', 'inventory', 'payments',
+  'users', 'barbers', 'sartaroshxonalar', 'services', 'appointments', 'inventory', 'payments',
   'reviews', 'messages', 'conversations', 'telegramLogins',
 ]
 

@@ -29,7 +29,7 @@ export default function Navbar() {
 
   const LINKS = [
     { to: '/', label: t('nav.home') },
-    { to: '/ustalar', label: t('nav.barbers') },
+    { to: '/sartaroshxonalar', label: t('nav.shops') },
     { to: '/aloqa', label: t('nav.contact') },
   ]
 

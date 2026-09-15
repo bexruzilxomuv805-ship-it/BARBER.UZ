@@ -11,6 +11,7 @@ import AutoText from '../../components/AutoText'
 import { getBarberImage } from '../../assets/images'
 import { fetchServices } from '../../features/services/servicesSlice'
 import { fetchBarbers } from '../../features/barbers/barbersSlice'
+import { fetchShops } from '../../features/sartaroshxonalar/sartaroshxonalarSlice'
 import { fetchAppointments, createAppointment } from '../../features/appointments/appointmentsSlice'
 import { showToast } from '../../features/ui/uiSlice'
 import useAuth from '../../hooks/useAuth'
@@ -50,9 +51,11 @@ export default function Booking() {
 
   const { items: services, status: servicesStatus } = useSelector((s) => s.services)
   const { items: barbers, status: barbersStatus } = useSelector((s) => s.barbers)
+  const { items: shops, status: shopsStatus } = useSelector((s) => s.sartaroshxonalar)
   const { items: appointments } = useSelector((s) => s.appointments)
 
   const [step, setStep] = useState(0)
+  const [shopId, setShopId] = useState(location.state?.shopId || '')
   const [serviceId, setServiceId] = useState(location.state?.serviceId || '')
   const [barberId, setBarberId] = useState(location.state?.barberId || '')
   const [date, setDate] = useState('')
@@ -68,11 +71,14 @@ export default function Booking() {
   useEffect(() => {
     dispatch(fetchServices())
     dispatch(fetchBarbers())
+    dispatch(fetchShops())
     dispatch(fetchAppointments())
   }, [dispatch])
 
   const days = useMemo(() => nextDays(7), [])
   const todayIso = toLocalDateIso(days[0])
+  const selectedShop = useMemo(() => shops.find((s) => s.id === shopId), [shops, shopId])
+  const shopBarbers = useMemo(() => barbers.filter((b) => b.sartaroshxonaId === shopId), [barbers, shopId])
   const selectedService = useMemo(() => services.find((s) => s.id === serviceId), [services, serviceId])
   const selectedBarber = useMemo(() => barbers.find((b) => b.id === barberId), [barbers, barberId])
 
@@ -129,12 +135,13 @@ export default function Booking() {
   }
 
   const canNext = useMemo(() => {
-    if (step === 0) return !!serviceId
-    if (step === 1) return !!barberId
-    if (step === 2) return !!date && !!time
-    if (step === 3) return form.ism.trim() && form.telefon.trim()
+    if (step === 0) return !!shopId
+    if (step === 1) return !!serviceId
+    if (step === 2) return !!barberId
+    if (step === 3) return !!date && !!time
+    if (step === 4) return form.ism.trim() && form.telefon.trim()
     return true
-  }, [step, serviceId, barberId, date, time, form])
+  }, [step, shopId, serviceId, barberId, date, time, form])
 
   const handleSubmit = async () => {
     setSubmitting(true)
@@ -144,6 +151,8 @@ export default function Booking() {
           mijozId: user?.id || null,
           mijozIsmi: form.ism,
           mijozTelefon: form.telefon,
+          sartaroshxonaId: shopId,
+          sartaroshxonaNomi: selectedShop?.nomi || '',
           barberId,
           barberIsmi: `${selectedBarber.ism} ${selectedBarber.familiya}`,
           xizmatId: serviceId,
@@ -223,6 +232,41 @@ export default function Booking() {
           >
             {step === 0 && (
               <div>
+                {shopsStatus === 'loading' ? (
+                  <Loader />
+                ) : shops.length === 0 ? (
+                  <p className="text-sm text-ink-500">{t('booking.noShops')}</p>
+                ) : (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {shops.map((s) => (
+                      <button
+                        key={s.id}
+                        onClick={() => { setShopId(s.id); setBarberId(''); setDate(''); setTime('') }}
+                        className={`card flex items-center gap-4 p-4 text-left transition-colors ${
+                          shopId === s.id ? 'border-gold-500 bg-gold-500/5' : 'hover:border-gold-500/40'
+                        }`}
+                      >
+                        {s.rasmlar?.[0] ? (
+                          <img src={s.rasmlar[0]} alt={s.nomi} className="h-14 w-14 shrink-0 rounded-xl object-cover" />
+                        ) : (
+                          <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-gold-500/10 text-gold-400 text-lg">
+                            <FaCalendarAlt />
+                          </span>
+                        )}
+                        <div className="flex-1">
+                          <p className="font-medium text-white text-sm">{s.nomi}</p>
+                          <AutoText as="p" className="text-xs text-ink-500 truncate" text={s.manzilMatni} />
+                        </div>
+                        <span className="text-xs text-ink-500">{s.ishVaqti}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {step === 1 && (
+              <div>
                 {servicesStatus === 'loading' ? (
                   <Loader />
                 ) : (
@@ -250,13 +294,15 @@ export default function Booking() {
               </div>
             )}
 
-            {step === 1 && (
+            {step === 2 && (
               <div>
                 {barbersStatus === 'loading' ? (
                   <Loader />
+                ) : shopBarbers.length === 0 ? (
+                  <p className="text-sm text-ink-500">{t('booking.noShopBarbers')}</p>
                 ) : (
                   <div className="grid gap-4 sm:grid-cols-2">
-                    {barbers.map((b) => {
+                    {shopBarbers.map((b) => {
                       const offDays = WEEKDAY_DISPLAY_ORDER.filter((d) => b.damOlishKunlari?.includes(d)).map((d) => weekdaysShort[d])
                       const alwaysOff = offDays.length === 7
                       return (
@@ -286,7 +332,7 @@ export default function Booking() {
               </div>
             )}
 
-            {step === 2 && (
+            {step === 3 && (
               <div>
                 <p className="mb-3 flex items-center gap-2 text-sm font-medium text-ink-300"><FaCalendarAlt className="text-gold-400" /> {t('booking.chooseDate')}</p>
                 <div className="flex gap-3 overflow-x-auto pb-2">
@@ -344,11 +390,12 @@ export default function Booking() {
               </div>
             )}
 
-            {step === 3 && (
+            {step === 4 && (
               <div className="space-y-4">
                 <div className="card p-5">
                   <p className="text-xs text-ink-500 mb-3">{t('booking.orderSummary')}</p>
                   <div className="space-y-1.5 text-sm text-ink-300">
+                    <p>{t('booking.shopLabel')}: <span className="text-white font-medium">{selectedShop?.nomi}</span></p>
                     <p>{t('booking.serviceLabel')}: <span className="text-white font-medium"><AutoText text={selectedService?.nomi} /></span></p>
                     <p>{t('booking.barberLabel')}: <span className="text-white font-medium">{selectedBarber?.ism} {selectedBarber?.familiya}</span></p>
                     <p>{t('booking.dateTimeLabel')}: <span className="text-white font-medium">{date} — {time}</span></p>

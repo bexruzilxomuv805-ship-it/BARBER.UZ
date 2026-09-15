@@ -395,6 +395,7 @@ async function syncEditedMessages() {
 function formatAppointment(a) {
   return (
     `\u{1F4C5} Yangi navbat\n` +
+    (a.sartaroshxonaNomi ? `\u{1F3EA} ${a.sartaroshxonaNomi}\n` : '') +
     `\u{1F464} ${a.mijozIsmi || 'Mijoz'} (${a.mijozTelefon || '—'})\n` +
     `✂️ ${a.xizmatNomi || '—'} — ${a.barberIsmi || '—'}\n` +
     `\u{1F553} ${a.sana} ${a.vaqt}` +
@@ -410,6 +411,7 @@ async function notifyClientOfBooking(appointment) {
     await bot.sendMessage(
       user.telegramId,
       `✅ Navbatingiz qabul qilindi!\n` +
+        (appointment.sartaroshxonaNomi ? `\u{1F3EA} ${appointment.sartaroshxonaNomi}\n` : '') +
         `✂️ ${appointment.xizmatNomi || '—'}\n` +
         `\u{1F487} Usta: ${appointment.barberIsmi || '—'}${barber?.telefon ? ` (${barber.telefon})` : ''}\n` +
         `\u{1F553} ${appointment.sana} ${appointment.vaqt}` +
@@ -943,6 +945,7 @@ async function notifyClientOfReminder(appointment) {
     await bot.sendMessage(
       user.telegramId,
       `⏰ Eslatma: navbatingizga ${REMINDER_WINDOW_MIN} daqiqadan kam vaqt qoldi!\n` +
+        (appointment.sartaroshxonaNomi ? `\u{1F3EA} ${appointment.sartaroshxonaNomi}\n` : '') +
         `✂️ ${appointment.xizmatNomi || '—'}\n` +
         `\u{1F487} Usta: ${appointment.barberIsmi || '—'}${barber?.telefon ? ` (${barber.telefon})` : ''}\n` +
         `\u{1F553} Bugun, soat ${appointment.vaqt}da kutamiz!`

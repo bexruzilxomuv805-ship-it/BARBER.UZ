@@ -1,6 +1,7 @@
 import { configureStore } from '@reduxjs/toolkit'
 import authReducer from '../features/auth/authSlice'
 import barbersReducer from '../features/barbers/barbersSlice'
+import sartaroshxonalarReducer from '../features/sartaroshxonalar/sartaroshxonalarSlice'
 import servicesReducer from '../features/services/servicesSlice'
 import appointmentsReducer from '../features/appointments/appointmentsSlice'
 import inventoryReducer from '../features/inventory/inventorySlice'
@@ -15,6 +16,7 @@ export const store = configureStore({
   reducer: {
     auth: authReducer,
     barbers: barbersReducer,
+    sartaroshxonalar: sartaroshxonalarReducer,
     services: servicesReducer,
     appointments: appointmentsReducer,
     inventory: inventoryReducer,

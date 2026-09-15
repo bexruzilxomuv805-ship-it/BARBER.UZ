@@ -10,6 +10,7 @@ import AutoText from '../../components/AutoText'
 import { getBarberImage } from '../../assets/images'
 import { fetchBarbers, createBarber, updateBarber, removeBarber } from '../../features/barbers/barbersSlice'
 import { fetchCustomers, createCustomer, updateCustomer } from '../../features/customers/customersSlice'
+import { fetchShops } from '../../features/sartaroshxonalar/sartaroshxonalarSlice'
 import { showToast } from '../../features/ui/uiSlice'
 import { formatSum, formatDateShort } from '../../utils/format'
 import { getWeekdayOptions, isBarberOff, toLocalDateIso } from '../../utils/schedule'
@@ -17,7 +18,7 @@ import { getWeekdayOptions, isBarberOff, toLocalDateIso } from '../../utils/sche
 const emptyForm = {
   ism: '', familiya: '', mutaxassislik: '', telefon: '', tajriba: 1,
   reyting: 5, rasm: 'barber-aziz', narxBoshlanishi: 30000, ishVaqti: '09:00 - 18:00', bio: '',
-  damOlishKunlari: [], taillar: [],
+  damOlishKunlari: [], taillar: [], sartaroshxonaId: '',
 }
 const emptyRange = { boshlanish: '', tugash: '' }
 const emptyCredForm = { email: '', parol: '' }
@@ -27,6 +28,7 @@ export default function AdminBarbers() {
   const dispatch = useDispatch()
   const { items: barbers, status } = useSelector((s) => s.barbers)
   const { items: users } = useSelector((s) => s.customers)
+  const { items: shops } = useSelector((s) => s.sartaroshxonalar)
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState(emptyForm)
@@ -39,6 +41,7 @@ export default function AdminBarbers() {
   useEffect(() => {
     dispatch(fetchBarbers())
     dispatch(fetchCustomers())
+    dispatch(fetchShops())
   }, [dispatch])
 
   const ustaByBarberId = useMemo(
@@ -208,6 +211,19 @@ export default function AdminBarbers() {
           <div>
             <label className="mb-1.5 block text-xs text-ink-500">{t('admin.barbers.specialtyLabel')}</label>
             <input required value={form.mutaxassislik} onChange={(e) => setForm((f) => ({ ...f, mutaxassislik: e.target.value }))} placeholder={t('admin.barbers.specialtyPlaceholder')} className="input-field !py-2 text-sm" />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-xs text-ink-500">{t('admin.barbers.shopLabel')}</label>
+            <select
+              value={form.sartaroshxonaId}
+              onChange={(e) => setForm((f) => ({ ...f, sartaroshxonaId: e.target.value }))}
+              className="input-field !py-2 text-sm"
+            >
+              <option value="">{t('admin.barbers.shopUnassigned')}</option>
+              {shops.map((s) => (
+                <option key={s.id} value={s.id}>{s.nomi}</option>
+              ))}
+            </select>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>

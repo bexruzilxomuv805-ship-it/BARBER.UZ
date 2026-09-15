@@ -12,7 +12,8 @@ import AdminRoute from './routes/AdminRoute'
 import UstaRoute from './routes/UstaRoute'
 
 import Home from './pages/client/Home'
-import Barbers from './pages/client/Barbers'
+import Sartaroshxonalar from './pages/client/Sartaroshxonalar'
+import SartaroshxonaDetail from './pages/client/SartaroshxonaDetail'
 import Booking from './pages/client/Booking'
 import Login from './pages/client/Login'
 import Register from './pages/client/Register'
@@ -24,6 +25,7 @@ import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminAppointments from './pages/admin/AdminAppointments'
 import AdminCustomers from './pages/admin/AdminCustomers'
 import AdminBarbers from './pages/admin/AdminBarbers'
+import AdminSartaroshxonalar from './pages/admin/AdminSartaroshxonalar'
 import AdminServices from './pages/admin/AdminServices'
 import AdminInventory from './pages/admin/AdminInventory'
 import AdminPayments from './pages/admin/AdminPayments'
@@ -88,7 +90,9 @@ export default function App() {
         <Route element={<ClientLayout />}>
           <Route path="/" element={<Home />} />
           <Route path="/xizmatlar" element={<Navigate to="/navbat-olish" replace />} />
-          <Route path="/ustalar" element={<Barbers />} />
+          <Route path="/ustalar" element={<Navigate to="/sartaroshxonalar" replace />} />
+          <Route path="/sartaroshxonalar" element={<Sartaroshxonalar />} />
+          <Route path="/sartaroshxonalar/:id" element={<SartaroshxonaDetail />} />
           <Route path="/aloqa" element={<Contact />} />
           <Route path="/navbat-olish" element={<Booking />} />
           <Route path="/kirish" element={<Login />} />
@@ -109,6 +113,7 @@ export default function App() {
           <Route index element={<AdminDashboard />} />
           <Route path="navbatlar" element={<AdminAppointments />} />
           <Route path="mijozlar" element={<AdminCustomers />} />
+          <Route path="sartaroshxonalar" element={<AdminSartaroshxonalar />} />
           <Route path="ustalar" element={<AdminBarbers />} />
           <Route path="xizmatlar" element={<AdminServices />} />
           <Route path="ombor" element={<AdminInventory />} />

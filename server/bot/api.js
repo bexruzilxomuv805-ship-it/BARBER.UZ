@@ -340,6 +340,16 @@ export async function getBarber(id) {
   }
 }
 
+export async function getShop(id) {
+  try {
+    const { data } = await client.get(`/sartaroshxonalar/${id}`)
+    return data
+  } catch (err) {
+    if (err?.response?.status === 404) return null
+    throw err
+  }
+}
+
 export async function getContactInfo() {
   const { data } = await client.get('/contactInfo')
   return data

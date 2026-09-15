@@ -18,7 +18,7 @@ const dbPath = fileURLToPath(new URL('../server/db.json', import.meta.url))
 const db = JSON.parse(readFileSync(dbPath, 'utf-8'))
 
 const COLLECTIONS = [
-  'users', 'barbers', 'services', 'appointments', 'inventory', 'payments',
+  'users', 'barbers', 'sartaroshxonalar', 'services', 'appointments', 'inventory', 'payments',
   'reviews', 'messages', 'conversations', 'telegramLogins',
 ]
 

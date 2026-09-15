@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   FaTachometerAlt, FaCalendarAlt, FaUsers, FaCut, FaBoxes, FaMoneyBillWave,
-  FaChartBar, FaComments, FaSignOutAlt, FaBars, FaHome, FaCog,
+  FaChartBar, FaComments, FaSignOutAlt, FaBars, FaHome, FaCog, FaStore,
 } from 'react-icons/fa'
 import { GiRazor } from 'react-icons/gi'
 import useAuth from '../hooks/useAuth'
@@ -35,6 +35,7 @@ export default function AdminLayout() {
         { to: '/admin', label: t('admin.nav.dashboard'), icon: FaTachometerAlt, end: true },
         { to: '/admin/navbatlar', label: t('admin.nav.appointments'), icon: FaCalendarAlt, badgeKey: 'pendingAppointments' },
         { to: '/admin/mijozlar', label: t('admin.nav.customers'), icon: FaUsers },
+        { to: '/admin/sartaroshxonalar', label: t('admin.nav.shops'), icon: FaStore },
         { to: '/admin/ustalar', label: t('admin.nav.barbers'), icon: GiRazor },
         { to: '/admin/xizmatlar', label: t('admin.nav.services'), icon: FaCut },
         { to: '/admin/ombor', label: t('admin.nav.inventory'), icon: FaBoxes },

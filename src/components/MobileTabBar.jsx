@@ -13,7 +13,7 @@ export default function MobileTabBar() {
 
   const TABS = [
     { to: '/', label: t('nav.home'), icon: FaHome, end: true },
-    { to: '/ustalar', label: t('nav.barbers'), icon: GiRazor },
+    { to: '/sartaroshxonalar', label: t('nav.shops'), icon: GiRazor },
     { to: '/navbat-olish', label: t('home.ctaBook'), icon: FaCalendarAlt },
     { to: '/profil', label: t('profile.title'), icon: FaUserCircle },
   ]

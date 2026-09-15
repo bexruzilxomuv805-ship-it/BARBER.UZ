@@ -341,8 +341,8 @@ export default function Home() {
           )}
 
           <Reveal className="mt-10 text-center">
-            <Link to="/ustalar" className="btn-outline">
-              {t('home.viewAllBarbers')} <FaArrowRight />
+            <Link to="/sartaroshxonalar" className="btn-outline">
+              {t('home.viewAllShops')} <FaArrowRight />
             </Link>
           </Reveal>
         </div>
