@@ -16,7 +16,6 @@
   },
   "nav": {
     "home": "Bosh sahifa",
-    "services": "Xizmatlar",
     "barbers": "Ustalar",
     "contact": "Aloqa",
     "login": "Kirish",
@@ -24,6 +23,7 @@
     "registerShort": "Ro‘yxat",
     "myAppointments": "Mening navbatlarim",
     "adminPanel": "Admin panel",
+    "ustaPanel": "Usta panel",
     "logout": "Chiqish",
     "menuAria": "Menyu",
     "loggedOutToast": "Tizimdan chiqdingiz.",
@@ -92,15 +92,6 @@
     "locationSubtitle": "Toshkent markazida, qulay joylashuvda sizni kutamiz.",
     "bookNow": "Hoziroq navbat oling"
   },
-  "services": {
-    "eyebrow": "Narxnoma",
-    "title": "Xizmatlarimiz",
-    "subtitle": "Har bir xizmat tajribali ustalar tomonidan, sifatli mahsulotlar bilan bajariladi.",
-    "all": "Barchasi",
-    "bookAction": "Band qilish",
-    "minutes": "{{count}} daq",
-    "noResults": "Bu kategoriyada xizmat topilmadi."
-  },
   "barbers": {
     "eyebrow": "Jamoamiz",
     "title": "Ustalarimiz bilan tanishing",
@@ -110,7 +101,8 @@
     "startingFrom": "{{price}} dan",
     "yearsExperienceFull": "{{count}} yil tajriba",
     "workHours": "Ish vaqti",
-    "bookAction": "Band qilish"
+    "bookAction": "Band qilish",
+    "messageAction": "Xabar yozish"
   },
   "booking": {
     "eyebrow": "Onlayn band qilish",
@@ -194,6 +186,7 @@
     "title": "Mening profilim",
     "subtitle": "Navbatlaringiz tarixi va shaxsiy ma’lumotlaringiz.",
     "roleAdmin": "Administrator",
+    "roleUsta": "Usta",
     "roleClient": "Mijoz",
     "edit": "Tahrirlash",
     "save": "Saqlash",
@@ -296,6 +289,7 @@
       "backToSite": "Saytga qaytish"
     },
     "role": "Administrator",
+    "roleUsta": "Usta",
     "actions": "Amallar",
     "all": "Barchasi",
     "delete": "O‘chirish",
@@ -367,6 +361,7 @@
       "demotedToast": "{{name}} endi oddiy mijoz.",
       "tableRole": "Rol",
       "roleAdmin": "Admin",
+      "roleUsta": "Usta",
       "roleClient": "Mijoz",
       "you": "Siz",
       "openChat": "Chatga o'tish",
@@ -403,7 +398,15 @@
       "deleteConfirmText": "Bu usta ro‘yxatdan butunlay o‘chiriladi.",
       "updatedToast": "Usta ma’lumotlari yangilandi.",
       "addedToast": "Yangi usta qo‘shildi.",
-      "deletedToast": "Usta o‘chirildi."
+      "deletedToast": "Usta o‘chirildi.",
+      "credentialsAction": "Kirish ma’lumotlari",
+      "credentialsTitle": "{{name}} uchun kirish ma’lumotlari",
+      "credentialsIntro": "Bu usta hali saytga kira olmaydi — quyida unga login yarating.",
+      "credentialsCreatedToast": "Usta uchun akkaunt yaratildi.",
+      "resetPasswordAction": "Parolni tiklash",
+      "passwordResetToast": "Parol yangilandi.",
+      "telegramLinkedYes": "Telegram bog‘langan",
+      "telegramLinkedNo": "Telegram hali bog‘lanmagan"
     },
     "services": {
       "title": "Xizmatlar",

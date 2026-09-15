@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Routes, Route, useNavigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { useTranslation } from 'react-i18next'
 import { refreshUser, ACCOUNT_DELETED } from './features/auth/authSlice'
@@ -9,9 +9,9 @@ import ScrollToTop from './components/ScrollToTop'
 import ClientLayout from './layouts/ClientLayout'
 import AdminLayout from './layouts/AdminLayout'
 import AdminRoute from './routes/AdminRoute'
+import UstaRoute from './routes/UstaRoute'
 
 import Home from './pages/client/Home'
-import Services from './pages/client/Services'
 import Barbers from './pages/client/Barbers'
 import Booking from './pages/client/Booking'
 import Login from './pages/client/Login'
@@ -87,7 +87,7 @@ export default function App() {
         {/* Public / client-facing site */}
         <Route element={<ClientLayout />}>
           <Route path="/" element={<Home />} />
-          <Route path="/xizmatlar" element={<Services />} />
+          <Route path="/xizmatlar" element={<Navigate to="/navbat-olish" replace />} />
           <Route path="/ustalar" element={<Barbers />} />
           <Route path="/aloqa" element={<Contact />} />
           <Route path="/navbat-olish" element={<Booking />} />
@@ -116,6 +116,21 @@ export default function App() {
           <Route path="hisobotlar" element={<AdminReports />} />
           <Route path="chat" element={<AdminChat />} />
           <Route path="sozlamalar" element={<AdminSettings />} />
+        </Route>
+
+        {/* Usta (barber) panel — reuses AdminLayout/AdminAppointments/AdminChat,
+            scoped down to the logged-in barber's own data */}
+        <Route
+          path="/usta"
+          element={
+            <UstaRoute>
+              <AdminLayout />
+            </UstaRoute>
+          }
+        >
+          <Route index element={<Navigate to="navbatlar" replace />} />
+          <Route path="navbatlar" element={<AdminAppointments />} />
+          <Route path="chat" element={<AdminChat />} />
         </Route>
       </Routes>
     </>

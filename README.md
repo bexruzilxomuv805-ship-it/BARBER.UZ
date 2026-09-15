@@ -76,6 +76,7 @@ Saytni ochish: **http://localhost:5173**
 | Rol | Email | Parol |
 |---|---|---|
 | Admin | admin@zolotoy.uz | admin123 |
+| Usta (barber) | usta@zolotoy.uz | usta123 |
 | Mijoz | ali@example.com | 1234 |
 | Mijoz | sardor@example.com | 1234 |
 

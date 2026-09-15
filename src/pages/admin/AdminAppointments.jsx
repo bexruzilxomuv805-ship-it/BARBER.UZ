@@ -11,6 +11,7 @@ import { fetchAppointments, updateAppointment, removeAppointment } from '../../f
 import { fetchPayments, createPayment } from '../../features/payments/paymentsSlice'
 import { showToast } from '../../features/ui/uiSlice'
 import { formatSum, STATUS_LABELS } from '../../utils/format'
+import useAuth from '../../hooks/useAuth'
 
 const STATUSES = ['kutilmoqda', 'tasdiqlangan', 'yakunlangan', 'bekor qilingan', 'kelmagan']
 const ALL = '__ALL__'
@@ -19,7 +20,13 @@ const POLL_MS = 8000
 export default function AdminAppointments() {
   const { t } = useTranslation()
   const dispatch = useDispatch()
-  const { items: appointments, status } = useSelector((s) => s.appointments)
+  const { isUsta, user } = useAuth()
+  const scopeBarberId = isUsta ? user.barberId : null
+  const { items: allAppointments, status } = useSelector((s) => s.appointments)
+  const appointments = useMemo(
+    () => (scopeBarberId ? allAppointments.filter((a) => a.barberId === scopeBarberId) : allAppointments),
+    [allAppointments, scopeBarberId]
+  )
   const { items: payments } = useSelector((s) => s.payments)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState(ALL)

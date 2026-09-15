@@ -42,6 +42,8 @@ import {
   confirmTelegramLogin,
   findUserByTelegramId,
   findAnyUserByTelegramId,
+  findUstaByTelegramId,
+  findUstaByBarberId,
   findUserByPhone,
   findAnyUserByPhone,
   createTelegramUser,
@@ -287,8 +289,35 @@ function isSuperAdmin(msgOrQuery) {
   return isSuperAdminUsername(msgOrQuery.from?.username)
 }
 
+// Every barber-specific notification (new appointment, reminder, arrival
+// check, chat message, ...) is sent to the shared admin chat AND, if that
+// barber has a linked usta account with Telegram connected, to their own
+// chat too — admin always stays in the loop as a safety net, the usta
+// additionally gets their own copy instead of relying on the admin to relay
+// it (see CLAUDE.md / the "usta phase 1" plan this implements).
+async function notifyBarberChat(barberId, text, options) {
+  if (!barberId) return
+  try {
+    const usta = await findUstaByBarberId(barberId)
+    if (usta?.telegramId) await bot.sendMessage(usta.telegramId, text, options)
+  } catch (err) {
+    console.error('[bot] notify barber chat error:', err?.message || err)
+  }
+}
+
+// Resolves which "staff" (admin or a specific usta) a Telegram chat belongs
+// to, for callback buttons (confirm/cancel/complete, arrived/no-show) that
+// used to be admin-chat-only — an usta tapping these from their own chat now
+// works too, scoped to their own barberId (checked by each call site).
+async function staffContext(chatId) {
+  if (adminChatId && String(chatId) === adminChatId) return { role: 'admin' }
+  const usta = await findUstaByTelegramId(chatId)
+  if (usta) return { role: 'usta', barberId: usta.barberId }
+  return null
+}
+
 function formatBotUser(u) {
-  const role = u.role === 'admin' ? '👑 Admin' : '👤 Oddiy foydalanuvchi'
+  const role = u.role === 'admin' ? '👑 Admin' : u.role === 'usta' ? '✂️ Usta' : '👤 Oddiy foydalanuvchi'
   return (
     `${u.ism || ''} ${u.familiya || ''}`.trim() +
     (u.telegramUsername ? ` (@${u.telegramUsername})` : '') +
@@ -307,10 +336,18 @@ function formatAdminChatMessage(message) {
 async function forwardClientMessages() {
   const messages = await getUnnotifiedClientMessages()
   for (const message of messages) {
-    if (!adminChatId) break
-    const sent = await bot.sendMessage(adminChatId, formatClientChatMessage(message))
-    conversationByTelegramMsgId.set(sent.message_id, message.conversationId)
-    await markMessageForwarded(message.id, { chatId: adminChatId, messageId: sent.message_id, text: message.text })
+    if (message.barberId) {
+      await notifyBarberChat(message.barberId, formatClientChatMessage(message))
+    }
+    if (adminChatId) {
+      const sent = await bot.sendMessage(adminChatId, formatClientChatMessage(message))
+      conversationByTelegramMsgId.set(sent.message_id, message.conversationId)
+      await markMessageForwarded(message.id, { chatId: adminChatId, messageId: sent.message_id, text: message.text })
+    } else {
+      // No admin chat configured — still mark notified (barber copy, if any,
+      // already sent above) so this message isn't retried forever.
+      await markMessageForwarded(message.id, { chatId: null, messageId: null, text: message.text })
+    }
   }
 }
 
@@ -387,18 +424,20 @@ async function notifyClientOfBooking(appointment) {
 async function forwardAppointments() {
   const appointments = await getUnnotifiedPendingAppointments()
   for (const appointment of appointments) {
-    if (adminChatId) {
-      await bot.sendMessage(adminChatId, formatAppointment(appointment), {
-        reply_markup: {
-          inline_keyboard: [
-            [
-              { text: '✅ Tasdiqlash', callback_data: `confirm:${appointment.id}` },
-              { text: '❌ Bekor qilish', callback_data: `cancel:${appointment.id}` },
-            ],
+    const keyboard = {
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: '✅ Tasdiqlash', callback_data: `confirm:${appointment.id}` },
+            { text: '❌ Bekor qilish', callback_data: `cancel:${appointment.id}` },
           ],
-        },
-      })
+        ],
+      },
     }
+    if (adminChatId) {
+      await bot.sendMessage(adminChatId, formatAppointment(appointment), keyboard)
+    }
+    await notifyBarberChat(appointment.barberId, formatAppointment(appointment), keyboard)
     await notifyClientOfBooking(appointment)
     await markAppointmentNotified(appointment.id)
   }
@@ -929,14 +968,14 @@ async function sendReminders() {
       return diffMin > 0 && diffMin <= REMINDER_WINDOW_MIN
     })
     for (const a of due) {
+      const reminderText =
+        `⏰ Eslatma: ${a.vaqt}da navbat bor (${REMINDER_WINDOW_MIN} daqiqadan kamroq qoldi)\n` +
+        `\u{1F464} ${a.mijozIsmi || 'Mijoz'} (${a.mijozTelefon || '—'})\n` +
+        `✂️ ${a.xizmatNomi || '—'} — ${a.barberIsmi || '—'}`
       if (adminChatId) {
-        await bot.sendMessage(
-          adminChatId,
-          `⏰ Eslatma: ${a.vaqt}da navbat bor (${REMINDER_WINDOW_MIN} daqiqadan kamroq qoldi)\n` +
-            `\u{1F464} ${a.mijozIsmi || 'Mijoz'} (${a.mijozTelefon || '—'})\n` +
-            `✂️ ${a.xizmatNomi || '—'} — ${a.barberIsmi || '—'}`
-        )
+        await bot.sendMessage(adminChatId, reminderText)
       }
+      await notifyBarberChat(a.barberId, reminderText)
       await notifyClientOfReminder(a)
       await markAppointmentReminded(a.id)
     }
@@ -951,7 +990,6 @@ async function sendReminders() {
 // (kelganmi) without touching the appointment's confirm/complete/cancel
 // status, which stays a separate concern.
 async function checkArrivals() {
-  if (!adminChatId) return
   try {
     const all = await getAllAppointments()
     const today = todayStr()
@@ -966,24 +1004,26 @@ async function checkArrivals() {
       return now >= apptTime
     })
     for (const a of due) {
-      await bot.sendMessage(
-        adminChatId,
+      const text =
         `⏰ Tekshiruv vaqti!\n` +
-          `\u{1F464} ${a.mijozIsmi || 'Mijoz'} (${a.mijozTelefon || '—'})\n` +
-          `✂️ ${a.xizmatNomi || '—'} — ${a.barberIsmi || '—'}\n` +
-          `\u{1F553} ${a.vaqt}\n\n` +
-          `Mijoz keldimi?`,
-        {
-          reply_markup: {
-            inline_keyboard: [
-              [
-                { text: '✅ Ha, keldi', callback_data: `arrived:${a.id}` },
-                { text: "❌ Yo'q, kelmadi", callback_data: `noshow:${a.id}` },
-              ],
+        `\u{1F464} ${a.mijozIsmi || 'Mijoz'} (${a.mijozTelefon || '—'})\n` +
+        `✂️ ${a.xizmatNomi || '—'} — ${a.barberIsmi || '—'}\n` +
+        `\u{1F553} ${a.vaqt}\n\n` +
+        `Mijoz keldimi?`
+      const keyboard = {
+        reply_markup: {
+          inline_keyboard: [
+            [
+              { text: '✅ Ha, keldi', callback_data: `arrived:${a.id}` },
+              { text: "❌ Yo'q, kelmadi", callback_data: `noshow:${a.id}` },
             ],
-          },
-        }
-      )
+          ],
+        },
+      }
+      if (adminChatId) {
+        await bot.sendMessage(adminChatId, text, keyboard)
+      }
+      await notifyBarberChat(a.barberId, text, keyboard)
       await markAppointmentArrivalAsked(a.id)
     }
   } catch (err) {
@@ -1036,18 +1076,18 @@ async function autoCompleteAppointments() {
         }).catch((err) => console.error('[bot] auto-complete billing error:', err?.message || err))
       }
 
+      const completedText =
+        `✅ Buyurtma bajarildi!\n` +
+        `\u{1F464} ${appointment.mijozIsmi || 'Mijoz'} (${appointment.mijozTelefon || '—'})\n` +
+        `✂️ ${appointment.xizmatNomi || '—'} — ${appointment.barberIsmi || '—'}\n` +
+        `\u{1F553} ${appointment.sana} ${appointment.vaqt}` +
+        (appointment.narxi ? `\n💵 ${formatMoney(appointment.narxi)}` : '')
       if (adminChatId) {
         await bot
-          .sendMessage(
-            adminChatId,
-            `✅ Buyurtma bajarildi!\n` +
-              `\u{1F464} ${appointment.mijozIsmi || 'Mijoz'} (${appointment.mijozTelefon || '—'})\n` +
-              `✂️ ${appointment.xizmatNomi || '—'} — ${appointment.barberIsmi || '—'}\n` +
-              `\u{1F553} ${appointment.sana} ${appointment.vaqt}` +
-              (appointment.narxi ? `\n💵 ${formatMoney(appointment.narxi)}` : '')
-          )
+          .sendMessage(adminChatId, completedText)
           .catch((err) => console.error('[bot] auto-complete admin notify error:', err?.message || err))
       }
+      await notifyBarberChat(appointment.barberId, completedText)
 
       const clientUser = await getUser(appointment.mijozId).catch(() => null)
       if (clientUser?.telegramId) {
@@ -1856,12 +1896,20 @@ bot.on('callback_query', safeHandler(async (query) => {
 
   if (action === 'confirm' || action === 'cancel' || action === 'complete') {
     try {
-      const staffAction = isFromAdmin(query.message)
+      const staff = await staffContext(query.message.chat.id)
+      const staffAction = !!staff
 
       // Only staff can confirm/complete. Cancel is also allowed by the
-      // client who owns the appointment.
+      // client who owns the appointment. An usta (as opposed to the admin)
+      // may only act on their own barber's appointments.
       let requesterUser = null
-      if (!staffAction) {
+      if (staff?.role === 'usta') {
+        const target = await getAppointmentById(id)
+        if (target?.barberId !== staff.barberId) {
+          await bot.answerCallbackQuery(query.id, { text: "Ruxsat yo'q", show_alert: true })
+          return
+        }
+      } else if (!staffAction) {
         requesterUser = await findUserByTelegramId(query.from.id)
         const target = await getAppointmentById(id)
         const ownsIt = requesterUser && target && target.mijozId === requesterUser.id
@@ -1904,15 +1952,18 @@ bot.on('callback_query', safeHandler(async (query) => {
             )
             .catch((err) => console.error('[bot] notify client status error:', err?.message || err))
         }
-      } else if (adminChatId) {
-        // A client cancelled their own booking — let the admin know.
-        await bot
-          .sendMessage(
-            adminChatId,
-            `\u{1F6AB} Mijoz navbatni bekor qildi:\n${appointment.mijozIsmi || 'Mijoz'} — ` +
-              `${appointment.xizmatNomi || '—'} (${appointment.sana} ${appointment.vaqt})`
-          )
-          .catch((err) => console.error('[bot] notify admin of client cancel error:', err?.message || err))
+      } else {
+        // A client cancelled their own booking — let the admin and their
+        // barber know.
+        const cancelText =
+          `\u{1F6AB} Mijoz navbatni bekor qildi:\n${appointment.mijozIsmi || 'Mijoz'} — ` +
+          `${appointment.xizmatNomi || '—'} (${appointment.sana} ${appointment.vaqt})`
+        if (adminChatId) {
+          await bot
+            .sendMessage(adminChatId, cancelText)
+            .catch((err) => console.error('[bot] notify admin of client cancel error:', err?.message || err))
+        }
+        await notifyBarberChat(appointment.barberId, cancelText)
       }
     } catch (err) {
       console.error('[bot] callback_query error:', err?.message || err)
@@ -1922,9 +1973,17 @@ bot.on('callback_query', safeHandler(async (query) => {
   }
 
   if (action === 'arrived' || action === 'noshow') {
-    if (!isFromAdmin(query.message)) {
+    const staff = await staffContext(query.message.chat.id)
+    if (!staff) {
       await bot.answerCallbackQuery(query.id, { text: "Ruxsat yo'q", show_alert: true })
       return
+    }
+    if (staff.role === 'usta') {
+      const target = await getAppointmentById(id)
+      if (target?.barberId !== staff.barberId) {
+        await bot.answerCallbackQuery(query.id, { text: "Ruxsat yo'q", show_alert: true })
+        return
+      }
     }
     try {
       const kelganmi = action === 'arrived'
@@ -2001,17 +2060,17 @@ bot.on('callback_query', safeHandler(async (query) => {
         await bot.answerCallbackQuery(query.id, { text: '💵 Naqt tanlandi' })
       }
 
+      const methodLabel = method === 'karta' ? '💳 Karta orqali' : '💵 Naqd pul bilan'
+      const paymentText =
+        `${methodLabel} to'lov tanladi\n` +
+        `\u{1F464} ${appointment.mijozIsmi || 'Mijoz'}\n` +
+        `✂️ ${appointment.xizmatNomi || '—'} — ${formatMoney(appointment.narxi)}`
       if (adminChatId) {
-        const methodLabel = method === 'karta' ? '💳 Karta orqali' : '💵 Naqd pul bilan'
         await bot
-          .sendMessage(
-            adminChatId,
-            `${methodLabel} to'lov tanladi\n` +
-              `\u{1F464} ${appointment.mijozIsmi || 'Mijoz'}\n` +
-              `✂️ ${appointment.xizmatNomi || '—'} — ${formatMoney(appointment.narxi)}`
-          )
+          .sendMessage(adminChatId, paymentText)
           .catch((err) => console.error('[bot] notify admin of payment error:', err?.message || err))
       }
+      await notifyBarberChat(appointment.barberId, paymentText)
     } catch (err) {
       console.error('[bot] payment selection error:', err?.message || err)
       await bot.answerCallbackQuery(query.id, { text: 'Xatolik yuz berdi', show_alert: true })

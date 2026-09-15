@@ -199,6 +199,7 @@ export default function AdminCustomers() {
               {withStats.map((c) => {
                 const isSelf = c.id === currentUser?.id
                 const isAdminRole = c.role === 'admin'
+                const isUstaRole = c.role === 'usta'
                 return (
                   <tr key={c.id} className="border-b border-ink-800/60 hover:bg-ink-800/30">
                     <td className="px-4 py-3">
@@ -241,10 +242,14 @@ export default function AdminCustomers() {
                     <td className="px-4 py-3">
                       <span
                         className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                          isAdminRole ? 'bg-gold-500/10 text-gold-400' : 'bg-ink-800 text-ink-400'
+                          isAdminRole || isUstaRole ? 'bg-gold-500/10 text-gold-400' : 'bg-ink-800 text-ink-400'
                         }`}
                       >
-                        {isAdminRole ? t('admin.customers.roleAdmin') : t('admin.customers.roleClient')}
+                        {isAdminRole
+                          ? t('admin.customers.roleAdmin')
+                          : isUstaRole
+                          ? t('admin.customers.roleUsta')
+                          : t('admin.customers.roleClient')}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-ink-300">{c.visits}</td>
@@ -263,13 +268,15 @@ export default function AdminCustomers() {
                           <span className="px-2 text-xs text-ink-500">{t('admin.customers.you')}</span>
                         ) : (
                           <>
-                            <button
-                              onClick={() => (isAdminRole ? handleDemote(c) : handlePromote(c))}
-                              title={isAdminRole ? t('admin.customers.removeAdmin') : t('admin.customers.makeAdmin')}
-                              className="rounded-lg p-2 text-gold-400 hover:bg-gold-500/10"
-                            >
-                              <FaUserShield />
-                            </button>
+                            {!isUstaRole && (
+                              <button
+                                onClick={() => (isAdminRole ? handleDemote(c) : handlePromote(c))}
+                                title={isAdminRole ? t('admin.customers.removeAdmin') : t('admin.customers.makeAdmin')}
+                                className="rounded-lg p-2 text-gold-400 hover:bg-gold-500/10"
+                              >
+                                <FaUserShield />
+                              </button>
+                            )}
                             <button onClick={() => openEdit(c)} className="rounded-lg p-2 text-sky-400 hover:bg-sky-500/10">
                               <FaEdit />
                             </button>

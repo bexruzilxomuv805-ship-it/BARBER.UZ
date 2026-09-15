@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useTranslation } from 'react-i18next'
-import { FaEdit, FaTrash, FaPlus, FaPhoneAlt, FaCamera, FaTimes } from 'react-icons/fa'
+import { FaEdit, FaTrash, FaPlus, FaPhoneAlt, FaCamera, FaTimes, FaKey, FaTelegramPlane } from 'react-icons/fa'
 import Loader from '../../components/Loader'
 import Modal from '../../components/admin/Modal'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
@@ -9,6 +9,7 @@ import RatingStars from '../../components/RatingStars'
 import AutoText from '../../components/AutoText'
 import { getBarberImage } from '../../assets/images'
 import { fetchBarbers, createBarber, updateBarber, removeBarber } from '../../features/barbers/barbersSlice'
+import { fetchCustomers, createCustomer, updateCustomer } from '../../features/customers/customersSlice'
 import { showToast } from '../../features/ui/uiSlice'
 import { formatSum, formatDateShort } from '../../utils/format'
 import { getWeekdayOptions, isBarberOff, toLocalDateIso } from '../../utils/schedule'
@@ -19,20 +20,31 @@ const emptyForm = {
   damOlishKunlari: [], taillar: [],
 }
 const emptyRange = { boshlanish: '', tugash: '' }
+const emptyCredForm = { email: '', parol: '' }
 
 export default function AdminBarbers() {
   const { t } = useTranslation()
   const dispatch = useDispatch()
   const { items: barbers, status } = useSelector((s) => s.barbers)
+  const { items: users } = useSelector((s) => s.customers)
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState(emptyForm)
   const [toDelete, setToDelete] = useState(null)
   const [newRange, setNewRange] = useState(emptyRange)
+  const [credBarber, setCredBarber] = useState(null)
+  const [credForm, setCredForm] = useState(emptyCredForm)
+  const [resettingPassword, setResettingPassword] = useState(false)
 
   useEffect(() => {
     dispatch(fetchBarbers())
+    dispatch(fetchCustomers())
   }, [dispatch])
+
+  const ustaByBarberId = useMemo(
+    () => Object.fromEntries(users.filter((u) => u.role === 'usta' && !u.deleted).map((u) => [u.barberId, u])),
+    [users]
+  )
 
   const weekdayOptions = useMemo(() => getWeekdayOptions(t('common.weekdaysShort', { returnObjects: true })), [t])
   const todayIso = useMemo(() => toLocalDateIso(), [])
@@ -96,6 +108,40 @@ export default function AdminBarbers() {
     dispatch(showToast({ type: 'success', text: t('admin.barbers.deletedToast') }))
   }
 
+  const openCredentials = (b) => {
+    setCredBarber(b)
+    setCredForm({ email: '', parol: '' })
+    setResettingPassword(false)
+  }
+
+  const handleCreateUsta = async (e) => {
+    e.preventDefault()
+    await dispatch(
+      createCustomer({
+        id: `u-usta-${credBarber.id}`,
+        ism: credBarber.ism,
+        familiya: credBarber.familiya,
+        email: credForm.email,
+        telefon: credBarber.telefon,
+        parol: credForm.parol,
+        role: 'usta',
+        barberId: credBarber.id,
+        avatar: '',
+        createdAt: new Date().toISOString(),
+      })
+    )
+    dispatch(showToast({ type: 'success', text: t('admin.barbers.credentialsCreatedToast') }))
+    setCredBarber(null)
+  }
+
+  const handleResetPassword = async (e) => {
+    e.preventDefault()
+    const usta = ustaByBarberId[credBarber.id]
+    await dispatch(updateCustomer({ id: usta.id, changes: { parol: credForm.parol } }))
+    dispatch(showToast({ type: 'success', text: t('admin.barbers.passwordResetToast') }))
+    setCredBarber(null)
+  }
+
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -130,6 +176,13 @@ export default function AdminBarbers() {
                 <div className="mt-auto flex items-center justify-between border-t border-ink-800 pt-2.5">
                   <span className="text-xs font-semibold text-gold-400">{formatSum(b.narxBoshlanishi)}</span>
                   <div className="flex gap-1">
+                    <button
+                      onClick={() => openCredentials(b)}
+                      title={t('admin.barbers.credentialsAction')}
+                      className={`rounded-lg p-1.5 hover:bg-gold-500/10 ${ustaByBarberId[b.id] ? 'text-gold-400' : 'text-ink-500'}`}
+                    >
+                      <FaKey className="text-sm" />
+                    </button>
                     <button onClick={() => openEdit(b)} className="rounded-lg p-1.5 text-sky-400 hover:bg-sky-500/10"><FaEdit className="text-sm" /></button>
                     <button onClick={() => setToDelete(b.id)} className="rounded-lg p-1.5 text-red-400 hover:bg-red-500/10"><FaTrash className="text-sm" /></button>
                   </div>
@@ -239,6 +292,67 @@ export default function AdminBarbers() {
       </Modal>
 
       <ConfirmDialog open={!!toDelete} onClose={() => setToDelete(null)} onConfirm={() => handleDelete(toDelete)} text={t('admin.barbers.deleteConfirmText')} />
+
+      <Modal open={!!credBarber} onClose={() => setCredBarber(null)} title={t('admin.barbers.credentialsTitle', { name: credBarber?.ism })}>
+        {credBarber && ustaByBarberId[credBarber.id] ? (
+          <div className="space-y-4">
+            <div className="rounded-lg border border-ink-800 px-3.5 py-3 text-sm">
+              <p className="text-ink-300">{ustaByBarberId[credBarber.id].email}</p>
+              <p className="mt-1.5 flex items-center gap-1.5 text-xs text-ink-500">
+                <FaTelegramPlane className={ustaByBarberId[credBarber.id].telegramId ? 'text-sky-400' : 'text-ink-600'} />
+                {ustaByBarberId[credBarber.id].telegramId
+                  ? t('admin.barbers.telegramLinkedYes')
+                  : t('admin.barbers.telegramLinkedNo')}
+              </p>
+            </div>
+            {resettingPassword ? (
+              <form onSubmit={handleResetPassword} className="space-y-3">
+                <div>
+                  <label className="mb-1.5 block text-xs text-ink-500">{t('admin.customers.passwordLabel')}</label>
+                  <input
+                    required
+                    value={credForm.parol}
+                    onChange={(e) => setCredForm((f) => ({ ...f, parol: e.target.value }))}
+                    placeholder={t('admin.customers.passwordLabel')}
+                    className="input-field !py-2 text-sm"
+                  />
+                </div>
+                <button type="submit" className="btn-gold w-full !py-2.5 text-sm">{t('common.save')}</button>
+              </form>
+            ) : (
+              <button type="button" onClick={() => setResettingPassword(true)} className="btn-outline w-full !py-2.5 text-sm">
+                {t('admin.barbers.resetPasswordAction')}
+              </button>
+            )}
+          </div>
+        ) : (
+          <form onSubmit={handleCreateUsta} className="space-y-3">
+            <p className="text-sm text-ink-400">{t('admin.barbers.credentialsIntro')}</p>
+            <div>
+              <label className="mb-1.5 block text-xs text-ink-500">{t('admin.customers.emailLabel')}</label>
+              <input
+                required
+                type="email"
+                value={credForm.email}
+                onChange={(e) => setCredForm((f) => ({ ...f, email: e.target.value }))}
+                placeholder="email@example.com"
+                className="input-field !py-2 text-sm"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs text-ink-500">{t('admin.customers.passwordLabel')}</label>
+              <input
+                required
+                value={credForm.parol}
+                onChange={(e) => setCredForm((f) => ({ ...f, parol: e.target.value }))}
+                placeholder={t('admin.customers.passwordLabel')}
+                className="input-field !py-2 text-sm"
+              />
+            </div>
+            <button type="submit" className="btn-gold w-full !py-2.5 text-sm">{t('admin.barbers.credentialsAction')}</button>
+          </form>
+        )}
+      </Modal>
     </div>
   )
 }

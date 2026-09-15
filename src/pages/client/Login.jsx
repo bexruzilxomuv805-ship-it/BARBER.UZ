@@ -9,6 +9,12 @@ import { loginUser, clearAuthError } from '../../features/auth/authSlice'
 import { showToast } from '../../features/ui/uiSlice'
 import TelegramLoginButton from '../../components/TelegramLoginButton'
 
+function roleHome(role) {
+  if (role === 'admin') return '/admin'
+  if (role === 'usta') return '/usta'
+  return null
+}
+
 export default function Login() {
   const { t } = useTranslation()
   const dispatch = useDispatch()
@@ -26,13 +32,13 @@ export default function Login() {
     const result = await dispatch(loginUser(form))
     if (loginUser.fulfilled.match(result)) {
       dispatch(showToast({ type: 'success', text: t('login.welcomeToast', { name: result.payload.ism }) }))
-      navigate(result.payload.role === 'admin' ? '/admin' : from || '/')
+      navigate(roleHome(result.payload.role) ?? from ?? '/')
     }
   }
 
   const handleTelegramSuccess = (user) => {
     dispatch(showToast({ type: 'success', text: t('login.welcomeToast', { name: user.ism }) }))
-    navigate(user.role === 'admin' ? '/admin' : from || '/')
+    navigate(roleHome(user.role) ?? from ?? '/')
   }
 
   return (

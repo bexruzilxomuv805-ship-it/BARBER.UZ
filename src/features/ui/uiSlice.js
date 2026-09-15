@@ -4,6 +4,7 @@ const uiSlice = createSlice({
   name: 'ui',
   initialState: {
     isChatOpen: false,
+    chatBarberContext: null,
     isMobileMenuOpen: false,
     toast: null, // { type: 'success' | 'error', text: string }
   },
@@ -13,6 +14,11 @@ const uiSlice = createSlice({
     },
     setChatOpen(state, action) {
       state.isChatOpen = action.payload
+      if (!action.payload) state.chatBarberContext = null
+    },
+    openChatWithBarber(state, action) {
+      state.isChatOpen = true
+      state.chatBarberContext = action.payload
     },
     toggleMobileMenu(state) {
       state.isMobileMenuOpen = !state.isMobileMenuOpen
@@ -32,6 +38,7 @@ const uiSlice = createSlice({
 export const {
   toggleChat,
   setChatOpen,
+  openChatWithBarber,
   toggleMobileMenu,
   closeMobileMenu,
   showToast,

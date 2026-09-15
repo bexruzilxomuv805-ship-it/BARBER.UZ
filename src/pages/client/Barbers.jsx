@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { FaPhoneAlt, FaArrowRight, FaClock } from 'react-icons/fa'
+import { FaPhoneAlt, FaArrowRight, FaClock, FaCommentDots } from 'react-icons/fa'
 import Reveal from '../../components/Reveal'
 import RatingStars from '../../components/RatingStars'
 import Loader from '../../components/Loader'
@@ -10,6 +10,7 @@ import PageHero from '../../components/PageHero'
 import Modal from '../../components/admin/Modal'
 import AutoText from '../../components/AutoText'
 import { fetchBarbers } from '../../features/barbers/barbersSlice'
+import { openChatWithBarber } from '../../features/ui/uiSlice'
 import { getBarberImage } from '../../assets/images'
 import { formatSum } from '../../utils/format'
 
@@ -89,15 +90,27 @@ export default function Barbers() {
               <span className="flex items-center gap-1.5"><FaPhoneAlt /> {selected.telefon}</span>
               <span className="flex items-center gap-1.5"><FaClock /> {selected.ishVaqti}</span>
             </div>
-            <div className="mt-5 flex items-center justify-between">
+            <div className="mt-5 flex items-center justify-between gap-3">
               <span className="font-display text-lg font-bold text-gold-400">{t('barbers.startingFrom', { price: formatSum(selected.narxBoshlanishi) })}</span>
-              <Link
-                to="/navbat-olish"
-                state={{ barberId: selected.id }}
-                className="btn-gold !px-5 !py-2 text-sm"
-              >
-                {t('barbers.bookAction')} <FaArrowRight className="text-xs" />
-              </Link>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    dispatch(openChatWithBarber(selected.id))
+                    setSelected(null)
+                  }}
+                  className="btn-outline !px-4 !py-2 text-sm"
+                >
+                  <FaCommentDots className="text-xs" /> {t('barbers.messageAction')}
+                </button>
+                <Link
+                  to="/navbat-olish"
+                  state={{ barberId: selected.id }}
+                  className="btn-gold !px-5 !py-2 text-sm"
+                >
+                  {t('barbers.bookAction')} <FaArrowRight className="text-xs" />
+                </Link>
+              </div>
             </div>
           </div>
         )}

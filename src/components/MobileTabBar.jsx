@@ -1,6 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { FaHome, FaCut, FaCalendarAlt, FaUserCircle } from 'react-icons/fa'
+import { FaHome, FaCalendarAlt, FaUserCircle } from 'react-icons/fa'
 import { GiRazor } from 'react-icons/gi'
 
 const HIDDEN_PATHS = ['/kirish', '/royxatdan-otish']
@@ -13,7 +13,6 @@ export default function MobileTabBar() {
 
   const TABS = [
     { to: '/', label: t('nav.home'), icon: FaHome, end: true },
-    { to: '/xizmatlar', label: t('nav.services'), icon: FaCut },
     { to: '/ustalar', label: t('nav.barbers'), icon: GiRazor },
     { to: '/navbat-olish', label: t('home.ctaBook'), icon: FaCalendarAlt },
     { to: '/profil', label: t('profile.title'), icon: FaUserCircle },
@@ -21,7 +20,7 @@ export default function MobileTabBar() {
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-ink-800 bg-ink-950/95 backdrop-blur-md pb-[env(safe-area-inset-bottom)] lg:hidden">
-      <div className="grid grid-cols-5">
+      <div className="grid grid-cols-4">
         {TABS.map((tab) => (
           <NavLink
             key={tab.to}

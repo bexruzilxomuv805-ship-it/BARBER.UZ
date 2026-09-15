@@ -174,7 +174,7 @@ export default function Home() {
               <Link to="/navbat-olish" className="btn-gold">
                 {t('home.ctaBook')} <FaArrowRight />
               </Link>
-              <Link to="/xizmatlar" className="btn-outline">
+              <Link to="/navbat-olish" className="btn-outline">
                 {t('home.ctaServices')}
               </Link>
             </div>
@@ -268,7 +268,7 @@ export default function Home() {
               <h2 className="section-title">{t('home.servicesTitle')}</h2>
               <p className="mt-3 text-ink-400 max-w-lg">{t('home.servicesSubtitle')}</p>
             </div>
-            <Link to="/xizmatlar" className="btn-outline !px-5 !py-2 text-sm shrink-0">
+            <Link to="/navbat-olish" className="btn-outline !px-5 !py-2 text-sm shrink-0">
               {t('home.viewAllServices')} <FaArrowRight />
             </Link>
           </Reveal>

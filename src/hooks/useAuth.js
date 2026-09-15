@@ -6,6 +6,7 @@ export default function useAuth() {
     user,
     isAuthenticated,
     isAdmin: user?.role === 'admin',
+    isUsta: user?.role === 'usta',
     status,
     error,
   }

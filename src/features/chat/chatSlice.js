@@ -47,7 +47,7 @@ export const fetchMessages = createAsyncThunk(
 
 export const sendMessage = createAsyncThunk(
   'chat/sendMessage',
-  async ({ conversationId, userId, userName, sender, text }, { rejectWithValue }) => {
+  async ({ conversationId, userId, userName, sender, text, barberId }, { rejectWithValue }) => {
     try {
       const message = {
         id: `m-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -56,6 +56,7 @@ export const sendMessage = createAsyncThunk(
         userName,
         sender,
         text,
+        ...(barberId ? { barberId } : {}),
         createdAt: new Date().toISOString(),
         read: sender === 'admin',
       }
@@ -67,6 +68,7 @@ export const sendMessage = createAsyncThunk(
         await client.patch(`/conversations/${conversationId}`, {
           lastMessage: text,
           updatedAt: message.createdAt,
+          ...(barberId ? { barberId } : {}),
           ...(sender === 'client'
             ? { unreadForAdmin: 1 }
             : { unreadForClient: 1 }),
@@ -78,6 +80,7 @@ export const sendMessage = createAsyncThunk(
           userName,
           lastMessage: text,
           updatedAt: message.createdAt,
+          ...(barberId ? { barberId } : {}),
           unreadForAdmin: sender === 'client' ? 1 : 0,
           unreadForClient: sender === 'admin' ? 1 : 0,
         })

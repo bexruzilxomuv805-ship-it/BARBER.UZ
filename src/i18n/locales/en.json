@@ -16,7 +16,6 @@
   },
   "nav": {
     "home": "Home",
-    "services": "Services",
     "barbers": "Barbers",
     "contact": "Contact",
     "login": "Sign in",
@@ -24,6 +23,7 @@
     "registerShort": "Sign up",
     "myAppointments": "My appointments",
     "adminPanel": "Admin panel",
+    "ustaPanel": "Barber panel",
     "logout": "Log out",
     "menuAria": "Menu",
     "loggedOutToast": "You have been logged out.",
@@ -92,15 +92,6 @@
     "locationSubtitle": "We're waiting for you at a convenient location in central Tashkent.",
     "bookNow": "Book your slot now"
   },
-  "services": {
-    "eyebrow": "Price list",
-    "title": "Our services",
-    "subtitle": "Every service is performed by experienced barbers using quality products.",
-    "all": "All",
-    "bookAction": "Book now",
-    "minutes": "{{count}} min",
-    "noResults": "No services found in this category."
-  },
   "barbers": {
     "eyebrow": "Our team",
     "title": "Meet our barbers",
@@ -110,7 +101,8 @@
     "startingFrom": "from {{price}}",
     "yearsExperienceFull": "{{count}} years of experience",
     "workHours": "Working hours",
-    "bookAction": "Book now"
+    "bookAction": "Book now",
+    "messageAction": "Send a message"
   },
   "booking": {
     "eyebrow": "Online booking",
@@ -194,6 +186,7 @@
     "title": "My profile",
     "subtitle": "Your appointment history and personal details.",
     "roleAdmin": "Administrator",
+    "roleUsta": "Barber",
     "roleClient": "Client",
     "edit": "Edit",
     "save": "Save",
@@ -296,6 +289,7 @@
       "backToSite": "Back to site"
     },
     "role": "Administrator",
+    "roleUsta": "Barber",
     "actions": "Actions",
     "all": "All",
     "delete": "Delete",
@@ -367,6 +361,7 @@
       "demotedToast": "{{name}} is now a regular customer.",
       "tableRole": "Role",
       "roleAdmin": "Admin",
+      "roleUsta": "Barber",
       "roleClient": "Customer",
       "you": "You",
       "openChat": "Open chat",
@@ -403,7 +398,15 @@
       "deleteConfirmText": "This barber will be permanently removed from the list.",
       "updatedToast": "Barber details updated.",
       "addedToast": "New barber added.",
-      "deletedToast": "Barber deleted."
+      "deletedToast": "Barber deleted.",
+      "credentialsAction": "Login credentials",
+      "credentialsTitle": "Login credentials for {{name}}",
+      "credentialsIntro": "This barber can't sign in yet — create a login for them below.",
+      "credentialsCreatedToast": "Barber account created.",
+      "resetPasswordAction": "Reset password",
+      "passwordResetToast": "Password updated.",
+      "telegramLinkedYes": "Telegram linked",
+      "telegramLinkedNo": "Telegram not linked yet"
     },
     "services": {
       "title": "Services",

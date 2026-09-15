@@ -11,6 +11,7 @@ import {
   fetchConversations, fetchMessages, sendMessage, updateMessage, removeMessage,
   markConversationRead, setActiveConversation, removeConversation,
 } from '../../features/chat/chatSlice'
+import useAuth from '../../hooks/useAuth'
 
 const POLL_MS = 3000
 const TIME_LOCALE = { uz: 'uz-UZ', ru: 'ru-RU', en: 'en-US' }
@@ -295,7 +296,13 @@ export default function AdminChat() {
   const { t, i18n } = useTranslation()
   const dispatch = useDispatch()
   const [searchParams] = useSearchParams()
-  const { conversations, messagesByConversation, activeConversationId } = useSelector((s) => s.chat)
+  const { isUsta, user } = useAuth()
+  const scopeBarberId = isUsta ? user.barberId : null
+  const { conversations: allConversations, messagesByConversation, activeConversationId } = useSelector((s) => s.chat)
+  const conversations = useMemo(
+    () => (scopeBarberId ? allConversations.filter((c) => c.barberId === scopeBarberId) : allConversations),
+    [allConversations, scopeBarberId]
+  )
   const [text, setText] = useState('')
   const [search, setSearch] = useState('')
   const [loadingList, setLoadingList] = useState(true)

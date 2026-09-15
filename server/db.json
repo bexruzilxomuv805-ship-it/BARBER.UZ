@@ -49,6 +49,18 @@
       "telegramUsername": "ILXOMOV_16",
       "createdAt": "2026-09-09T17:13:28.492Z",
       "tgNotified": true
+    },
+    {
+      "id": "u-usta-demo",
+      "ism": "Demo",
+      "familiya": "Usta",
+      "email": "usta@zolotoy.uz",
+      "telefon": "+998900000000",
+      "parol": "usta123",
+      "role": "usta",
+      "barberId": "b2",
+      "avatar": "",
+      "createdAt": "2026-09-16T00:00:00.000Z"
     }
   ],
   "barbers": [

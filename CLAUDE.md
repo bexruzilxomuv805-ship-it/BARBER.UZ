@@ -41,7 +41,7 @@ The frontend expects the backend at `http://localhost:4000` by default (see `API
 `npm run server` isn't running, or `DATABASE_URL` is missing from `.env` — check port 4000 and the server's
 startup log first.
 
-Demo accounts (from README): admin `admin@zolotoy.uz` / `admin123`; client `ali@example.com` / `1234`.
+Demo accounts (from README): admin `admin@zolotoy.uz` / `admin123`; usta (barber) `usta@zolotoy.uz` / `usta123`; client `ali@example.com` / `1234`.
 
 ## Deploy (free tier)
 

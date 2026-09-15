@@ -16,7 +16,6 @@
   },
   "nav": {
     "home": "Главная",
-    "services": "Услуги",
     "barbers": "Мастера",
     "contact": "Контакты",
     "login": "Войти",
@@ -24,6 +23,7 @@
     "registerShort": "Регистр.",
     "myAppointments": "Мои записи",
     "adminPanel": "Админ-панель",
+    "ustaPanel": "Панель мастера",
     "logout": "Выйти",
     "menuAria": "Меню",
     "loggedOutToast": "Вы вышли из системы.",
@@ -92,15 +92,6 @@
     "locationSubtitle": "Мы ждём вас в удобном месте в центре Ташкента.",
     "bookNow": "Записаться прямо сейчас"
   },
-  "services": {
-    "eyebrow": "Прайс-лист",
-    "title": "Наши услуги",
-    "subtitle": "Каждая услуга выполняется опытными мастерами с использованием качественных материалов.",
-    "all": "Все",
-    "bookAction": "Записаться",
-    "minutes": "{{count}} мин",
-    "noResults": "В этой категории услуги не найдены."
-  },
   "barbers": {
     "eyebrow": "Наша команда",
     "title": "Познакомьтесь с нашими мастерами",
@@ -110,7 +101,8 @@
     "startingFrom": "от {{price}}",
     "yearsExperienceFull": "{{count}} лет опыта",
     "workHours": "Часы работы",
-    "bookAction": "Записаться"
+    "bookAction": "Записаться",
+    "messageAction": "Написать сообщение"
   },
   "booking": {
     "eyebrow": "Онлайн-запись",
@@ -194,6 +186,7 @@
     "title": "Мой профиль",
     "subtitle": "История записей и ваши личные данные.",
     "roleAdmin": "Администратор",
+    "roleUsta": "Мастер",
     "roleClient": "Клиент",
     "edit": "Редактировать",
     "save": "Сохранить",
@@ -296,6 +289,7 @@
       "backToSite": "Вернуться на сайт"
     },
     "role": "Администратор",
+    "roleUsta": "Мастер",
     "actions": "Действия",
     "all": "Все",
     "delete": "Удалить",
@@ -367,6 +361,7 @@
       "demotedToast": "{{name}} теперь обычный клиент.",
       "tableRole": "Роль",
       "roleAdmin": "Админ",
+      "roleUsta": "Мастер",
       "roleClient": "Клиент",
       "you": "Вы",
       "openChat": "Открыть чат",
@@ -403,7 +398,15 @@
       "deleteConfirmText": "Этот мастер будет удалён из списка безвозвратно.",
       "updatedToast": "Данные мастера обновлены.",
       "addedToast": "Новый мастер добавлен.",
-      "deletedToast": "Мастер удалён."
+      "deletedToast": "Мастер удалён.",
+      "credentialsAction": "Данные для входа",
+      "credentialsTitle": "Данные для входа — {{name}}",
+      "credentialsIntro": "Этот мастер пока не может войти на сайт — создайте ему логин ниже.",
+      "credentialsCreatedToast": "Аккаунт мастера создан.",
+      "resetPasswordAction": "Сбросить пароль",
+      "passwordResetToast": "Пароль обновлён.",
+      "telegramLinkedYes": "Telegram привязан",
+      "telegramLinkedNo": "Telegram ещё не привязан"
     },
     "services": {
       "title": "Услуги",

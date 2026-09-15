@@ -9,7 +9,7 @@ import {
 import useAuth from '../hooks/useAuth'
 import useConversationId from '../hooks/useConversationId'
 import Modal from './admin/Modal'
-import { showToast } from '../features/ui/uiSlice'
+import { showToast, setChatOpen } from '../features/ui/uiSlice'
 import {
   fetchMessages, sendMessage, updateMessage, removeMessage,
   fetchConversation, markConversationRead, removeConversation,
@@ -29,7 +29,6 @@ function formatTime(iso, lang) {
 export default function ChatWidget() {
   const { t, i18n } = useTranslation()
   const [menuOpen, setMenuOpen] = useState(false)
-  const [open, setOpen] = useState(false)
   const [text, setText] = useState('')
   const [sending, setSending] = useState(false)
   const [editingId, setEditingId] = useState(null)
@@ -40,6 +39,8 @@ export default function ChatWidget() {
   const { user } = useAuth()
   const { info } = useSelector((s) => s.contact)
   const contact = info || FALLBACK_CONTACT
+  const open = useSelector((s) => s.ui.isChatOpen)
+  const chatBarberContext = useSelector((s) => s.ui.chatBarberContext)
   const conversationId = useConversationId()
   const messages = useSelector((s) => s.chat.messagesByConversation[conversationId] || [])
   const myConversation = useSelector((s) => s.chat.myConversation)
@@ -83,6 +84,7 @@ export default function ChatWidget() {
         userName: user ? `${user.ism} ${user.familiya}` : t('chat.guestName'),
         sender: 'client',
         text: trimmed,
+        ...(chatBarberContext ? { barberId: chatBarberContext } : {}),
       })
     )
     setSending(false)
@@ -90,7 +92,7 @@ export default function ChatWidget() {
 
   const openChat = () => {
     setMenuOpen(false)
-    setOpen(true)
+    dispatch(setChatOpen(true))
     if (hasUnread) {
       dispatch(markConversationRead({ conversationId, forRole: 'client' }))
     }
@@ -123,7 +125,7 @@ export default function ChatWidget() {
   const confirmDeleteChat = async () => {
     await dispatch(removeConversation(conversationId))
     setDeleteChatConfirmOpen(false)
-    setOpen(false)
+    dispatch(setChatOpen(false))
     dispatch(showToast({ type: 'success', text: t('chat.chatDeletedToast') }))
   }
 
@@ -264,7 +266,7 @@ export default function ChatWidget() {
                       <FaTrash />
                     </button>
                   )}
-                  <button onClick={() => setOpen(false)} className="-m-2 rounded-lg p-2 text-ink-400 hover:bg-ink-800 hover:text-white">
+                  <button onClick={() => dispatch(setChatOpen(false))} className="-m-2 rounded-lg p-2 text-ink-400 hover:bg-ink-800 hover:text-white">
                     <FaTimes />
                   </button>
                 </div>

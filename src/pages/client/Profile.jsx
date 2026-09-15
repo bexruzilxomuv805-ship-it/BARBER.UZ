@@ -85,7 +85,13 @@ export default function Profile() {
                   <FaUserCircle className="text-5xl text-gold-400" />
                   <div>
                     <p className="font-semibold text-white">{user?.ism} {user?.familiya}</p>
-                    <p className="text-xs text-ink-500">{user?.role === 'admin' ? t('profile.roleAdmin') : t('profile.roleClient')}</p>
+                    <p className="text-xs text-ink-500">
+                      {user?.role === 'admin'
+                        ? t('profile.roleAdmin')
+                        : user?.role === 'usta'
+                        ? t('profile.roleUsta')
+                        : t('profile.roleClient')}
+                    </p>
                   </div>
                 </div>
                 <div className="mt-5 space-y-2 text-sm text-ink-300">

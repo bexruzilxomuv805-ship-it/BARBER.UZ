@@ -20,24 +20,29 @@ export default function AdminLayout() {
   const { t } = useTranslation()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false)
-  const { user } = useAuth()
+  const { user, isUsta } = useAuth()
   const { unreadMessages, pendingAppointments } = useAdminNotifications()
   const badgeValues = { unreadMessages, pendingAppointments }
   const dispatch = useDispatch()
   const navigate = useNavigate()
 
-  const NAV = [
-    { to: '/admin', label: t('admin.nav.dashboard'), icon: FaTachometerAlt, end: true },
-    { to: '/admin/navbatlar', label: t('admin.nav.appointments'), icon: FaCalendarAlt, badgeKey: 'pendingAppointments' },
-    { to: '/admin/mijozlar', label: t('admin.nav.customers'), icon: FaUsers },
-    { to: '/admin/ustalar', label: t('admin.nav.barbers'), icon: GiRazor },
-    { to: '/admin/xizmatlar', label: t('admin.nav.services'), icon: FaCut },
-    { to: '/admin/ombor', label: t('admin.nav.inventory'), icon: FaBoxes },
-    { to: '/admin/tolovlar', label: t('admin.nav.payments'), icon: FaMoneyBillWave },
-    { to: '/admin/hisobotlar', label: t('admin.nav.reports'), icon: FaChartBar },
-    { to: '/admin/chat', label: t('admin.nav.chat'), icon: FaComments, badgeKey: 'unreadMessages' },
-    { to: '/admin/sozlamalar', label: t('admin.nav.settings'), icon: FaCog },
-  ]
+  const NAV = isUsta
+    ? [
+        { to: '/usta/navbatlar', label: t('admin.nav.appointments'), icon: FaCalendarAlt, badgeKey: 'pendingAppointments' },
+        { to: '/usta/chat', label: t('admin.nav.chat'), icon: FaComments, badgeKey: 'unreadMessages' },
+      ]
+    : [
+        { to: '/admin', label: t('admin.nav.dashboard'), icon: FaTachometerAlt, end: true },
+        { to: '/admin/navbatlar', label: t('admin.nav.appointments'), icon: FaCalendarAlt, badgeKey: 'pendingAppointments' },
+        { to: '/admin/mijozlar', label: t('admin.nav.customers'), icon: FaUsers },
+        { to: '/admin/ustalar', label: t('admin.nav.barbers'), icon: GiRazor },
+        { to: '/admin/xizmatlar', label: t('admin.nav.services'), icon: FaCut },
+        { to: '/admin/ombor', label: t('admin.nav.inventory'), icon: FaBoxes },
+        { to: '/admin/tolovlar', label: t('admin.nav.payments'), icon: FaMoneyBillWave },
+        { to: '/admin/hisobotlar', label: t('admin.nav.reports'), icon: FaChartBar },
+        { to: '/admin/chat', label: t('admin.nav.chat'), icon: FaComments, badgeKey: 'unreadMessages' },
+        { to: '/admin/sozlamalar', label: t('admin.nav.settings'), icon: FaCog },
+      ]
 
   const requestLogout = () => {
     setSidebarOpen(false)
@@ -58,7 +63,7 @@ export default function AdminLayout() {
           <GiRazor />
         </span>
         <span className="font-display text-lg font-bold text-white">
-          Zolotoy <span className="gold-text">Admin</span>
+          Zolotoy <span className="gold-text">{isUsta ? t('nav.ustaPanel') : 'Admin'}</span>
         </span>
       </div>
 
@@ -142,7 +147,7 @@ export default function AdminLayout() {
             <LanguageSwitcher />
             <div className="text-right hidden sm:block">
               <p className="text-sm font-medium text-white">{user?.ism} {user?.familiya}</p>
-              <p className="text-[11px] text-ink-500">{t('admin.role')}</p>
+              <p className="text-[11px] text-ink-500">{isUsta ? t('admin.roleUsta') : t('admin.role')}</p>
             </div>
             <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gold-500/15 text-gold-400 font-semibold text-sm">
               {user?.ism?.[0]}

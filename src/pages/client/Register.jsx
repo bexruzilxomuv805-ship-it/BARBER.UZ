@@ -10,6 +10,12 @@ import { showToast } from '../../features/ui/uiSlice'
 import TelegramLoginButton from '../../components/TelegramLoginButton'
 import TelegramLinkGate from '../../components/TelegramLinkGate'
 
+function roleHome(role) {
+  if (role === 'admin') return '/admin'
+  if (role === 'usta') return '/usta'
+  return '/'
+}
+
 export default function Register() {
   const { t } = useTranslation()
   const dispatch = useDispatch()
@@ -48,7 +54,7 @@ export default function Register() {
 
   const handleTelegramSuccess = (user) => {
     dispatch(showToast({ type: 'success', text: t('register.welcomeToast', { name: user.ism }) }))
-    navigate(user.role === 'admin' ? '/admin' : '/')
+    navigate(roleHome(user.role))
   }
 
   const handleLinked = () => {

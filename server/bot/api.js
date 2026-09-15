@@ -457,6 +457,20 @@ export async function setBarberRating(barberId, reyting) {
   await client.patch(`/barbers/${barberId}`, { reyting })
 }
 
+// Usta (barber) accounts are created from AdminBarbers.jsx (role: 'usta',
+// barberId set to the linked barbers row) — these two lookups let the bot
+// route notifications/callback actions to the specific barber involved
+// instead of only the single shared TELEGRAM_ADMIN_CHAT_ID.
+export async function findUstaByTelegramId(telegramId) {
+  const { data } = await client.get('/users')
+  return data.find((u) => u.role === 'usta' && String(u.telegramId) === String(telegramId) && !u.deleted) || null
+}
+
+export async function findUstaByBarberId(barberId) {
+  const { data } = await client.get('/users')
+  return data.find((u) => u.role === 'usta' && u.barberId === barberId && u.telegramId && !u.deleted) || null
+}
+
 export async function createTelegramUser(tgUser, role = 'client') {
   const newUser = {
     id: `u-tg-${tgUser.id}`,

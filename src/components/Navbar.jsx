@@ -18,21 +18,23 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false)
   const isMobileMenuOpen = useSelector((s) => s.ui.isMobileMenuOpen)
-  const { isAuthenticated, isAdmin, user } = useAuth()
+  const { isAuthenticated, isAdmin, isUsta, user } = useAuth()
   const { unreadMessages, pendingAppointments } = useAdminNotifications()
   const adminBadgeCount = unreadMessages + pendingAppointments
+  const isStaff = isAdmin || isUsta
+  const staffHome = isAdmin ? '/admin' : '/usta'
+  const staffLabel = isAdmin ? t('nav.adminPanel') : t('nav.ustaPanel')
   const dispatch = useDispatch()
   const navigate = useNavigate()
 
   const LINKS = [
     { to: '/', label: t('nav.home') },
-    { to: '/xizmatlar', label: t('nav.services') },
     { to: '/ustalar', label: t('nav.barbers') },
     { to: '/aloqa', label: t('nav.contact') },
   ]
 
-  // Bosh sahifa / Xizmatlar / Ustalar / Profil already live in the mobile
-  // bottom tab bar, so the mobile dropdown only needs what isn't there.
+  // Bosh sahifa / Ustalar / Profil already live in the mobile bottom tab
+  // bar, so the mobile dropdown only needs what isn't there.
   const MOBILE_LINKS = [{ to: '/aloqa', label: t('nav.contact') }]
 
   useEffect(() => {
@@ -91,7 +93,7 @@ export default function Navbar() {
               >
                 <FaUserCircle className="text-gold-400" />
                 {user?.ism}
-                {isAdmin && adminBadgeCount > 0 && (
+                {isStaff && adminBadgeCount > 0 && (
                   <span className="absolute -right-1 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">
                     {adminBadgeCount > 9 ? '9+' : adminBadgeCount}
                   </span>
@@ -106,15 +108,15 @@ export default function Navbar() {
                     className="absolute right-0 mt-2 w-52 card p-2 shadow-xl"
                     onMouseLeave={() => setMenuOpen(false)}
                   >
-                    {isAdmin && (
+                    {isStaff && (
                       <button
                         onClick={() => {
-                          navigate('/admin')
+                          navigate(staffHome)
                           setMenuOpen(false)
                         }}
                         className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-ink-200 hover:bg-ink-800 hover:text-gold-400"
                       >
-                        <FaCog /> <span className="flex-1 text-left">{t('nav.adminPanel')}</span>
+                        <FaCog /> <span className="flex-1 text-left">{staffLabel}</span>
                         {adminBadgeCount > 0 && (
                           <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
                             {adminBadgeCount > 9 ? '9+' : adminBadgeCount}
@@ -161,7 +163,7 @@ export default function Navbar() {
             aria-label={t('nav.menuAria')}
           >
             {isMobileMenuOpen ? <FaTimes /> : <FaBars />}
-            {isAdmin && adminBadgeCount > 0 && !isMobileMenuOpen && (
+            {isStaff && adminBadgeCount > 0 && !isMobileMenuOpen && (
               <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-red-500" />
             )}
           </button>
@@ -192,9 +194,9 @@ export default function Navbar() {
               <div className="shimmer-line" />
               {isAuthenticated ? (
                 <>
-                  {isAdmin && (
-                    <NavLink to="/admin" onClick={() => dispatch(closeMobileMenu())} className="flex items-center gap-2 py-2 text-sm text-ink-200">
-                      <span className="flex-1">{t('nav.adminPanel')}</span>
+                  {isStaff && (
+                    <NavLink to={staffHome} onClick={() => dispatch(closeMobileMenu())} className="flex items-center gap-2 py-2 text-sm text-ink-200">
+                      <span className="flex-1">{staffLabel}</span>
                       {adminBadgeCount > 0 && (
                         <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
                           {adminBadgeCount > 9 ? '9+' : adminBadgeCount}

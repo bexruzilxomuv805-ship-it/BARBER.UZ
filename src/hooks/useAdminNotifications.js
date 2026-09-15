@@ -13,12 +13,13 @@ const POLL_MS = 8000
  */
 export default function useAdminNotifications() {
   const dispatch = useDispatch()
-  const { isAdmin } = useAuth()
+  const { isAdmin, isUsta, user } = useAuth()
+  const isStaff = isAdmin || isUsta
   const conversations = useSelector((s) => s.chat.conversations)
   const appointments = useSelector((s) => s.appointments.items)
 
   useEffect(() => {
-    if (!isAdmin) return undefined
+    if (!isStaff) return undefined
     dispatch(fetchConversations())
     dispatch(fetchAppointments())
     const timer = setInterval(() => {
@@ -26,12 +27,20 @@ export default function useAdminNotifications() {
       dispatch(fetchAppointments())
     }, POLL_MS)
     return () => clearInterval(timer)
-  }, [isAdmin, dispatch])
+  }, [isStaff, dispatch])
 
-  if (!isAdmin) return { unreadMessages: 0, pendingAppointments: 0 }
+  if (!isStaff) return { unreadMessages: 0, pendingAppointments: 0 }
 
-  const unreadMessages = conversations.reduce((sum, c) => sum + (c.unreadForAdmin || 0), 0)
-  const pendingAppointments = appointments.filter((a) => a.holat === 'kutilmoqda').length
+  const scopeBarberId = isUsta ? user.barberId : null
+  const scopedConversations = scopeBarberId
+    ? conversations.filter((c) => c.barberId === scopeBarberId)
+    : conversations
+  const scopedAppointments = scopeBarberId
+    ? appointments.filter((a) => a.barberId === scopeBarberId)
+    : appointments
+
+  const unreadMessages = scopedConversations.reduce((sum, c) => sum + (c.unreadForAdmin || 0), 0)
+  const pendingAppointments = scopedAppointments.filter((a) => a.holat === 'kutilmoqda').length
 
   return { unreadMessages, pendingAppointments }
 }
