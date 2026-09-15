@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useTranslation } from 'react-i18next'
-import { FaEdit, FaTrash, FaPlus, FaPhoneAlt, FaCamera, FaTimes, FaClock } from 'react-icons/fa'
+import { FaEdit, FaTrash, FaPlus, FaPhoneAlt, FaCamera, FaTimes, FaClock, FaChevronLeft, FaChevronRight } from 'react-icons/fa'
 import Loader from '../../components/Loader'
 import Modal from '../../components/admin/Modal'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
@@ -13,6 +13,7 @@ import { resizeImageFile } from '../../utils/image'
 
 const MAX_PHOTOS = 10
 const TIERS = ['oddiy', 'premium', 'vip']
+const PAGE_SIZE = 5
 
 const emptyForm = {
   nomi: '', manzilMatni: '', lat: null, lng: null, ishVaqti: '09:00 - 21:00',
@@ -34,10 +35,18 @@ export default function AdminSartaroshxonalar() {
   const [form, setForm] = useState(emptyForm)
   const [toDelete, setToDelete] = useState(null)
   const [photosProcessing, setPhotosProcessing] = useState(false)
+  const [page, setPage] = useState(0)
 
   useEffect(() => {
     dispatch(fetchShops())
   }, [dispatch])
+
+  const pageCount = Math.max(1, Math.ceil(shops.length / PAGE_SIZE))
+  const clampedPage = Math.min(page, pageCount - 1)
+  const pageShops = useMemo(
+    () => shops.slice(clampedPage * PAGE_SIZE, clampedPage * PAGE_SIZE + PAGE_SIZE),
+    [shops, clampedPage]
+  )
 
   const openCreate = () => {
     setEditing(null)
@@ -119,7 +128,7 @@ export default function AdminSartaroshxonalar() {
         <Loader />
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">
-          {shops.map((s) => (
+          {pageShops.map((s) => (
             <div key={s.id} className="card overflow-hidden flex flex-col">
               <div className="aspect-[4/3] overflow-hidden bg-ink-800">
                 {s.rasmlar?.[0] && <img src={s.rasmlar[0]} alt={s.nomi} className="h-full w-full object-cover" />}
@@ -146,6 +155,26 @@ export default function AdminSartaroshxonalar() {
           {shops.length === 0 && (
             <p className="col-span-full py-10 text-center text-sm text-ink-500">{t('admin.shops.notFound')}</p>
           )}
+        </div>
+      )}
+
+      {pageCount > 1 && (
+        <div className="mt-5 flex items-center justify-center gap-3">
+          <button
+            onClick={() => setPage((p) => Math.max(0, p - 1))}
+            disabled={clampedPage === 0}
+            className="btn-outline !p-2.5 disabled:opacity-30"
+          >
+            <FaChevronLeft />
+          </button>
+          <span className="text-xs text-ink-500">{clampedPage + 1} / {pageCount}</span>
+          <button
+            onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+            disabled={clampedPage >= pageCount - 1}
+            className="btn-outline !p-2.5 disabled:opacity-30"
+          >
+            <FaChevronRight />
+          </button>
         </div>
       )}
 

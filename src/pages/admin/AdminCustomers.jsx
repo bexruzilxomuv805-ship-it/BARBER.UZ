@@ -11,7 +11,8 @@ import {
   fetchCustomers, createCustomer, updateCustomer,
 } from '../../features/customers/customersSlice'
 import { fetchAppointments } from '../../features/appointments/appointmentsSlice'
-import { fetchBarbers } from '../../features/barbers/barbersSlice'
+import { createBarber } from '../../features/barbers/barbersSlice'
+import { fetchShops } from '../../features/sartaroshxonalar/sartaroshxonalarSlice'
 import { showToast } from '../../features/ui/uiSlice'
 import { formatSum } from '../../utils/format'
 import useAuth from '../../hooks/useAuth'
@@ -26,7 +27,7 @@ export default function AdminCustomers() {
   const { user: currentUser } = useAuth()
   const { items: users, status } = useSelector((s) => s.customers)
   const { items: appointments } = useSelector((s) => s.appointments)
-  const { items: barbers } = useSelector((s) => s.barbers)
+  const { items: shops } = useSelector((s) => s.sartaroshxonalar)
   const [search, setSearch] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState(null)
@@ -34,7 +35,8 @@ export default function AdminCustomers() {
   const [toDelete, setToDelete] = useState(null)
   const [view, setView] = useState('active') // 'active' | 'deleted'
   const [ustaTarget, setUstaTarget] = useState(null)
-  const [ustaBarberId, setUstaBarberId] = useState('')
+  const [ustaShopId, setUstaShopId] = useState('')
+  const [ustaSaving, setUstaSaving] = useState(false)
   // Telegram-registered accounts never collect a familiya/email (the bot
   // only asks for a phone number) — only require those two for accounts
   // created through the site's own Register form / this admin form itself.
@@ -43,7 +45,7 @@ export default function AdminCustomers() {
   useEffect(() => {
     dispatch(fetchCustomers())
     dispatch(fetchAppointments())
-    dispatch(fetchBarbers())
+    dispatch(fetchShops())
   }, [dispatch])
 
   // New signups (site or bot) and role changes should show up without a
@@ -52,17 +54,6 @@ export default function AdminCustomers() {
     dispatch(fetchCustomers())
     dispatch(fetchAppointments())
   }, POLL_MS)
-
-  // A barber can only have one linked usta account at a time (AdminBarbers.jsx
-  // enforces the same rule from its side) — offer only unlinked barbers here.
-  const linkedBarberIds = useMemo(
-    () => new Set(users.filter((u) => u.role === 'usta' && !u.deleted).map((u) => u.barberId)),
-    [users]
-  )
-  const availableBarbers = useMemo(
-    () => barbers.filter((b) => !linkedBarberIds.has(b.id)),
-    [barbers, linkedBarberIds]
-  )
 
   const activeUsers = useMemo(() => users.filter((c) => !c.deleted), [users])
   const deletedUsers = useMemo(() => users.filter((c) => c.deleted), [users])
@@ -149,13 +140,47 @@ export default function AdminCustomers() {
 
   const openMakeUsta = (c) => {
     setUstaTarget(c)
-    setUstaBarberId('')
+    setUstaShopId('')
   }
 
-  const confirmMakeUsta = (e) => {
+  // Making a customer an usta no longer depends on a barber record already
+  // existing and being unlinked — it creates a fresh, minimal barber profile
+  // (name/phone copied from the customer) tied to the chosen shop right
+  // here, then links the customer account to it. The admin can flesh out
+  // photo/bio/hours for that barber afterwards from Ustalar.
+  const confirmMakeUsta = async (e) => {
     e.preventDefault()
-    if (!ustaBarberId) return
-    dispatch(updateCustomer({ id: ustaTarget.id, changes: { role: 'usta', barberId: ustaBarberId, roleNotified: false } }))
+    if (!ustaShopId) return
+    setUstaSaving(true)
+    const barberResult = await dispatch(createBarber({
+      ism: ustaTarget.ism,
+      familiya: ustaTarget.familiya,
+      mutaxassislik: t('admin.customers.defaultSpecialty'),
+      telefon: ustaTarget.telefon,
+      tajriba: 0,
+      reyting: 5,
+      rasm: 'barber-aziz',
+      narxBoshlanishi: 0,
+      ishVaqti: '09:00 - 18:00',
+      bio: '',
+      damOlishKunlari: [],
+      taillar: [],
+      sartaroshxonaId: ustaShopId,
+    }))
+    if (!createBarber.fulfilled.match(barberResult)) {
+      setUstaSaving(false)
+      dispatch(showToast({ type: 'error', text: t('admin.shops.saveError') }))
+      return
+    }
+    const result = await dispatch(updateCustomer({
+      id: ustaTarget.id,
+      changes: { role: 'usta', barberId: barberResult.payload.id, roleNotified: false },
+    }))
+    setUstaSaving(false)
+    if (!updateCustomer.fulfilled.match(result)) {
+      dispatch(showToast({ type: 'error', text: t('admin.shops.saveError') }))
+      return
+    }
     dispatch(showToast({ type: 'success', text: t('admin.customers.ustaAssignedToast', { name: ustaTarget.ism }) }))
     setUstaTarget(null)
   }
@@ -394,25 +419,28 @@ export default function AdminCustomers() {
       />
 
       <Modal open={!!ustaTarget} onClose={() => setUstaTarget(null)} title={t('admin.customers.makeUstaTitle', { name: ustaTarget?.ism })}>
-        {availableBarbers.length === 0 ? (
-          <p className="text-sm text-ink-400">{t('admin.customers.noAvailableBarbers')}</p>
+        {shops.length === 0 ? (
+          <p className="text-sm text-ink-400">{t('admin.customers.noShopsYet')}</p>
         ) : (
           <form onSubmit={confirmMakeUsta} className="space-y-3">
+            <p className="text-sm text-ink-400">{t('admin.customers.chooseShopIntro')}</p>
             <div>
-              <label className="mb-1.5 block text-xs text-ink-500">{t('admin.customers.chooseBarberLabel')}</label>
+              <label className="mb-1.5 block text-xs text-ink-500">{t('admin.customers.chooseShopLabel')}</label>
               <select
                 required
-                value={ustaBarberId}
-                onChange={(e) => setUstaBarberId(e.target.value)}
+                value={ustaShopId}
+                onChange={(e) => setUstaShopId(e.target.value)}
                 className="input-field !py-2 text-sm"
               >
-                <option value="" disabled>{t('admin.customers.chooseBarberPlaceholder')}</option>
-                {availableBarbers.map((b) => (
-                  <option key={b.id} value={b.id}>{b.ism} {b.familiya}</option>
+                <option value="" disabled>{t('admin.customers.chooseShopPlaceholder')}</option>
+                {shops.map((s) => (
+                  <option key={s.id} value={s.id}>{s.nomi}</option>
                 ))}
               </select>
             </div>
-            <button type="submit" className="btn-gold w-full !py-2.5 text-sm">{t('admin.customers.makeUsta')}</button>
+            <button type="submit" disabled={ustaSaving} className="btn-gold w-full !py-2.5 text-sm disabled:opacity-60">
+              {ustaSaving ? t('common.loading') : t('admin.customers.makeUsta')}
+            </button>
           </form>
         )}
       </Modal>

@@ -135,6 +135,8 @@ export default function App() {
         >
           <Route index element={<Navigate to="navbatlar" replace />} />
           <Route path="navbatlar" element={<AdminAppointments />} />
+          <Route path="ombor" element={<AdminInventory />} />
+          <Route path="tolovlar" element={<AdminPayments />} />
           <Route path="chat" element={<AdminChat />} />
         </Route>
       </Routes>

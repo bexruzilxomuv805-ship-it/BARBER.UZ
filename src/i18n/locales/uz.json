@@ -391,6 +391,11 @@
       "chooseBarberLabel": "Qaysi ustaga bog‘lanadi?",
       "chooseBarberPlaceholder": "Ustani tanlang",
       "noAvailableBarbers": "Bog‘lash uchun bo‘sh usta yo‘q — avval Ustalar sahifasida yangi usta qo‘shing yoki birortasining hozirgi hisobini ustalikdan oling.",
+      "defaultSpecialty": "Sartarosh",
+      "chooseShopIntro": "{{name}} ushbu sartaroshxonaga usta sifatida biriktiriladi — yangi usta profili avtomatik yaratiladi, keyinchalik uni Ustalar sahifasida to‘ldirishingiz mumkin.",
+      "chooseShopLabel": "Qaysi sartaroshxonaga?",
+      "chooseShopPlaceholder": "Sartaroshxonani tanlang",
+      "noShopsYet": "Hozircha sartaroshxona qo‘shilmagan — avval Sartaroshxonalar sahifasida sartaroshxona qo‘shing.",
       "ustaAssignedToast": "{{name}} endi usta.",
       "ustaRemovedToast": "{{name}} endi oddiy mijoz.",
       "tableRole": "Rol",
@@ -553,7 +558,11 @@
       "tableStatus": "Holat",
       "notFound": "To‘lovlar topilmadi.",
       "deleteConfirmText": "Bu to‘lov yozuvi butunlay o‘chiriladi.",
-      "deletedToast": "To‘lov o‘chirildi."
+      "deletedToast": "To‘lov o‘chirildi.",
+      "todayTotal": "Bugun topgani",
+      "weekTotal": "Shu hafta topgani",
+      "monthTotal": "Shu oy topgani",
+      "dailyChartTitle": "Kunlik daromad (so‘nggi 7 kun)"
     },
     "reports": {
       "title": "Hisobotlar",

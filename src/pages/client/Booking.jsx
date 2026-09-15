@@ -256,8 +256,8 @@ export default function Booking() {
                         <div className="min-w-0 flex-1">
                           <p className="truncate font-medium text-white text-sm">{s.nomi}</p>
                           <AutoText as="p" className="text-xs text-ink-500 truncate" text={s.manzilMatni} />
+                          <p className="mt-0.5 truncate text-xs text-ink-500">{s.ishVaqti}</p>
                         </div>
-                        <span className="shrink-0 text-xs text-ink-500">{s.ishVaqti}</span>
                       </button>
                     ))}
                   </div>
@@ -317,13 +317,13 @@ export default function Booking() {
                           <div className="min-w-0 flex-1">
                             <p className="truncate font-medium text-white text-sm">{b.ism} {b.familiya}</p>
                             <AutoText as="p" className="truncate text-xs text-gold-400" text={b.mutaxassislik} />
+                            <p className="mt-0.5 truncate text-xs text-ink-500">{b.ishVaqti}</p>
                             {offDays.length > 0 && (
                               <p className={`mt-1 truncate text-[11px] ${alwaysOff ? 'text-red-400' : 'text-amber-400/80'}`}>
                                 {alwaysOff ? t('booking.barberUnavailable') : `${t('booking.offDaysLabel')} ${offDays.join(', ')}`}
                               </p>
                             )}
                           </div>
-                          <span className="shrink-0 text-xs text-ink-500">{b.ishVaqti}</span>
                         </button>
                       )
                     })}

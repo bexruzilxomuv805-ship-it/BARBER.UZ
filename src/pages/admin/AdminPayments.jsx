@@ -1,38 +1,91 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useTranslation } from 'react-i18next'
-import { FaSearch, FaTrash, FaMoneyBillWave, FaCreditCard } from 'react-icons/fa'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { FaSearch, FaTrash, FaMoneyBillWave, FaCreditCard, FaChartLine } from 'react-icons/fa'
 import Loader from '../../components/Loader'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import { fetchPayments, removePayment } from '../../features/payments/paymentsSlice'
+import { fetchAppointments } from '../../features/appointments/appointmentsSlice'
 import { showToast } from '../../features/ui/uiSlice'
+import useAuth from '../../hooks/useAuth'
 import usePolling from '../../hooks/usePolling'
 import { formatSum, PAYMENT_METHOD_LABELS, PAYMENT_STATUS_LABELS } from '../../utils/format'
+import { toLocalDateIso } from '../../utils/schedule'
 
 const POLL_MS = 8000
+
+function daysAgoIso(count) {
+  const d = new Date()
+  d.setDate(d.getDate() - count)
+  return toLocalDateIso(d)
+}
 
 export default function AdminPayments() {
   const { t } = useTranslation()
   const dispatch = useDispatch()
+  const { isUsta, user } = useAuth()
+  const scopeBarberId = isUsta ? user.barberId : null
   const { items: payments, status } = useSelector((s) => s.payments)
+  const { items: appointments } = useSelector((s) => s.appointments)
   const [search, setSearch] = useState('')
   const [toDelete, setToDelete] = useState(null)
 
   useEffect(() => {
     dispatch(fetchPayments())
-  }, [dispatch])
+    if (scopeBarberId) dispatch(fetchAppointments())
+  }, [dispatch, scopeBarberId])
 
-  usePolling(() => dispatch(fetchPayments()), POLL_MS)
+  usePolling(() => {
+    dispatch(fetchPayments())
+    if (scopeBarberId) dispatch(fetchAppointments())
+  }, POLL_MS)
+
+  // Payments don't carry a barberId directly — only their linked
+  // appointment does — so scoping an usta's own earnings needs this lookup.
+  const appointmentBarberMap = useMemo(
+    () => Object.fromEntries(appointments.map((a) => [a.id, a.barberId])),
+    [appointments]
+  )
+  const scopedPayments = useMemo(
+    () => (scopeBarberId ? payments.filter((p) => appointmentBarberMap[p.appointmentId] === scopeBarberId) : payments),
+    [payments, scopeBarberId, appointmentBarberMap]
+  )
 
   const filtered = useMemo(
     () =>
-      payments
+      scopedPayments
         .filter((p) => (search ? p.mijozIsmi.toLowerCase().includes(search.toLowerCase()) : true))
         .sort((a, b) => new Date(b.sana) - new Date(a.sana)),
-    [payments, search]
+    [scopedPayments, search]
   )
 
   const total = useMemo(() => filtered.reduce((sum, p) => sum + p.summa, 0), [filtered])
+
+  const todayIso = toLocalDateIso()
+  const weekAgoIso = daysAgoIso(6)
+  const monthAgoIso = daysAgoIso(29)
+  const todayTotal = useMemo(
+    () => scopedPayments.filter((p) => p.sana === todayIso).reduce((sum, p) => sum + p.summa, 0),
+    [scopedPayments, todayIso]
+  )
+  const weekTotal = useMemo(
+    () => scopedPayments.filter((p) => p.sana >= weekAgoIso).reduce((sum, p) => sum + p.summa, 0),
+    [scopedPayments, weekAgoIso]
+  )
+  const monthTotal = useMemo(
+    () => scopedPayments.filter((p) => p.sana >= monthAgoIso).reduce((sum, p) => sum + p.summa, 0),
+    [scopedPayments, monthAgoIso]
+  )
+  const dailyChartData = useMemo(() => {
+    const days = []
+    for (let i = 6; i >= 0; i--) {
+      const iso = daysAgoIso(i)
+      const sum = scopedPayments.filter((p) => p.sana === iso).reduce((s, p) => s + p.summa, 0)
+      days.push({ label: iso.slice(5), sum })
+    }
+    return days
+  }, [scopedPayments])
 
   const handleDelete = (id) => {
     dispatch(removePayment(id))
@@ -57,6 +110,42 @@ export default function AdminPayments() {
           <p className="text-sm text-ink-500 mt-1">{t('admin.payments.totalLabel')} <span className="text-gold-400 font-semibold">{formatSum(total)}</span></p>
         </div>
       </div>
+
+      {scopeBarberId && (
+        <div className="mb-6">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="card p-5">
+              <p className="text-xs text-ink-500">{t('admin.payments.todayTotal')}</p>
+              <p className="font-display text-2xl font-bold text-gold-400 mt-1">{formatSum(todayTotal)}</p>
+            </div>
+            <div className="card p-5">
+              <p className="text-xs text-ink-500">{t('admin.payments.weekTotal')}</p>
+              <p className="font-display text-2xl font-bold text-white mt-1">{formatSum(weekTotal)}</p>
+            </div>
+            <div className="card p-5">
+              <p className="text-xs text-ink-500">{t('admin.payments.monthTotal')}</p>
+              <p className="font-display text-2xl font-bold text-white mt-1">{formatSum(monthTotal)}</p>
+            </div>
+          </div>
+          <div className="card mt-4 p-5">
+            <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-white">
+              <FaChartLine className="text-gold-400" /> {t('admin.payments.dailyChartTitle')}
+            </h3>
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={dailyChartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#2b2b2b" vertical={false} />
+                <XAxis dataKey="label" stroke="#6d6d6d" fontSize={11} tickLine={false} axisLine={false} />
+                <YAxis stroke="#6d6d6d" fontSize={11} tickLine={false} axisLine={false} width={50} />
+                <Tooltip
+                  contentStyle={{ background: '#181818', border: '1px solid #2b2b2b', borderRadius: 10, fontSize: 12 }}
+                  formatter={(value) => [formatSum(value), t('admin.payments.tableAmount')]}
+                />
+                <Bar dataKey="sum" fill="#c9a227" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
 
       <div className="relative mb-4 max-w-sm">
         <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-500 text-sm" />

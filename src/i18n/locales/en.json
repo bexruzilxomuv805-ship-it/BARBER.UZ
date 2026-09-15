@@ -391,6 +391,11 @@
       "chooseBarberLabel": "Link to which barber?",
       "chooseBarberPlaceholder": "Choose a barber",
       "noAvailableBarbers": "No unlinked barbers to assign — add a new barber on the Barbers page first, or remove an existing barber's account there.",
+      "defaultSpecialty": "Barber",
+      "chooseShopIntro": "{{name}} will be assigned as a barber at this shop — a new barber profile is created automatically, which you can flesh out later on the Barbers page.",
+      "chooseShopLabel": "Which barbershop?",
+      "chooseShopPlaceholder": "Choose a barbershop",
+      "noShopsYet": "No barbershops added yet — add one on the Barbershops page first.",
       "ustaAssignedToast": "{{name}} is now a barber.",
       "ustaRemovedToast": "{{name}} is now a regular customer.",
       "tableRole": "Role",
@@ -553,7 +558,11 @@
       "tableStatus": "Status",
       "notFound": "No payments found.",
       "deleteConfirmText": "This payment record will be permanently deleted.",
-      "deletedToast": "Payment deleted."
+      "deletedToast": "Payment deleted.",
+      "todayTotal": "Earned today",
+      "weekTotal": "Earned this week",
+      "monthTotal": "Earned this month",
+      "dailyChartTitle": "Daily earnings (last 7 days)"
     },
     "reports": {
       "title": "Reports",
