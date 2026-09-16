@@ -37,7 +37,7 @@
     "accountTitle": "Account",
     "contactTitle": "Contact",
     "copyright": "© {{year}} Zolotoy Barber. All rights reserved.",
-    "builtWith": "Demo project — built with React, Redux Toolkit, Tailwind CSS and PostgreSQL."
+    "tagline": "Quality and trust — in every visit."
   },
   "status": {
     "kutilmoqda": "Pending",

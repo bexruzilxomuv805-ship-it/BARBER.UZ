@@ -37,7 +37,7 @@
     "accountTitle": "Hisob",
     "contactTitle": "Aloqa",
     "copyright": "© {{year}} Zolotoy Barber. Barcha huquqlar himoyalangan.",
-    "builtWith": "Namunaviy loyiha — React, Redux Toolkit, Tailwind CSS va PostgreSQL bilan yaratilgan."
+    "tagline": "Sifat va ishonch — har bir tashrifda."
   },
   "status": {
     "kutilmoqda": "Kutilmoqda",
