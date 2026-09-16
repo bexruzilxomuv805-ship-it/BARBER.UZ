@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { FaSearch, FaEdit, FaTrash, FaUserPlus, FaUserCircle, FaUserShield, FaUserSlash, FaTelegramPlane, FaComments, FaTrashRestore, FaUserTimes } from 'react-icons/fa'
 import { GiRazor } from 'react-icons/gi'
-import Loader from '../../components/Loader'
+import { SkeletonTable } from '../../components/Skeleton'
 import Modal from '../../components/admin/Modal'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import {
@@ -282,7 +282,7 @@ export default function AdminCustomers() {
       </div>
 
       {status === 'loading' ? (
-        <Loader />
+        <SkeletonTable cols={6} />
       ) : (
         <div className="card overflow-x-auto">
           <table className="w-full text-sm">

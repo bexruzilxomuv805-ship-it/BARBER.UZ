@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useTranslation } from 'react-i18next'
 import { FaEdit, FaTrash, FaPlus, FaPhoneAlt, FaCamera, FaTimes, FaClock, FaChevronLeft, FaChevronRight } from 'react-icons/fa'
-import Loader from '../../components/Loader'
+import { SkeletonCardGrid } from '../../components/Skeleton'
 import Modal from '../../components/admin/Modal'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import LocationPicker from '../../components/admin/LocationPicker'
@@ -125,7 +125,7 @@ export default function AdminSartaroshxonalar() {
       </div>
 
       {status === 'loading' ? (
-        <Loader />
+        <SkeletonCardGrid count={8} className="grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-3 lg:grid-cols-4" />
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">
           {pageShops.map((s) => (

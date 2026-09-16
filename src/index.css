@@ -32,7 +32,28 @@
     @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
   }
   .btn-gold {
-    @apply inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-gold-500 to-gold-300 text-ink-950 font-semibold px-6 py-3 shadow-gold transition-all duration-300 hover:scale-[1.03] hover:shadow-lg active:scale-95;
+    @apply relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-full bg-gradient-to-r from-gold-500 to-gold-300 text-ink-950 font-semibold px-6 py-3 shadow-gold transition-all duration-300 hover:scale-[1.03] hover:shadow-lg active:scale-95;
+  }
+  /* Diagonal sheen that sweeps across .btn-gold on hover — luxury/premium
+     brands lean on this a lot, and it costs nothing when idle since the
+     animation only plays on :hover. */
+  .btn-gold::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -75%;
+    width: 40%;
+    height: 100%;
+    background: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+    transform: skewX(-20deg);
+    pointer-events: none;
+  }
+  .btn-gold:hover::after {
+    animation: btn-shine 0.85s ease forwards;
+  }
+  @keyframes btn-shine {
+    from { left: -75%; }
+    to { left: 125%; }
   }
   .btn-outline {
     @apply inline-flex items-center justify-center gap-2 rounded-full border border-gold-500/60 text-gold-300 font-semibold px-6 py-3 transition-all duration-300 hover:bg-gold-500/10 hover:border-gold-400 active:scale-95;
@@ -51,5 +72,13 @@
   }
   .shimmer-line {
     @apply h-px w-full bg-gold-line;
+  }
+  /* Paired with the animate-shimmer utility (src/components/Skeleton.jsx)
+     for loading placeholders — the gradient is what animate-shimmer's
+     backgroundPosition sweep actually animates across. */
+  .skeleton {
+    @apply rounded-md bg-ink-800;
+    background-image: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.07), transparent);
+    background-size: 200% 100%;
   }
 }

@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { useTranslation } from 'react-i18next'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { FaSearch, FaTrash, FaMoneyBillWave, FaCreditCard, FaChartLine } from 'react-icons/fa'
-import Loader from '../../components/Loader'
+import { SkeletonTable } from '../../components/Skeleton'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import { fetchPayments, removePayment } from '../../features/payments/paymentsSlice'
 import { fetchAppointments } from '../../features/appointments/appointmentsSlice'
@@ -160,7 +160,7 @@ export default function AdminPayments() {
       </div>
 
       {status === 'loading' ? (
-        <Loader />
+        <SkeletonTable cols={6} />
       ) : (
         <div className="card overflow-x-auto">
           <table className="w-full text-sm">

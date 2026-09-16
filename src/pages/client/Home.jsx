@@ -13,7 +13,7 @@ import BarberPole from '../../components/BarberPole'
 import AnimatedCounter from '../../components/AnimatedCounter'
 import RatingStars from '../../components/RatingStars'
 import ServiceIcon from '../../components/ServiceIcon'
-import Loader from '../../components/Loader'
+import { SkeletonBlock, SkeletonCardGrid } from '../../components/Skeleton'
 import AutoText from '../../components/AutoText'
 import InstallPwaPrompt from '../../components/InstallPwaPrompt'
 import ShopMap from '../../components/ShopMap'
@@ -288,7 +288,11 @@ export default function Home() {
           </Reveal>
 
           {servicesStatus === 'loading' ? (
-            <Loader />
+            <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <SkeletonBlock key={i} className="h-40 w-full" />
+              ))}
+            </div>
           ) : (
             <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {featuredServices.map((s, i) => (
@@ -327,18 +331,32 @@ export default function Home() {
           </Reveal>
 
           {barbersStatus === 'loading' ? (
-            <Loader />
+            <SkeletonCardGrid count={4} className="mt-12 grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-3 lg:grid-cols-4" />
           ) : (
             <div className="mt-12 grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-3 lg:grid-cols-4">
               {topBarbers.map((b, i) => (
                 <Reveal key={b.id} delay={i * 0.08}>
-                  <div className="card group overflow-hidden hover:border-gold-500/50 transition-colors duration-300">
-                    <div className="aspect-[4/5] overflow-hidden">
+                  <Link
+                    to={b.sartaroshxonaId ? `/sartaroshxonalar/${b.sartaroshxonaId}` : '/sartaroshxonalar'}
+                    className="card group block overflow-hidden hover:border-gold-500/50 transition-colors duration-300"
+                  >
+                    <div className="relative aspect-[4/5] overflow-hidden">
                       <img
                         src={getBarberImage(b.rasm)}
                         alt={b.ism}
                         className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                       />
+                      {/* Hidden until hover/tap — reveals price + a CTA over a
+                          dark gradient instead of permanently occupying card
+                          space, so the plain card stays clean at rest. */}
+                      <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-ink-950 via-ink-950/40 to-transparent p-4 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                        <span className="translate-y-2 text-sm font-semibold text-gold-400 transition-transform duration-300 group-hover:translate-y-0">
+                          {t('barbers.startingFrom', { price: formatSum(b.narxBoshlanishi) })}
+                        </span>
+                        <span className="mt-1 flex translate-y-2 items-center gap-1.5 text-xs font-medium text-white transition-transform duration-300 delay-75 group-hover:translate-y-0">
+                          {t('barbers.detailsAction')} <FaArrowRight className="text-[10px]" />
+                        </span>
+                      </div>
                     </div>
                     <div className="p-4">
                       <h3 className="font-semibold text-white">{b.ism} {b.familiya}</h3>
@@ -348,7 +366,7 @@ export default function Home() {
                         <span className="text-xs text-ink-500">{t('home.yearsShort', { count: b.tajriba })}</span>
                       </div>
                     </div>
-                  </div>
+                  </Link>
                 </Reveal>
               ))}
             </div>

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useTranslation } from 'react-i18next'
 import { FaSearch, FaTrash, FaCheckCircle, FaTimesCircle, FaClock, FaUserSlash } from 'react-icons/fa'
-import Loader from '../../components/Loader'
+import { SkeletonTable } from '../../components/Skeleton'
 import StatusBadge from '../../components/StatusBadge'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import AutoText from '../../components/AutoText'
@@ -135,7 +135,7 @@ export default function AdminAppointments() {
       </div>
 
       {status === 'loading' ? (
-        <Loader />
+        <SkeletonTable cols={7} />
       ) : (
         <div className="card overflow-x-auto">
           <table className="w-full text-sm">

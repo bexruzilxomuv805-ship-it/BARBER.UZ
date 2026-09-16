@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useTranslation } from 'react-i18next'
 import { FaEdit, FaTrash, FaPlus, FaClock } from 'react-icons/fa'
-import Loader from '../../components/Loader'
+import { SkeletonTable } from '../../components/Skeleton'
 import Modal from '../../components/admin/Modal'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import ServiceIcon from '../../components/ServiceIcon'
@@ -70,7 +70,7 @@ export default function AdminServices() {
       </div>
 
       {status === 'loading' ? (
-        <Loader />
+        <SkeletonTable cols={5} />
       ) : (
         <div className="card overflow-x-auto">
           <table className="w-full text-sm">

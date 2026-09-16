@@ -21,6 +21,20 @@ import { getWeekdayOptions, toLocalDateIso } from '../../utils/schedule'
 const COLORS = ['#c9a227', '#38bdf8', '#34d399', '#f87171', '#a78bfa']
 const HEATMAP_HOURS = ['09', '10', '11', '12', '14', '15', '16', '17', '18']
 const POLL_MS = 8000
+const SPARKLINE_DAYS = 14
+
+// Compares the second half of a daily series against the first half — a
+// simple, dependency-free trend read good enough for a small strip under a
+// stat card. Returns null when there's nothing to compare against yet
+// (StatCard just omits the trend line in that case).
+function trendPercent(series) {
+  const half = Math.floor(series.length / 2)
+  const prevSum = series.slice(0, half).reduce((sum, x) => sum + x.v, 0)
+  const currSum = series.slice(half).reduce((sum, x) => sum + x.v, 0)
+  if (prevSum === 0) return currSum > 0 ? { pct: 100, up: true } : null
+  const pct = Math.round(((currSum - prevSum) / prevSum) * 100)
+  return { pct: Math.abs(pct), up: pct >= 0 }
+}
 
 export default function AdminDashboard() {
   const { t } = useTranslation()
@@ -57,6 +71,55 @@ export default function AdminDashboard() {
     const clients = customers.filter((c) => c.role === 'client' && !c.deleted)
     return { totalRevenue, appointmentsToday: appointmentsToday.length, cancelled: cancelled.length, clients: clients.length }
   }, [payments, appointments, customers, todayStr])
+
+  const last14Days = useMemo(() => {
+    const days = []
+    for (let i = SPARKLINE_DAYS - 1; i >= 0; i--) {
+      const d = new Date()
+      d.setDate(d.getDate() - i)
+      days.push(toLocalDateIso(d))
+    }
+    return days
+  }, [])
+
+  const revenueSparkline = useMemo(() => {
+    const byDate = {}
+    payments.forEach((p) => {
+      byDate[p.sana] = (byDate[p.sana] || 0) + (p.summa || 0)
+    })
+    return last14Days.map((d) => ({ v: byDate[d] || 0 }))
+  }, [payments, last14Days])
+
+  const appointmentsSparkline = useMemo(() => {
+    const byDate = {}
+    appointments.forEach((a) => {
+      if (a.sana) byDate[a.sana] = (byDate[a.sana] || 0) + 1
+    })
+    return last14Days.map((d) => ({ v: byDate[d] || 0 }))
+  }, [appointments, last14Days])
+
+  const cancelledSparkline = useMemo(() => {
+    const byDate = {}
+    appointments
+      .filter((a) => a.holat === 'bekor qilingan')
+      .forEach((a) => {
+        byDate[a.sana] = (byDate[a.sana] || 0) + 1
+      })
+    return last14Days.map((d) => ({ v: byDate[d] || 0 }))
+  }, [appointments, last14Days])
+
+  // Cumulative signups through each day, not a per-day count — "total
+  // customers" is itself a running total, so its trend line should read the
+  // same way (climbing), not spike-and-drop like a daily-count chart would.
+  const customersSparkline = useMemo(() => {
+    const clients = customers.filter((c) => c.role === 'client' && !c.deleted && c.createdAt)
+    return last14Days.map((d) => ({
+      v: clients.filter((c) => c.createdAt.slice(0, 10) <= d).length,
+    }))
+  }, [customers, last14Days])
+
+  const revenueTrendReal = useMemo(() => trendPercent(revenueSparkline), [revenueSparkline])
+  const cancelledTrendReal = useMemo(() => trendPercent(cancelledSparkline), [cancelledSparkline])
 
   const revenueTrend = useMemo(() => {
     const byDate = {}
@@ -144,10 +207,38 @@ export default function AdminDashboard() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard icon={FaMoneyBillWave} label={t('admin.dashboard.statRevenue')} value={formatSum(stats.totalRevenue)} accent="gold" trend={t('admin.dashboard.statRevenueTrend')} />
-        <StatCard icon={FaUsers} label={t('admin.dashboard.statCustomers')} value={stats.clients} accent="sky" />
-        <StatCard icon={FaCalendarCheck} label={t('admin.dashboard.statTodayAppointments')} value={stats.appointmentsToday} accent="emerald" />
-        <StatCard icon={FaCalendarTimes} label={t('admin.dashboard.statCancelled')} value={stats.cancelled} accent="red" trendUp={false} />
+        <StatCard
+          icon={FaMoneyBillWave}
+          label={t('admin.dashboard.statRevenue')}
+          value={formatSum(stats.totalRevenue)}
+          accent="gold"
+          trend={revenueTrendReal ? `${revenueTrendReal.pct}%` : null}
+          trendUp={revenueTrendReal?.up}
+          sparkline={revenueSparkline}
+        />
+        <StatCard
+          icon={FaUsers}
+          label={t('admin.dashboard.statCustomers')}
+          value={stats.clients}
+          accent="sky"
+          sparkline={customersSparkline}
+        />
+        <StatCard
+          icon={FaCalendarCheck}
+          label={t('admin.dashboard.statTodayAppointments')}
+          value={stats.appointmentsToday}
+          accent="emerald"
+          sparkline={appointmentsSparkline}
+        />
+        <StatCard
+          icon={FaCalendarTimes}
+          label={t('admin.dashboard.statCancelled')}
+          value={stats.cancelled}
+          accent="red"
+          trend={cancelledTrendReal ? `${cancelledTrendReal.pct}%` : null}
+          trendUp={cancelledTrendReal ? !cancelledTrendReal.up : false}
+          sparkline={cancelledSparkline}
+        />
       </div>
 
       <div className="mt-6 grid gap-5 lg:grid-cols-3">

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useTranslation } from 'react-i18next'
 import { FaEdit, FaTrash, FaPlus, FaBoxes } from 'react-icons/fa'
-import Loader from '../../components/Loader'
+import { SkeletonTable } from '../../components/Skeleton'
 import Modal from '../../components/admin/Modal'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import AutoText from '../../components/AutoText'
@@ -92,7 +92,7 @@ export default function AdminInventory() {
       </div>
 
       {status === 'loading' ? (
-        <Loader />
+        <SkeletonTable cols={5} />
       ) : (
         <div className="card overflow-x-auto">
           <table className="w-full text-sm">

@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { FaClock, FaMapMarkerAlt, FaArrowRight, FaLocationArrow, FaSearch } from 'react-icons/fa'
 import Reveal from '../../components/Reveal'
-import Loader from '../../components/Loader'
+import { SkeletonCardGrid } from '../../components/Skeleton'
 import PageHero from '../../components/PageHero'
 import AutoText from '../../components/AutoText'
 import { fetchShops } from '../../features/sartaroshxonalar/sartaroshxonalarSlice'
@@ -136,7 +136,7 @@ export default function Sartaroshxonalar() {
         )}
 
         {status === 'loading' ? (
-          <Loader full />
+          <SkeletonCardGrid count={9} className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3" />
         ) : shops.length === 0 ? (
           <p className="py-10 text-center text-sm text-ink-500">{t('shops.notFound')}</p>
         ) : sortedShops.length === 0 ? (
