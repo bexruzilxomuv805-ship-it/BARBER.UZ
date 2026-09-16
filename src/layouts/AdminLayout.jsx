@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   FaTachometerAlt, FaCalendarAlt, FaUsers, FaCut, FaBoxes, FaMoneyBillWave,
-  FaChartBar, FaComments, FaSignOutAlt, FaBars, FaHome, FaCog, FaStore,
+  FaChartBar, FaComments, FaSignOutAlt, FaBars, FaHome, FaCog, FaStore, FaUser,
 } from 'react-icons/fa'
 import { GiRazor } from 'react-icons/gi'
 import useAuth from '../hooks/useAuth'
@@ -168,8 +168,8 @@ export default function AdminLayout() {
               <p className="text-sm font-medium text-white">{user?.ism} {user?.familiya}</p>
               <p className="text-[11px] text-ink-500">{isUsta ? t('admin.roleUsta') : t('admin.role')}</p>
             </div>
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gold-500/15 text-gold-400 font-semibold text-sm">
-              {user?.ism?.[0]}
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gold-500/15 text-gold-400 text-base">
+              <FaUser />
             </span>
           </div>
         </header>
