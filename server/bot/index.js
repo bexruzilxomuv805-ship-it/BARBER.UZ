@@ -444,15 +444,22 @@ async function forwardAppointments() {
   }
 }
 
-function formatStatusChangeLabel(holat) {
+function formatClientStatusLabel(holat) {
   if (holat === 'tasdiqlangan') return '✅ Navbatingiz tasdiqlandi!'
   if (holat === 'yakunlangan') return "✔️ Xizmat yakunlandi. Tashrifingiz uchun rahmat!"
   if (holat === 'bekor qilingan') return '❌ Navbatingiz bekor qilindi.'
   return null
 }
 
+function formatStaffStatusLabel(holat) {
+  if (holat === 'tasdiqlangan') return '✅ Navbat tasdiqlandi'
+  if (holat === 'yakunlangan') return '✔️ Navbat yakunlandi'
+  if (holat === 'bekor qilingan') return '❌ Navbat bekor qilindi'
+  return null
+}
+
 async function notifyClientOfStatusChange(appointment) {
-  const label = formatStatusChangeLabel(appointment.holat)
+  const label = formatClientStatusLabel(appointment.holat)
   if (!label) return
   try {
     const user = await getUser(appointment.mijozId)
@@ -466,23 +473,47 @@ async function notifyClientOfStatusChange(appointment) {
   }
 }
 
+// Whoever DIDN'T make the change (admin, the assigned usta, or both) needs
+// to hear about it too — e.g. an admin cancelling from the site must still
+// reach that barber's own chat, same as a client cancelling from the bot
+// already reached admin+barber before. Sent to both unconditionally (not
+// just "whoever wasn't the actor") since this poll has no way to know who
+// acted — a redundant DM to your own chat confirming your own action is
+// harmless; a barber never finding out their slot opened up is not.
+async function notifyStaffOfStatusChange(appointment) {
+  const label = formatStaffStatusLabel(appointment.holat)
+  if (!label) return
+  const text =
+    `${label}\n\u{1F464} ${appointment.mijozIsmi || 'Mijoz'} (${appointment.mijozTelefon || '—'})\n` +
+    `✂️ ${appointment.xizmatNomi || '—'} — ${appointment.barberIsmi || '—'}\n` +
+    `\u{1F553} ${appointment.sana} ${appointment.vaqt}`
+  if (adminChatId) {
+    await bot
+      .sendMessage(adminChatId, text)
+      .catch((err) => console.error('[bot] notify admin of status change error:', err?.message || err))
+  }
+  await notifyBarberChat(appointment.barberId, text)
+}
+
 // Confirming/cancelling/completing an appointment from the SITE's admin or
-// usta dashboard used to never reach the client at all — only doing the same
-// thing via this bot's own inline buttons did (see the callback_query
-// handler below). Comparing holat against holatNotifiedFor (armed the moment
-// a DM actually goes out) catches a status change from *either* side exactly
-// once, within one 5s poll, instead of relying on each call site to remember
-// to notify the client itself.
+// usta dashboard used to never reach anyone else at all — only doing the
+// same thing via this bot's own inline buttons notified the other side (see
+// the callback_query handler below). Comparing holat against
+// holatNotifiedFor (armed the moment these DMs actually go out) catches a
+// status change from *any* side — bot or site, admin or usta — exactly once,
+// within one 5s poll, instead of relying on each call site to remember to
+// notify everyone else itself.
 async function forwardStatusChanges() {
   const all = await getAllAppointments()
   const changed = all.filter(
     (a) =>
       a.tgNotified &&
       a.holat !== (a.holatNotifiedFor || 'kutilmoqda') &&
-      formatStatusChangeLabel(a.holat)
+      (formatClientStatusLabel(a.holat) || formatStaffStatusLabel(a.holat))
   )
   for (const a of changed) {
     await notifyClientOfStatusChange(a)
+    await notifyStaffOfStatusChange(a)
     await markAppointmentStatusNotified(a.id, a.holat)
   }
 }
@@ -1985,7 +2016,7 @@ bot.on('callback_query', safeHandler(async (query) => {
         action === 'cancel'
           ? { bekorSababi: staffAction ? 'Telegram orqali bekor qilindi' : 'Mijoz tomonidan bekor qilindi' }
           : {}
-      const appointment = await setAppointmentStatus(id, holat, extra)
+      await setAppointmentStatus(id, holat, extra)
 
       const label =
         action === 'confirm' ? '✅ Tasdiqlandi' : action === 'complete' ? '✔️ Yakunlandi' : '❌ Bekor qilindi'
@@ -1996,23 +2027,11 @@ bot.on('callback_query', safeHandler(async (query) => {
       })
       await bot.answerCallbackQuery(query.id, { text: label })
 
-      // The client is told about this by forwardStatusChanges (see above) —
-      // it picks up the holat this write just made within one 5s poll,
-      // whether it happened here or on the site's admin/usta dashboard, so
-      // this handler doesn't need its own separate copy of that DM.
-      if (!staffAction) {
-        // A client cancelled their own booking — let the admin and their
-        // barber know.
-        const cancelText =
-          `\u{1F6AB} Mijoz navbatni bekor qildi:\n${appointment.mijozIsmi || 'Mijoz'} — ` +
-          `${appointment.xizmatNomi || '—'} (${appointment.sana} ${appointment.vaqt})`
-        if (adminChatId) {
-          await bot
-            .sendMessage(adminChatId, cancelText)
-            .catch((err) => console.error('[bot] notify admin of client cancel error:', err?.message || err))
-        }
-        await notifyBarberChat(appointment.barberId, cancelText)
-      }
+      // Everyone else (client, admin, the assigned barber) is told about
+      // this by forwardStatusChanges (see above) — it picks up the holat
+      // this write just made within one 5s poll, whether it happened here or
+      // on the site's admin/usta dashboard, so this handler doesn't need its
+      // own separate copy of those DMs.
     } catch (err) {
       console.error('[bot] callback_query error:', err?.message || err)
       await bot.answerCallbackQuery(query.id, { text: 'Xatolik yuz berdi', show_alert: true })
