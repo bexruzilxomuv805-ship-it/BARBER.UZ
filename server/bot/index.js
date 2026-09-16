@@ -24,6 +24,7 @@ import {
   getUnnotifiedClientMessages,
   postAdminReply,
   getConversation,
+  getConversationsByUser,
   getUnnotifiedPendingAppointments,
   markAppointmentNotified,
   markAppointmentStatusNotified,
@@ -1785,11 +1786,24 @@ async function handleClientChatMessage(msg) {
     return
   }
   try {
+    // AdminChat.jsx shows each usta only *their own* barberId-scoped
+    // conversation (see scopeBarberId there) — a message hardcoded to
+    // conversationId: user.id always landed in the general admin bucket,
+    // invisible to whichever barber the client had actually been mid-chat
+    // with on the site. Continuing their most recently active conversation
+    // (barber-scoped or general, whichever they used last) keeps a Telegram
+    // reply in the same thread instead of silently rerouting it to admin.
+    const conversations = await getConversationsByUser(user.id).catch(() => [])
+    const latest = conversations[0]
+    const conversationId = latest?.id || user.id
+    const barberId = latest?.barberId || null
+
     await postClientMessageFromBot({
-      conversationId: user.id,
+      conversationId,
       userId: user.id,
       userName: `${user.ism || ''} ${user.familiya || ''}`.trim() || user.telegramUsername || 'Mijoz',
       text: msg.text,
+      barberId,
     })
     await bot.sendMessage(msg.chat.id, '✓ Yuborildi')
   } catch (err) {

@@ -110,6 +110,18 @@ export async function getConversation(conversationId) {
   }
 }
 
+// All of a client's conversations, newest-first — a plain admin one
+// (barberId-less) plus one per barber they've chatted with (see
+// ChatWidget.jsx's `${userId}__${barberId}` conversation ids). Lets a
+// Telegram reply continue whichever one they were actually last using
+// instead of always landing in the general admin bucket.
+export async function getConversationsByUser(userId) {
+  const { data } = await client.get('/conversations', {
+    params: { userId, _sort: 'updatedAt', _order: 'desc' },
+  })
+  return data
+}
+
 export async function getUnnotifiedPendingAppointments() {
   const { data } = await client.get('/appointments', {
     params: { holat: 'kutilmoqda', _sort: 'createdAt', _order: 'asc' },
@@ -364,7 +376,7 @@ export async function getContactInfo() {
   return data
 }
 
-export async function postClientMessageFromBot({ conversationId, userId, userName, text }) {
+export async function postClientMessageFromBot({ conversationId, userId, userName, text, barberId }) {
   const message = {
     id: `m-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     conversationId,
@@ -372,6 +384,7 @@ export async function postClientMessageFromBot({ conversationId, userId, userNam
     userName,
     sender: 'client',
     text,
+    ...(barberId ? { barberId } : {}),
     createdAt: new Date().toISOString(),
     read: false,
   }
@@ -383,6 +396,7 @@ export async function postClientMessageFromBot({ conversationId, userId, userNam
       lastMessage: text,
       updatedAt: message.createdAt,
       unreadForAdmin: 1,
+      ...(barberId ? { barberId } : {}),
     })
   } catch {
     await client.post('/conversations', {
@@ -391,6 +405,7 @@ export async function postClientMessageFromBot({ conversationId, userId, userNam
       userName,
       lastMessage: text,
       updatedAt: message.createdAt,
+      ...(barberId ? { barberId } : {}),
       unreadForAdmin: 1,
       unreadForClient: 0,
     })
