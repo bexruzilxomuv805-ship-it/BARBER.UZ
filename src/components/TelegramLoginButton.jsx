@@ -29,14 +29,24 @@ export default function TelegramLoginButton({ onSuccess }) {
     setStatus('waiting')
     const token = `tg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 
+    // Opened synchronously, still inside the click gesture, before any
+    // `await` — mobile Safari/Chrome block window.open() called from an
+    // async continuation (after the network request below resolves) as a
+    // popup, since by then the browser no longer considers it a direct
+    // response to the tap. The URL is filled in once the token is confirmed
+    // created, whichever order those two finish in.
+    const tgWindow = window.open('about:blank', '_blank', 'noopener')
+
     try {
       await client.post('/telegramLogins', { id: token, status: 'pending', createdAt: new Date().toISOString() })
     } catch {
+      tgWindow?.close()
       setStatus('error')
       return
     }
 
-    window.open(`https://t.me/${BOT_USERNAME}?start=${token}`, '_blank', 'noopener')
+    if (tgWindow) tgWindow.location.href = `https://t.me/${BOT_USERNAME}?start=${token}`
+    else window.open(`https://t.me/${BOT_USERNAME}?start=${token}`, '_blank', 'noopener')
 
     let attempts = 0
     intervalRef.current = setInterval(async () => {
