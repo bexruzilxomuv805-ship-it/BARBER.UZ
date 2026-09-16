@@ -226,18 +226,43 @@ export default function Booking() {
   }
 
   if (done) {
+    const fadeUp = {
+      hidden: { opacity: 0, y: 10 },
+      show: { opacity: 1, y: 0 },
+    }
     return (
       <div className="container-x py-24 text-center">
-        <motion.div initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="mx-auto max-w-md">
-          <FaCheckCircle className="mx-auto text-6xl text-emerald-400" />
-          <h2 className="mt-6 font-display text-2xl font-bold text-white">{t('booking.doneTitle')}</h2>
-          <p className="mt-3 text-ink-400">
+        <motion.div
+          initial="hidden"
+          animate="show"
+          variants={{ hidden: {}, show: { transition: { staggerChildren: 0.12, delayChildren: 0.1 } } }}
+          className="mx-auto max-w-md"
+        >
+          <motion.div
+            variants={{
+              hidden: { scale: 0, opacity: 0 },
+              show: { scale: 1, opacity: 1, transition: { type: 'spring', stiffness: 260, damping: 18 } },
+            }}
+            className="relative mx-auto flex h-24 w-24 items-center justify-center"
+          >
+            <motion.span
+              className="absolute inset-0 rounded-full border-2 border-emerald-400/50"
+              initial={{ scale: 0.6, opacity: 0.8 }}
+              animate={{ scale: 1.8, opacity: 0 }}
+              transition={{ duration: 1.1, ease: 'easeOut', repeat: 1, repeatDelay: 0.25, delay: 0.3 }}
+            />
+            <FaCheckCircle className="relative text-6xl text-emerald-400" />
+          </motion.div>
+          <motion.h2 variants={fadeUp} className="mt-6 font-display text-2xl font-bold text-white">
+            {t('booking.doneTitle')}
+          </motion.h2>
+          <motion.p variants={fadeUp} className="mt-3 text-ink-400">
             {t('booking.doneMessage', { barber: selectedBarber?.ism, date, time })}
-          </p>
-          <div className="mt-8 flex justify-center gap-3">
+          </motion.p>
+          <motion.div variants={fadeUp} className="mt-8 flex justify-center gap-3">
             <button onClick={() => navigate('/profil')} className="btn-gold">{t('booking.viewMyAppointments')}</button>
             <button onClick={() => navigate('/')} className="btn-outline">{t('booking.backHome')}</button>
-          </div>
+          </motion.div>
         </motion.div>
       </div>
     )

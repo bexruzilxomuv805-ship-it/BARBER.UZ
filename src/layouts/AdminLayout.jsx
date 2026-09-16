@@ -60,7 +60,13 @@ export default function AdminLayout() {
     navigate('/')
   }
 
-  const SidebarContent = (
+  // Rendered twice (desktop <aside> always mounted + mobile drawer mounted
+  // whenever it's open) — both exist in the DOM at once regardless of
+  // viewport (the desktop one is just `hidden` via CSS on small screens),
+  // so the sliding active-pill's layoutId is namespaced per variant.
+  // Sharing one id between the two copies would fight over a single shared
+  // layout animation across two simultaneously-mounted lists.
+  const renderSidebar = (variant) => (
     <div className="flex h-full flex-col bg-ink-950 border-r border-ink-800">
       <div className="flex items-center gap-2 px-5 py-5 border-b border-ink-800">
         <span className="flex h-9 w-9 items-center justify-center rounded-full border border-gold-500/60 bg-ink-900 text-gold-400">
@@ -81,19 +87,28 @@ export default function AdminLayout() {
               end={item.end}
               onClick={() => setSidebarOpen(false)}
               className={({ isActive }) =>
-                `flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'bg-gold-500/15 text-gold-300 border border-gold-500/30'
-                    : 'text-ink-400 hover:bg-ink-900 hover:text-white'
+                `relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-colors ${
+                  isActive ? 'text-gold-300' : 'text-ink-400 hover:bg-ink-900 hover:text-white'
                 }`
               }
             >
-              <item.icon className="text-base shrink-0" />
-              <span className="flex-1">{item.label}</span>
-              {badgeCount > 0 && (
-                <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
-                  {badgeCount > 9 ? '9+' : badgeCount}
-                </span>
+              {({ isActive }) => (
+                <>
+                  {isActive && (
+                    <motion.span
+                      layoutId={`adminNavPill-${variant}`}
+                      className="absolute inset-0 rounded-xl border border-gold-500/30 bg-gold-500/15"
+                      transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+                    />
+                  )}
+                  <item.icon className="relative text-base shrink-0" />
+                  <span className="relative flex-1">{item.label}</span>
+                  {badgeCount > 0 && (
+                    <span className="relative flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                      {badgeCount > 9 ? '9+' : badgeCount}
+                    </span>
+                  )}
+                </>
               )}
             </NavLink>
           )
@@ -116,7 +131,7 @@ export default function AdminLayout() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-ink-900 text-ink-100">
-      <aside className="hidden lg:block w-64 shrink-0">{SidebarContent}</aside>
+      <aside className="hidden lg:block w-64 shrink-0">{renderSidebar('desktop')}</aside>
 
       <AnimatePresence>
         {sidebarOpen && (
@@ -135,7 +150,7 @@ export default function AdminLayout() {
               transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
               className="fixed inset-y-0 left-0 z-50 w-72 lg:hidden"
             >
-              {SidebarContent}
+              {renderSidebar('mobile')}
             </motion.aside>
           </>
         )}
