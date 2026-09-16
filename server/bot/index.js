@@ -60,6 +60,8 @@ import {
   getDeletedUsers,
   getUsersPendingDeleteNotice,
   markUserDeleteNotified,
+  getUsersPendingHardDelete,
+  hardDeleteUser,
   getUsersPendingRestoreNotice,
   markUserRestoreNotified,
   markMessageForwarded,
@@ -629,6 +631,45 @@ async function forwardAccountStatusChanges() {
   }
 }
 
+function formatAccountHardDeletedMessage() {
+  return (
+    "\u{1F5D1}\u{FE0F} Hurmatli mijoz!\n\n" +
+    "Administrator hisobingizni va unga tegishli barcha ma'lumotlaringizni (profil, navbatlar tarixi, yozishmalar) " +
+    "butunlay o'chirib tashladi. Bu amalni ortga qaytarib bo'lmaydi.\n\n" +
+    "Xizmatlarimizdan yana foydalanishni istasangiz, pastdagi tugma orqali yangi hisob ochishingiz mumkin — " +
+    "ro'yxatdan o'tishda Telegram akkauntingizni ulash ham so'raladi.\n\n" +
+    "Savolingiz bo'lsa, administrator bilan bog'laning."
+  )
+}
+
+const REGISTER_LINK_BUTTON = {
+  reply_markup: {
+    inline_keyboard: [[{ text: "\u{1F195} Yangi hisob ochish", url: `${SITE_URL}/royxatdan-otish` }]],
+  },
+}
+
+function formatAdminHardDeleteNotice(u, dmStatus) {
+  return `\u{1F5D1}\u{FE0F} Hisob BUTUNLAY o'chirildi\n\n${formatUserLine(u)}\n\n${formatDeliveryStatusLine(dmStatus)}`
+}
+
+// The account holder is told first — with a link to open a fresh account —
+// while their row still exists to read a telegramId from, and only THEN is
+// that row actually deleted (hardDeleteUser), since there's nothing left to
+// notify from afterward. Armed exclusively by AdminCustomers.jsx's
+// "Butunlay o'chirish" action on an already soft-deleted account.
+async function forwardHardDeletes() {
+  const pending = await getUsersPendingHardDelete()
+  for (const u of pending) {
+    const dmStatus = await notifyAccountHolder(u, formatAccountHardDeletedMessage(), REGISTER_LINK_BUTTON)
+    if (adminChatId) {
+      await bot
+        .sendMessage(adminChatId, formatAdminHardDeleteNotice(u, dmStatus))
+        .catch((err) => console.error('[bot] admin hard-delete notice error:', u.id, err?.message || err))
+    }
+    await hardDeleteUser(u.id).catch((err) => console.error('[bot] hard delete error:', u.id, err?.message || err))
+  }
+}
+
 function formatRolePromotedMessage() {
   return (
     "⭐ Tabriklaymiz!\n\n" +
@@ -755,6 +796,7 @@ async function poll() {
     await forwardStatusChanges()
     await forwardNewClients()
     await forwardAccountStatusChanges()
+    await forwardHardDeletes()
     await forwardRoleChanges()
     await requestReviews()
   } catch (err) {

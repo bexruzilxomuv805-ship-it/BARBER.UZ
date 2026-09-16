@@ -432,7 +432,11 @@
       "deletedTab": "O‘chirilganlar ({{count}})",
       "deletedEmpty": "O‘chirilgan mijozlar yo‘q.",
       "restore": "Qaytarish",
-      "restoredToast": "{{name}} to‘liq qaytarildi."
+      "restoredToast": "{{name}} to‘liq qaytarildi.",
+      "hardDelete": "Butunlay o‘chirish",
+      "hardDeleteConfirmTitle": "Hisobni butunlay o‘chirish",
+      "hardDeleteConfirmText": "Bu mijozning hisobi va unga tegishli BARCHA ma’lumotlari (profil, navbatlar tarixi, yozishmalar) butunlay va qaytarib bo‘lmas tarzda o‘chiriladi. Mijozga Telegram orqali xabar boradi va yangi hisob ochish uchun havola beriladi. Bu amalni ortga qaytarib bo‘lmaydi — davom etasizmi?",
+      "hardDeleteRequestedToast": "Hisob butunlay o‘chirilmoqda — mijozga xabar berilgach, ma’lumotlari o‘chiriladi."
     },
     "barbers": {
       "title": "Ustalar",

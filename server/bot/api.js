@@ -323,6 +323,24 @@ export async function markUserDeleteNotified(id) {
   await client.patch(`/users/${id}`, { deleteNotified: true })
 }
 
+// Armed by AdminCustomers.jsx's "Butunlay o'chirish" action on an already
+// soft-deleted account. Only ever set alongside deleted:true — the row
+// itself is what still exists for the bot to read from when it notifies
+// the account holder right before actually erasing it (see
+// forwardHardDeletes / hardDeleteUser in index.js); deleting the row first
+// would leave nothing left to notify from.
+export async function getUsersPendingHardDelete() {
+  const { data } = await client.get('/users')
+  return data.filter((u) => u.pendingHardDelete === true)
+}
+
+// The one place a user row is actually removed rather than flagged — called
+// only after forwardHardDeletes has already told the account holder (and
+// the admin) it's happening.
+export async function hardDeleteUser(id) {
+  await client.delete(`/users/${id}`)
+}
+
 // Deliberately strict `=== false` here, unlike the delete-notice query above
 // — `!u.deleted` alone matches essentially every normal, never-deleted user
 // in the system, so relaxing this to `!== true` would queue every one of

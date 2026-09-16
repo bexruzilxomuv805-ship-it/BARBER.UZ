@@ -432,7 +432,11 @@
       "deletedTab": "Deleted ({{count}})",
       "deletedEmpty": "No deleted customers.",
       "restore": "Restore",
-      "restoredToast": "{{name}} fully restored."
+      "restoredToast": "{{name}} fully restored.",
+      "hardDelete": "Delete permanently",
+      "hardDeleteConfirmTitle": "Permanently delete this account",
+      "hardDeleteConfirmText": "The customer's account and ALL related data (profile, appointment history, chat messages) will be permanently and irreversibly deleted. They'll get a Telegram notice with a link to open a new account. This cannot be undone — continue?",
+      "hardDeleteRequestedToast": "Account is being permanently deleted — their data will be erased right after they're notified."
     },
     "barbers": {
       "title": "Barbers",

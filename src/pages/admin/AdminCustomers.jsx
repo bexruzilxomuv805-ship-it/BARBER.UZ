@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { FaSearch, FaEdit, FaTrash, FaUserPlus, FaUserCircle, FaUserShield, FaUserSlash, FaTelegramPlane, FaComments, FaTrashRestore } from 'react-icons/fa'
+import { FaSearch, FaEdit, FaTrash, FaUserPlus, FaUserCircle, FaUserShield, FaUserSlash, FaTelegramPlane, FaComments, FaTrashRestore, FaUserTimes } from 'react-icons/fa'
 import { GiRazor } from 'react-icons/gi'
 import Loader from '../../components/Loader'
 import Modal from '../../components/admin/Modal'
@@ -36,6 +36,7 @@ export default function AdminCustomers() {
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState(emptyForm)
   const [toDelete, setToDelete] = useState(null)
+  const [toHardDelete, setToHardDelete] = useState(null)
   const [view, setView] = useState('active') // 'active' | 'deleted'
   const [roleFilter, setRoleFilter] = useState('all') // 'all' | 'admin' | 'usta' | 'client'
   const [ustaTarget, setUstaTarget] = useState(null)
@@ -123,9 +124,26 @@ export default function AdminCustomers() {
   const handleRestore = (c) => {
     dispatch(updateCustomer({
       id: c.id,
-      changes: { deleted: false, deletedAt: null, deleteNotified: null, restoreNotified: false },
+      // Clears pendingHardDelete too — otherwise restoring an account the
+      // admin had also queued for permanent deletion (a moment's hesitation
+      // between the two buttons) would still get wiped by the bot's next
+      // poll despite now showing "active" here.
+      changes: { deleted: false, deletedAt: null, deleteNotified: null, restoreNotified: false, pendingHardDelete: false },
     }))
     dispatch(showToast({ type: 'success', text: t('admin.customers.restoredToast', { name: c.ism }) }))
+  }
+
+  // Only ever offered from the "O'chirilganlar" list — this is the genuine,
+  // irreversible removal that "O'chirish" above is not: the row (profile,
+  // appointment history, chat messages) is actually deleted, not just
+  // flagged. Arms pendingHardDelete instead of deleting the row directly —
+  // server/bot/index.js's forwardHardDeletes DMs the account holder (with a
+  // link to open a new account) and the admin first, then performs the
+  // actual delete, since deleting the row here first would leave nothing
+  // left to notify from.
+  const handleHardDelete = (id) => {
+    dispatch(updateCustomer({ id, changes: { pendingHardDelete: true } }))
+    dispatch(showToast({ type: 'success', text: t('admin.customers.hardDeleteRequestedToast') }))
   }
 
   // roleNotified:false mirrors server/bot/api.js's setUserRoleWithNotice() —
@@ -340,13 +358,22 @@ export default function AdminCustomers() {
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1.5">
                         {view === 'deleted' ? (
-                          <button
-                            onClick={() => handleRestore(c)}
-                            title={t('admin.customers.restore')}
-                            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-emerald-400 hover:bg-emerald-500/10"
-                          >
-                            <FaTrashRestore /> {t('admin.customers.restore')}
-                          </button>
+                          <>
+                            <button
+                              onClick={() => handleRestore(c)}
+                              title={t('admin.customers.restore')}
+                              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-emerald-400 hover:bg-emerald-500/10"
+                            >
+                              <FaTrashRestore /> {t('admin.customers.restore')}
+                            </button>
+                            <button
+                              onClick={() => setToHardDelete(c)}
+                              title={t('admin.customers.hardDelete')}
+                              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/10"
+                            >
+                              <FaUserTimes /> {t('admin.customers.hardDelete')}
+                            </button>
+                          </>
                         ) : isSelf ? (
                           <span className="px-2 text-xs text-ink-500">{t('admin.customers.you')}</span>
                         ) : (
@@ -439,6 +466,14 @@ export default function AdminCustomers() {
         onClose={() => setToDelete(null)}
         onConfirm={() => handleDelete(toDelete)}
         text={t('admin.customers.deleteConfirmText')}
+      />
+
+      <ConfirmDialog
+        open={!!toHardDelete}
+        onClose={() => setToHardDelete(null)}
+        onConfirm={() => handleHardDelete(toHardDelete.id)}
+        title={t('admin.customers.hardDeleteConfirmTitle')}
+        text={t('admin.customers.hardDeleteConfirmText')}
       />
 
       <Modal open={!!ustaTarget} onClose={() => setUstaTarget(null)} title={t('admin.customers.makeUstaTitle', { name: ustaTarget?.ism })}>
