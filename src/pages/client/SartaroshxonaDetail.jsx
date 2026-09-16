@@ -4,6 +4,7 @@ import { Link, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { FaPhoneAlt, FaArrowRight, FaArrowLeft, FaClock, FaCommentDots, FaMapMarkerAlt } from 'react-icons/fa'
 import Reveal from '../../components/Reveal'
+import ImageCarousel from '../../components/ImageCarousel'
 import RatingStars from '../../components/RatingStars'
 import Loader from '../../components/Loader'
 import PageHero from '../../components/PageHero'
@@ -68,20 +69,7 @@ export default function SartaroshxonaDetail() {
       <section className="container-x pb-16 pt-4">
         <div className="grid gap-8 lg:grid-cols-2">
           <div>
-            {shop.rasmlar?.length > 0 ? (
-              <div className="grid grid-cols-2 gap-2">
-                <div className="col-span-2 aspect-[16/10] overflow-hidden rounded-xl">
-                  <img src={shop.rasmlar[0]} alt={shop.nomi} className="h-full w-full object-cover" />
-                </div>
-                {shop.rasmlar.slice(1, 5).map((src, i) => (
-                  <div key={i} className="aspect-[4/3] overflow-hidden rounded-xl">
-                    <img src={src} alt="" className="h-full w-full object-cover" />
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="aspect-[16/10] rounded-xl border border-dashed border-ink-800" />
-            )}
+            <ImageCarousel images={shop.rasmlar} alt={shop.nomi} />
           </div>
 
           <div className="space-y-4">
