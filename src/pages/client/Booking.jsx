@@ -180,33 +180,45 @@ export default function Booking() {
 
   const handleSubmit = async () => {
     setSubmitting(true)
-    try {
-      await dispatch(
-        createAppointment({
-          mijozId: user?.id || null,
-          mijozIsmi: form.ism,
-          mijozTelefon: form.telefon,
-          sartaroshxonaId: shopId,
-          sartaroshxonaNomi: selectedShop?.nomi || '',
-          barberId,
-          barberIsmi: `${selectedBarber.ism} ${selectedBarber.familiya}`,
-          xizmatId: serviceId,
-          xizmatNomi: selectedService.nomi,
-          sana: date,
-          vaqt: time,
-          holat: 'kutilmoqda',
-          narxi: selectedService.narxi,
-          izoh: form.izoh,
-          createdAt: new Date().toISOString(),
-        })
-      ).unwrap()
-      setDone(true)
-      dispatch(showToast({ type: 'success', text: t('booking.successToast') }))
-    } catch {
-      dispatch(showToast({ type: 'error', text: t('booking.errorToast') }))
-    } finally {
-      setSubmitting(false)
+    const result = await dispatch(
+      createAppointment({
+        mijozId: user?.id || null,
+        mijozIsmi: form.ism,
+        mijozTelefon: form.telefon,
+        sartaroshxonaId: shopId,
+        sartaroshxonaNomi: selectedShop?.nomi || '',
+        barberId,
+        barberIsmi: `${selectedBarber.ism} ${selectedBarber.familiya}`,
+        xizmatId: serviceId,
+        xizmatNomi: selectedService.nomi,
+        sana: date,
+        vaqt: time,
+        holat: 'kutilmoqda',
+        narxi: selectedService.narxi,
+        izoh: form.izoh,
+        createdAt: new Date().toISOString(),
+      })
+    )
+    setSubmitting(false)
+
+    if (createAppointment.rejected.match(result)) {
+      // Someone else may have taken this exact slot in the meantime (the
+      // backend rejects that with 409) — refresh so it shows as blocked and
+      // send the client back to pick a different time instead of
+      // resubmitting the same one.
+      if (result.payload?.status === 409) {
+        dispatch(fetchAppointments())
+        setTime('')
+        setStep(3)
+        dispatch(showToast({ type: 'error', text: t('booking.slotTakenToast') }))
+      } else {
+        dispatch(showToast({ type: 'error', text: t('booking.errorToast') }))
+      }
+      return
     }
+
+    setDone(true)
+    dispatch(showToast({ type: 'success', text: t('booking.successToast') }))
   }
 
   if (done) {

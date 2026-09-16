@@ -157,6 +157,7 @@
     "confirm": "Navbatni tasdiqlash",
     "successToast": "Navbatingiz muvaffaqiyatli qabul qilindi!",
     "errorToast": "Xatolik yuz berdi. Backend ishga tushganini tekshiring.",
+    "slotTakenToast": "Afsuski, bu vaqtni sizdan oldin band qilishdi. Boshqa vaqt tanlang.",
     "doneTitle": "Navbat qabul qilindi!",
     "doneMessage": "{{barber}} bilan {{date}} kuni soat {{time}} da uchrashuvingiz belgilandi. Tez orada siz bilan bog‘lanamiz.",
     "viewMyAppointments": "Navbatlarimni ko‘rish",

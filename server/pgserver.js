@@ -43,6 +43,44 @@ function rowToRecord(row) {
   return { ...row.data, id: row.id }
 }
 
+const DEFAULT_APPOINTMENT_DURATION_MIN = 30
+
+function toMinutes(hhmm) {
+  const [h, m] = String(hhmm).split(':').map(Number)
+  return h * 60 + m
+}
+
+// Booking.jsx already blocks overlapping slots client-side using each
+// appointment's own service duration, but that check runs once against
+// whatever was loaded on page mount — two people booking the same
+// barber/time within that window would both get "confirmed" with nothing
+// ever rejecting the second write. This mirrors the same duration-aware
+// overlap logic server-side, right before the insert, as a best-effort
+// guard (a SELECT-then-INSERT check, not a DB-level constraint — good
+// enough to close the window for a demo app's traffic, not a hard
+// guarantee under heavy concurrent writes).
+async function hasBookingConflict({ barberId, sana, vaqt, xizmatId }) {
+  const { rows: existingRows } = await pool.query(
+    `SELECT data FROM appointments WHERE data->>'barberId' = $1 AND data->>'sana' = $2 AND data->>'holat' != 'bekor qilingan'`,
+    [barberId, sana]
+  )
+  if (!existingRows.length) return false
+
+  const { rows: serviceRows } = await pool.query('SELECT id, data FROM services')
+  const durationById = Object.fromEntries(
+    serviceRows.map((r) => [r.id, r.data.davomiyligi || DEFAULT_APPOINTMENT_DURATION_MIN])
+  )
+
+  const newStart = toMinutes(vaqt)
+  const newEnd = newStart + (durationById[xizmatId] || DEFAULT_APPOINTMENT_DURATION_MIN)
+
+  return existingRows.some(({ data: existing }) => {
+    const start = toMinutes(existing.vaqt)
+    const end = start + (durationById[existing.xizmatId] || DEFAULT_APPOINTMENT_DURATION_MIN)
+    return newStart < end && newEnd > start
+  })
+}
+
 // contactInfo is a singleton object in db.json, not a collection — handled
 // separately from the generic :resource routes below.
 app.get('/contactInfo', async (req, res, next) => {
@@ -113,6 +151,11 @@ app.post('/:resource', async (req, res, next) => {
   const id = body.id != null ? String(body.id) : `${resource[0]}-${Date.now()}`
   const data = { ...body, id }
   try {
+    if (resource === 'appointments' && data.barberId && data.sana && data.vaqt) {
+      if (await hasBookingConflict(data)) {
+        return res.status(409).json({ error: 'Bu vaqt allaqachon band qilingan.' })
+      }
+    }
     await pool.query(`INSERT INTO ${resource} (id, data) VALUES ($1, $2)`, [id, JSON.stringify(data)])
     res.status(201).json(data)
   } catch (err) {

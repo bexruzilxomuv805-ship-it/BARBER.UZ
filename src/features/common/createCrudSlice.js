@@ -23,7 +23,15 @@ export function createCrudSlice({ name, endpoint }) {
       const { data } = await client.post(endpoint, body)
       return data
     } catch (err) {
-      return rejectWithValue(err?.message || `${name} qo'shishda xatolik.`)
+      // The backend sends a specific { error: "..." } body for rejections
+      // it understands (e.g. a double-booked slot) — surface both that
+      // message and the status code, so a caller can react to a specific
+      // status (see Booking.jsx's conflict handling) instead of only
+      // getting axios's generic "Request failed with status code 409".
+      return rejectWithValue({
+        status: err?.response?.status,
+        message: err?.response?.data?.error || err?.message || `${name} qo'shishda xatolik.`,
+      })
     }
   })
 

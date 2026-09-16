@@ -157,6 +157,7 @@
     "confirm": "Confirm appointment",
     "successToast": "Your appointment was booked successfully!",
     "errorToast": "Something went wrong. Make sure the backend is running.",
+    "slotTakenToast": "Sorry, someone else just booked that time. Please pick another one.",
     "doneTitle": "Appointment booked!",
     "doneMessage": "Your appointment with {{barber}} is set for {{date}} at {{time}}. We'll be in touch soon.",
     "viewMyAppointments": "View my appointments",
