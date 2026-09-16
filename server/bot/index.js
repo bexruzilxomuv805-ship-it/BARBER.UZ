@@ -26,6 +26,7 @@ import {
   getConversation,
   getUnnotifiedPendingAppointments,
   markAppointmentNotified,
+  markAppointmentStatusNotified,
   setAppointmentStatus,
   getAllAppointments,
   markAppointmentReminded,
@@ -35,7 +36,6 @@ import {
   getAllPayments,
   getPaymentByAppointment,
   createPayment,
-  updatePaymentMethod,
   getUnnotifiedNewClients,
   markUserNotified,
   getTelegramLogin,
@@ -87,11 +87,6 @@ const REMINDER_POLL_MS = 60000
 const REMINDER_WINDOW_MIN = 15
 const DIGEST_HOUR = 22
 const { TELEGRAM_BOT_TOKEN, TELEGRAM_ADMIN_CHAT_ID, TELEGRAM_SUPER_ADMIN_USERNAME } = process.env
-
-// Card payment details shown to a client who picks "Karta" after their
-// service is auto-completed — hardcoded for now (single-card setup).
-const PAYMENT_CARD_NUMBER = '5614 6818 0907 0117'
-const PAYMENT_CARD_HOLDER = 'R.D.A'
 
 const SITE_URL = process.env.SITE_URL || 'https://barber-uz-one.vercel.app'
 const SITE_LINK_BUTTON = {
@@ -445,7 +440,50 @@ async function forwardAppointments() {
     }
     await notifyBarberChat(appointment.barberId, formatAppointment(appointment), keyboard)
     await notifyClientOfBooking(appointment)
-    await markAppointmentNotified(appointment.id)
+    await markAppointmentNotified(appointment.id, appointment.holat)
+  }
+}
+
+function formatStatusChangeLabel(holat) {
+  if (holat === 'tasdiqlangan') return '✅ Navbatingiz tasdiqlandi!'
+  if (holat === 'yakunlangan') return "✔️ Xizmat yakunlandi. Tashrifingiz uchun rahmat!"
+  if (holat === 'bekor qilingan') return '❌ Navbatingiz bekor qilindi.'
+  return null
+}
+
+async function notifyClientOfStatusChange(appointment) {
+  const label = formatStatusChangeLabel(appointment.holat)
+  if (!label) return
+  try {
+    const user = await getUser(appointment.mijozId)
+    if (!user?.telegramId) return
+    await bot.sendMessage(
+      user.telegramId,
+      `${label}\n✂️ ${appointment.xizmatNomi || '—'}\n\u{1F553} ${appointment.sana} ${appointment.vaqt}`
+    )
+  } catch (err) {
+    console.error('[bot] notify client status change error:', err?.message || err)
+  }
+}
+
+// Confirming/cancelling/completing an appointment from the SITE's admin or
+// usta dashboard used to never reach the client at all — only doing the same
+// thing via this bot's own inline buttons did (see the callback_query
+// handler below). Comparing holat against holatNotifiedFor (armed the moment
+// a DM actually goes out) catches a status change from *either* side exactly
+// once, within one 5s poll, instead of relying on each call site to remember
+// to notify the client itself.
+async function forwardStatusChanges() {
+  const all = await getAllAppointments()
+  const changed = all.filter(
+    (a) =>
+      a.tgNotified &&
+      a.holat !== (a.holatNotifiedFor || 'kutilmoqda') &&
+      formatStatusChangeLabel(a.holat)
+  )
+  for (const a of changed) {
+    await notifyClientOfStatusChange(a)
+    await markAppointmentStatusNotified(a.id, a.holat)
   }
 }
 
@@ -677,6 +715,7 @@ async function poll() {
     await forwardAdminMessages()
     await syncEditedMessages()
     await forwardAppointments()
+    await forwardStatusChanges()
     await forwardNewClients()
     await forwardAccountStatusChanges()
     await forwardRoleChanges()
@@ -1118,22 +1157,14 @@ async function autoCompleteAppointments() {
         await bot
           .sendMessage(
             clientUser.telegramId,
-            `✅ Xizmat yakunlandi! Oq yo'l bo'lsin!\n` +
-              `Tashrif buyurganingiz uchun rahmat.\n\n` +
-              `To'lov usulini tanlang:`,
-            {
-              reply_markup: {
-                inline_keyboard: [
-                  [
-                    { text: '💵 Naqt pul', callback_data: `pay:${appointment.id}:naqd` },
-                    { text: '💳 Karta', callback_data: `pay:${appointment.id}:karta` },
-                  ],
-                ],
-              },
-            }
+            `✅ Xizmat yakunlandi! Oq yo'l bo'lsin!\nTashrif buyurganingiz uchun rahmat.`
           )
           .catch((err) => console.error('[bot] auto-complete client notify error:', err?.message || err))
       }
+      // Already told the client above with its own "Oq yo'l bo'lsin" text —
+      // arm this so forwardStatusChanges doesn't also send its generic
+      // "yakunlandi" DM for the same status change on the next poll.
+      await markAppointmentStatusNotified(appointment.id, 'yakunlangan')
     }
   } catch (err) {
     console.error('[bot] auto-complete error:', err?.message || err)
@@ -1923,20 +1954,26 @@ bot.on('callback_query', safeHandler(async (query) => {
       const staff = await staffContext(query.message.chat.id)
       const staffAction = !!staff
 
+      const target = await getAppointmentById(id)
+      if (!target) {
+        await bot.answerCallbackQuery(query.id, {
+          text: "Bu buyurtma topilmadi (eskirgan bo'lishi mumkin).",
+          show_alert: true,
+        })
+        return
+      }
+
       // Only staff can confirm/complete. Cancel is also allowed by the
       // client who owns the appointment. An usta (as opposed to the admin)
       // may only act on their own barber's appointments.
-      let requesterUser = null
       if (staff?.role === 'usta') {
-        const target = await getAppointmentById(id)
-        if (target?.barberId !== staff.barberId) {
+        if (target.barberId !== staff.barberId) {
           await bot.answerCallbackQuery(query.id, { text: "Ruxsat yo'q", show_alert: true })
           return
         }
       } else if (!staffAction) {
-        requesterUser = await findUserByTelegramId(query.from.id)
-        const target = await getAppointmentById(id)
-        const ownsIt = requesterUser && target && target.mijozId === requesterUser.id
+        const requesterUser = await findUserByTelegramId(query.from.id)
+        const ownsIt = requesterUser && target.mijozId === requesterUser.id
         if (action !== 'cancel' || !ownsIt) {
           await bot.answerCallbackQuery(query.id, { text: "Ruxsat yo'q", show_alert: true })
           return
@@ -1959,24 +1996,11 @@ bot.on('callback_query', safeHandler(async (query) => {
       })
       await bot.answerCallbackQuery(query.id, { text: label })
 
-      if (staffAction) {
-        // Let the client know their appointment status changed too.
-        const clientUser = await getUser(appointment.mijozId).catch(() => null)
-        if (clientUser?.telegramId) {
-          const clientLabel =
-            action === 'confirm'
-              ? '✅ Navbatingiz tasdiqlandi!'
-              : action === 'complete'
-                ? '✔️ Xizmat yakunlandi. Tashrifingiz uchun rahmat!'
-                : '❌ Navbatingiz bekor qilindi.'
-          await bot
-            .sendMessage(
-              clientUser.telegramId,
-              `${clientLabel}\n✂️ ${appointment.xizmatNomi || '—'}\n\u{1F553} ${appointment.sana} ${appointment.vaqt}`
-            )
-            .catch((err) => console.error('[bot] notify client status error:', err?.message || err))
-        }
-      } else {
+      // The client is told about this by forwardStatusChanges (see above) —
+      // it picks up the holat this write just made within one 5s poll,
+      // whether it happened here or on the site's admin/usta dashboard, so
+      // this handler doesn't need its own separate copy of that DM.
+      if (!staffAction) {
         // A client cancelled their own booking — let the admin and their
         // barber know.
         const cancelText =
@@ -2004,7 +2028,14 @@ bot.on('callback_query', safeHandler(async (query) => {
     }
     if (staff.role === 'usta') {
       const target = await getAppointmentById(id)
-      if (target?.barberId !== staff.barberId) {
+      if (!target) {
+        await bot.answerCallbackQuery(query.id, {
+          text: "Bu buyurtma topilmadi (eskirgan bo'lishi mumkin).",
+          show_alert: true,
+        })
+        return
+      }
+      if (target.barberId !== staff.barberId) {
         await bot.answerCallbackQuery(query.id, { text: "Ruxsat yo'q", show_alert: true })
         return
       }
@@ -2028,75 +2059,6 @@ bot.on('callback_query', safeHandler(async (query) => {
       await bot.answerCallbackQuery(query.id, { text: label })
     } catch (err) {
       console.error('[bot] arrival response error:', err?.message || err)
-      await bot.answerCallbackQuery(query.id, { text: 'Xatolik yuz berdi', show_alert: true })
-    }
-    return
-  }
-
-  if (action === 'pay') {
-    const method = parts[2] // 'naqd' | 'karta'
-    try {
-      const appointment = await getAppointmentById(id)
-      if (!appointment) {
-        await bot.answerCallbackQuery(query.id, { text: 'Xatolik yuz berdi', show_alert: true })
-        return
-      }
-      const requesterUser = await findUserByTelegramId(query.from.id)
-      const ownsIt = requesterUser && appointment.mijozId === requesterUser.id
-      if (!ownsIt) {
-        await bot.answerCallbackQuery(query.id, { text: "Ruxsat yo'q", show_alert: true })
-        return
-      }
-
-      // Upsert rather than always-insert, so tapping the other button after
-      // a mis-tap corrects the record instead of leaving two.
-      const existingPayment = await getPaymentByAppointment(id)
-      if (existingPayment) {
-        await updatePaymentMethod(existingPayment.id, method)
-      } else {
-        await createPayment({
-          id: `p-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-          appointmentId: id,
-          mijozIsmi: appointment.mijozIsmi,
-          sana: appointment.sana,
-          usul: method,
-          summa: appointment.narxi,
-          holat: 'to‘landi',
-          createdAt: new Date().toISOString(),
-        })
-      }
-
-      if (method === 'karta') {
-        await bot.editMessageText(
-          `💳 Karta orqali to'lov\n\n` +
-            `<code>${PAYMENT_CARD_NUMBER}</code>\n` +
-            `${PAYMENT_CARD_HOLDER}\n\n` +
-            `Raqamni nusxalash uchun ustiga bosing, so'ngra ${formatMoney(appointment.narxi)} shu kartaga o'tkazing.`,
-          { chat_id: query.message.chat.id, message_id: query.message.message_id, parse_mode: 'HTML' }
-        )
-        await bot.answerCallbackQuery(query.id, { text: '💳 Karta tanlandi' })
-      } else {
-        await bot.editMessageText(
-          `💵 Naqt pul tanlandi.\n\n` +
-            `Iltimos, ${formatMoney(appointment.narxi)} miqdorini ustaga qo'lma-qo'l topshiring. Rahmat!`,
-          { chat_id: query.message.chat.id, message_id: query.message.message_id }
-        )
-        await bot.answerCallbackQuery(query.id, { text: '💵 Naqt tanlandi' })
-      }
-
-      const methodLabel = method === 'karta' ? '💳 Karta orqali' : '💵 Naqd pul bilan'
-      const paymentText =
-        `${methodLabel} to'lov tanladi\n` +
-        `\u{1F464} ${appointment.mijozIsmi || 'Mijoz'}\n` +
-        `✂️ ${appointment.xizmatNomi || '—'} — ${formatMoney(appointment.narxi)}`
-      if (adminChatId) {
-        await bot
-          .sendMessage(adminChatId, paymentText)
-          .catch((err) => console.error('[bot] notify admin of payment error:', err?.message || err))
-      }
-      await notifyBarberChat(appointment.barberId, paymentText)
-    } catch (err) {
-      console.error('[bot] payment selection error:', err?.message || err)
       await bot.answerCallbackQuery(query.id, { text: 'Xatolik yuz berdi', show_alert: true })
     }
     return

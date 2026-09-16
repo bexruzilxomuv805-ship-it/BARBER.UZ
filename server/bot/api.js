@@ -117,13 +117,22 @@ export async function getUnnotifiedPendingAppointments() {
   return data.filter((a) => !a.tgNotified)
 }
 
-export async function markAppointmentNotified(id) {
-  await client.patch(`/appointments/${id}`, { tgNotified: true })
+export async function markAppointmentNotified(id, holat) {
+  await client.patch(`/appointments/${id}`, { tgNotified: true, holatNotifiedFor: holat })
 }
 
 export async function setAppointmentStatus(id, holat, extra = {}) {
   const { data } = await client.patch(`/appointments/${id}`, { holat, ...extra })
   return data
+}
+
+// Armed right after a status-change Telegram DM actually goes out to the
+// client (see forwardStatusChanges in index.js) — lets that poll tell "we
+// already told them about this holat" apart from "this holat is new since
+// last we checked", regardless of whether the change came from this bot's
+// own buttons or from the site's admin/usta dashboard.
+export async function markAppointmentStatusNotified(id, holat) {
+  await client.patch(`/appointments/${id}`, { holatNotifiedFor: holat })
 }
 
 export async function getAllAppointments() {
@@ -422,11 +431,6 @@ export async function getPaymentByAppointment(appointmentId) {
 
 export async function createPayment(payment) {
   const { data } = await client.post('/payments', payment)
-  return data
-}
-
-export async function updatePaymentMethod(paymentId, usul) {
-  const { data } = await client.patch(`/payments/${paymentId}`, { usul })
   return data
 }
 
