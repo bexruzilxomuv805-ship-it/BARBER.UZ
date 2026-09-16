@@ -287,12 +287,10 @@ function isSuperAdmin(msgOrQuery) {
   return isSuperAdminUsername(msgOrQuery.from?.username)
 }
 
-// Every barber-specific notification (new appointment, reminder, arrival
-// check, chat message, ...) is sent to the shared admin chat AND, if that
-// barber has a linked usta account with Telegram connected, to their own
-// chat too — admin always stays in the loop as a safety net, the usta
-// additionally gets their own copy instead of relying on the admin to relay
-// it (see CLAUDE.md / the "usta phase 1" plan this implements).
+// Sends straight to the barber's own chat if that barberId has a linked
+// usta account with Telegram connected — returns null (and sends nothing)
+// otherwise, which notifyStaff below uses to decide whether admin needs to
+// hear about it instead.
 async function notifyBarberChat(barberId, text, options) {
   if (!barberId) return null
   try {
@@ -302,6 +300,22 @@ async function notifyBarberChat(barberId, text, options) {
     console.error('[bot] notify barber chat error:', err?.message || err)
   }
   return null
+}
+
+// Every barber-specific notification (new appointment, status change,
+// reminder, arrival check, completion, ...) goes to that barber's own usta
+// chat when one is linked — admin no longer gets a copy of every single
+// barber's day-to-day bookings too (that was the old behavior; it drowned
+// the admin chat once more than one usta was active). Admin is only the
+// fallback for a barberId with no linked usta on Telegram yet, so a booking
+// is never silently lost just because that barber hasn't connected.
+async function notifyStaff(barberId, text, options) {
+  const sent = await notifyBarberChat(barberId, text, options)
+  if (!sent && adminChatId) {
+    await bot
+      .sendMessage(adminChatId, text, options)
+      .catch((err) => console.error('[bot] notify admin fallback error:', err?.message || err))
+  }
 }
 
 // Resolves which "staff" (admin or a specific usta) a Telegram chat belongs
@@ -443,10 +457,7 @@ async function forwardAppointments() {
         ],
       },
     }
-    if (adminChatId) {
-      await bot.sendMessage(adminChatId, formatAppointment(appointment), keyboard)
-    }
-    await notifyBarberChat(appointment.barberId, formatAppointment(appointment), keyboard)
+    await notifyStaff(appointment.barberId, formatAppointment(appointment), keyboard)
     await notifyClientOfBooking(appointment)
     await markAppointmentNotified(appointment.id, appointment.holat)
   }
@@ -481,13 +492,10 @@ async function notifyClientOfStatusChange(appointment) {
   }
 }
 
-// Whoever DIDN'T make the change (admin, the assigned usta, or both) needs
-// to hear about it too — e.g. an admin cancelling from the site must still
-// reach that barber's own chat, same as a client cancelling from the bot
-// already reached admin+barber before. Sent to both unconditionally (not
-// just "whoever wasn't the actor") since this poll has no way to know who
-// acted — a redundant DM to your own chat confirming your own action is
-// harmless; a barber never finding out their slot opened up is not.
+// The assigned usta needs to hear about this regardless of who made the
+// change — e.g. an admin cancelling from the site must still reach that
+// barber's own chat, same as a client cancelling from the bot already
+// reached their barber before.
 async function notifyStaffOfStatusChange(appointment) {
   const label = formatStaffStatusLabel(appointment.holat)
   if (!label) return
@@ -495,12 +503,7 @@ async function notifyStaffOfStatusChange(appointment) {
     `${label}\n\u{1F464} ${appointment.mijozIsmi || 'Mijoz'} (${appointment.mijozTelefon || '—'})\n` +
     `✂️ ${appointment.xizmatNomi || '—'} — ${appointment.barberIsmi || '—'}\n` +
     `\u{1F553} ${appointment.sana} ${appointment.vaqt}`
-  if (adminChatId) {
-    await bot
-      .sendMessage(adminChatId, text)
-      .catch((err) => console.error('[bot] notify admin of status change error:', err?.message || err))
-  }
-  await notifyBarberChat(appointment.barberId, text)
+  await notifyStaff(appointment.barberId, text)
 }
 
 // Confirming/cancelling/completing an appointment from the SITE's admin or
@@ -758,11 +761,7 @@ async function checkLowStock() {
         // Stock an usta added themselves (barberId set) notifies that usta
         // specifically, not every admin/usta in the system — mirrors the
         // same barberId-scoped routing already used for appointments/chat.
-        if (item.barberId) {
-          await notifyBarberChat(item.barberId, text)
-        } else if (adminChatId) {
-          await bot.sendMessage(adminChatId, text)
-        }
+        await notifyStaff(item.barberId, text)
         await markInventoryLowStockNotified(item.id, true)
       } else if (!isLow && item.tgLowStockNotified) {
         await markInventoryLowStockNotified(item.id, false)
@@ -1114,10 +1113,7 @@ async function sendReminders() {
         `⏰ Eslatma: ${a.vaqt}da navbat bor (${REMINDER_WINDOW_MIN} daqiqadan kamroq qoldi)\n` +
         `\u{1F464} ${a.mijozIsmi || 'Mijoz'} (${a.mijozTelefon || '—'})\n` +
         `✂️ ${a.xizmatNomi || '—'} — ${a.barberIsmi || '—'}`
-      if (adminChatId) {
-        await bot.sendMessage(adminChatId, reminderText)
-      }
-      await notifyBarberChat(a.barberId, reminderText)
+      await notifyStaff(a.barberId, reminderText)
       await notifyClientOfReminder(a)
       await markAppointmentReminded(a.id)
     }
@@ -1162,10 +1158,7 @@ async function checkArrivals() {
           ],
         },
       }
-      if (adminChatId) {
-        await bot.sendMessage(adminChatId, text, keyboard)
-      }
-      await notifyBarberChat(a.barberId, text, keyboard)
+      await notifyStaff(a.barberId, text, keyboard)
       await markAppointmentArrivalAsked(a.id)
     }
   } catch (err) {
@@ -1224,12 +1217,7 @@ async function autoCompleteAppointments() {
         `✂️ ${appointment.xizmatNomi || '—'} — ${appointment.barberIsmi || '—'}\n` +
         `\u{1F553} ${appointment.sana} ${appointment.vaqt}` +
         (appointment.narxi ? `\n💵 ${formatMoney(appointment.narxi)}` : '')
-      if (adminChatId) {
-        await bot
-          .sendMessage(adminChatId, completedText)
-          .catch((err) => console.error('[bot] auto-complete admin notify error:', err?.message || err))
-      }
-      await notifyBarberChat(appointment.barberId, completedText)
+      await notifyStaff(appointment.barberId, completedText)
 
       const clientUser = await getUser(appointment.mijozId).catch(() => null)
       if (clientUser?.telegramId) {
