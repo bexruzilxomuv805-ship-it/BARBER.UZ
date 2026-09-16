@@ -27,7 +27,9 @@ import {
   DEFAULT_DURATION_MIN,
   toMinutes,
   minutesToHHMM,
-  parseWorkRange,
+  getDaySchedule,
+  getWeeklySchedule,
+  summarizeWeeklyHours,
 } from '../../utils/schedule'
 
 function nextDays(count = 7) {
@@ -117,15 +119,17 @@ export default function Booking() {
   const selectedService = useMemo(() => services.find((s) => s.id === serviceId), [services, serviceId])
   const selectedBarber = useMemo(() => barbers.find((b) => b.id === barberId), [barbers, barberId])
 
-  // This barber's actual working hours — WORK_HOURS used to be one fixed
-  // list for every barber, ignoring that each one sets their own ishVaqti
-  // (see the "09:00-19:00" vs "10:00-20:00" etc. shown in step 1). Slots are
+  // This barber's actual working hours for the chosen date — barbers now set
+  // a full weekly schedule (see WeeklyScheduleEditor), so hours can differ
+  // day to day, not just one fixed range for every working day. Slots are
   // regenerated from it, so editing a barber's hours in the admin panel adds
   // or removes slots here automatically.
-  const barberWorkRange = useMemo(
-    () => parseWorkRange(selectedBarber?.ishVaqti) || FALLBACK_WORK_RANGE,
-    [selectedBarber]
-  )
+  const barberWorkRange = useMemo(() => {
+    if (!selectedBarber || !date) return FALLBACK_WORK_RANGE
+    const sched = getDaySchedule(selectedBarber, date)
+    if (!sched) return FALLBACK_WORK_RANGE
+    return { start: toMinutes(sched.boshlanish), end: toMinutes(sched.tugash) }
+  }, [selectedBarber, date])
   const workHours = useMemo(() => {
     const slots = []
     for (let m = barberWorkRange.start; m < barberWorkRange.end; m += SLOT_STEP_MIN) {
@@ -369,8 +373,10 @@ export default function Booking() {
                 ) : (
                   <div className="grid gap-4 sm:grid-cols-2">
                     {shopBarbers.map((b) => {
-                      const offDays = WEEKDAY_DISPLAY_ORDER.filter((d) => b.damOlishKunlari?.includes(d)).map((d) => weekdaysShort[d])
+                      const weekly = getWeeklySchedule(b)
+                      const offDays = WEEKDAY_DISPLAY_ORDER.filter((d) => !weekly[d]).map((d) => weekdaysShort[d])
                       const alwaysOff = offDays.length === 7
+                      const hoursSummary = summarizeWeeklyHours(weekly)
                       return (
                         <button
                           key={b.id}
@@ -383,7 +389,7 @@ export default function Booking() {
                           <div className="min-w-0 flex-1">
                             <p className="truncate font-medium text-white text-sm">{b.ism} {b.familiya}</p>
                             <AutoText as="p" className="truncate text-xs text-gold-400" text={b.mutaxassislik} />
-                            <p className="mt-0.5 truncate text-xs text-ink-500">{b.ishVaqti}</p>
+                            <p className="mt-0.5 truncate text-xs text-ink-500">{hoursSummary || t('booking.hoursVaryByDay')}</p>
                             {offDays.length > 0 && (
                               <p className={`mt-1 truncate text-[11px] ${alwaysOff ? 'text-red-400' : 'text-amber-400/80'}`}>
                                 {alwaysOff ? t('booking.barberUnavailable') : `${t('booking.offDaysLabel')} ${offDays.join(', ')}`}

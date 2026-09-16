@@ -4,13 +4,14 @@ import { useTranslation } from 'react-i18next'
 import { FaCamera, FaTimes, FaStore } from 'react-icons/fa'
 import Loader from '../../components/Loader'
 import RatingStars from '../../components/RatingStars'
+import WeeklyScheduleEditor from '../../components/admin/WeeklyScheduleEditor'
 import { getBarberImage } from '../../assets/images'
 import { fetchBarbers, updateBarber } from '../../features/barbers/barbersSlice'
 import { fetchShops } from '../../features/sartaroshxonalar/sartaroshxonalarSlice'
 import { showToast } from '../../features/ui/uiSlice'
 import useAuth from '../../hooks/useAuth'
 import { formatDateShort } from '../../utils/format'
-import { getWeekdayOptions } from '../../utils/schedule'
+import { getWeekdayOptions, getWeeklySchedule } from '../../utils/schedule'
 
 const emptyRange = { boshlanish: '', tugash: '' }
 
@@ -44,16 +45,9 @@ export default function UstaProfile() {
   const barber = useMemo(() => barbers.find((b) => b.id === user.barberId), [barbers, user.barberId])
   const shop = useMemo(() => shops.find((s) => s.id === barber?.sartaroshxonaId), [shops, barber])
   const weekdayOptions = useMemo(() => getWeekdayOptions(t('common.weekdaysShort', { returnObjects: true })), [t])
-  const draft = barber ? { ...barber, ...changes } : null
+  const draft = barber ? { ...barber, jadval: getWeeklySchedule(barber), ...changes } : null
 
   const setField = (key, value) => setChanges((c) => ({ ...c, [key]: value }))
-
-  const toggleDayOff = (value) => {
-    const current = new Set(draft.damOlishKunlari || [])
-    if (current.has(value)) current.delete(value)
-    else current.add(value)
-    setField('damOlishKunlari', Array.from(current).sort((a, b) => a - b))
-  }
 
   const addVacationRange = () => {
     if (!newRange.boshlanish || !newRange.tugash || newRange.boshlanish > newRange.tugash) return
@@ -128,15 +122,9 @@ export default function UstaProfile() {
             <label className="mb-1.5 block text-xs text-ink-500">{t('admin.barbers.specialtyLabel')}</label>
             <input required value={draft.mutaxassislik} onChange={(e) => setField('mutaxassislik', e.target.value)} placeholder={t('admin.barbers.specialtyPlaceholder')} className="input-field !py-2 text-sm" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1.5 block text-xs text-ink-500">{t('admin.barbers.phoneLabel')}</label>
-              <input required value={draft.telefon} onChange={(e) => setField('telefon', e.target.value)} placeholder="+998 90 123 45 67" className="input-field !py-2 text-sm" />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-xs text-ink-500">{t('admin.barbers.workHoursLabel')}</label>
-              <input required value={draft.ishVaqti} onChange={(e) => setField('ishVaqti', e.target.value)} placeholder="09:00 - 18:00" className="input-field !py-2 text-sm" />
-            </div>
+          <div>
+            <label className="mb-1.5 block text-xs text-ink-500">{t('admin.barbers.phoneLabel')}</label>
+            <input required value={draft.telefon} onChange={(e) => setField('telefon', e.target.value)} placeholder="+998 90 123 45 67" className="input-field !py-2 text-sm" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -153,23 +141,12 @@ export default function UstaProfile() {
             <textarea rows={3} value={draft.bio} onChange={(e) => setField('bio', e.target.value)} placeholder={t('admin.barbers.bioPlaceholder')} className="input-field resize-none text-sm" />
           </div>
           <div>
-            <p className="mb-1.5 text-xs text-ink-500">{t('admin.barbers.daysOffLabel')}</p>
-            <div className="flex flex-wrap gap-2">
-              {weekdayOptions.map((d) => (
-                <button
-                  type="button"
-                  key={d.value}
-                  onClick={() => toggleDayOff(d.value)}
-                  className={`rounded-lg border px-3 py-1.5 text-xs font-medium capitalize transition-colors ${
-                    draft.damOlishKunlari?.includes(d.value)
-                      ? 'border-red-500 bg-red-500/10 text-red-400'
-                      : 'border-ink-800 text-ink-400 hover:border-gold-500/40'
-                  }`}
-                >
-                  {d.label}
-                </button>
-              ))}
-            </div>
+            <p className="mb-1.5 text-xs text-ink-500">{t('admin.barbers.workHoursLabel')}</p>
+            <WeeklyScheduleEditor
+              value={draft.jadval}
+              onChange={(jadval) => setField('jadval', jadval)}
+              weekdayOptions={weekdayOptions}
+            />
           </div>
           <div>
             <p className="mb-1.5 text-xs text-ink-500">{t('admin.barbers.vacationLabel')}</p>

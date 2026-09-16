@@ -7,18 +7,19 @@ import Modal from '../../components/admin/Modal'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import RatingStars from '../../components/RatingStars'
 import AutoText from '../../components/AutoText'
+import WeeklyScheduleEditor from '../../components/admin/WeeklyScheduleEditor'
 import { getBarberImage } from '../../assets/images'
 import { fetchBarbers, createBarber, updateBarber, removeBarber } from '../../features/barbers/barbersSlice'
 import { fetchCustomers, createCustomer, updateCustomer } from '../../features/customers/customersSlice'
 import { fetchShops } from '../../features/sartaroshxonalar/sartaroshxonalarSlice'
 import { showToast } from '../../features/ui/uiSlice'
 import { formatSum, formatDateShort } from '../../utils/format'
-import { getWeekdayOptions, isBarberOff, toLocalDateIso } from '../../utils/schedule'
+import { getWeekdayOptions, getWeeklySchedule, defaultJadval, isBarberOff, toLocalDateIso } from '../../utils/schedule'
 
 const emptyForm = {
   ism: '', familiya: '', mutaxassislik: '', telefon: '', tajriba: 1,
-  reyting: 5, rasm: 'barber-aziz', narxBoshlanishi: 30000, ishVaqti: '09:00 - 18:00', bio: '',
-  damOlishKunlari: [], taillar: [], sartaroshxonaId: '',
+  reyting: 5, rasm: 'barber-aziz', narxBoshlanishi: 30000, jadval: defaultJadval(), bio: '',
+  taillar: [], sartaroshxonaId: '',
 }
 const emptyRange = { boshlanish: '', tugash: '' }
 const emptyCredForm = { email: '', parol: '' }
@@ -61,18 +62,9 @@ export default function AdminBarbers() {
 
   const openEdit = (b) => {
     setEditing(b)
-    setForm({ ...emptyForm, ...b })
+    setForm({ ...emptyForm, ...b, jadval: getWeeklySchedule(b) })
     setNewRange(emptyRange)
     setModalOpen(true)
-  }
-
-  const toggleDayOff = (value) => {
-    setForm((f) => {
-      const current = new Set(f.damOlishKunlari || [])
-      if (current.has(value)) current.delete(value)
-      else current.add(value)
-      return { ...f, damOlishKunlari: Array.from(current).sort((a, b) => a - b) }
-    })
   }
 
   const addVacationRange = () => {
@@ -228,15 +220,9 @@ export default function AdminBarbers() {
               ))}
             </select>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1.5 block text-xs text-ink-500">{t('admin.barbers.phoneLabel')}</label>
-              <input required value={form.telefon} onChange={(e) => setForm((f) => ({ ...f, telefon: e.target.value }))} placeholder="+998 90 123 45 67" className="input-field !py-2 text-sm" />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-xs text-ink-500">{t('admin.barbers.workHoursLabel')}</label>
-              <input required value={form.ishVaqti} onChange={(e) => setForm((f) => ({ ...f, ishVaqti: e.target.value }))} placeholder="09:00 - 18:00" className="input-field !py-2 text-sm" />
-            </div>
+          <div>
+            <label className="mb-1.5 block text-xs text-ink-500">{t('admin.barbers.phoneLabel')}</label>
+            <input required value={form.telefon} onChange={(e) => setForm((f) => ({ ...f, telefon: e.target.value }))} placeholder="+998 90 123 45 67" className="input-field !py-2 text-sm" />
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div>
@@ -267,23 +253,12 @@ export default function AdminBarbers() {
             <textarea rows={3} value={form.bio} onChange={(e) => setForm((f) => ({ ...f, bio: e.target.value }))} placeholder={t('admin.barbers.bioPlaceholder')} className="input-field resize-none text-sm" />
           </div>
           <div>
-            <p className="mb-1.5 text-xs text-ink-500">{t('admin.barbers.daysOffLabel')}</p>
-            <div className="flex flex-wrap gap-2">
-              {weekdayOptions.map((d) => (
-                <button
-                  type="button"
-                  key={d.value}
-                  onClick={() => toggleDayOff(d.value)}
-                  className={`rounded-lg border px-3 py-1.5 text-xs font-medium capitalize transition-colors ${
-                    form.damOlishKunlari?.includes(d.value)
-                      ? 'border-red-500 bg-red-500/10 text-red-400'
-                      : 'border-ink-800 text-ink-400 hover:border-gold-500/40'
-                  }`}
-                >
-                  {d.label}
-                </button>
-              ))}
-            </div>
+            <p className="mb-1.5 text-xs text-ink-500">{t('admin.barbers.workHoursLabel')}</p>
+            <WeeklyScheduleEditor
+              value={form.jadval}
+              onChange={(jadval) => setForm((f) => ({ ...f, jadval }))}
+              weekdayOptions={weekdayOptions}
+            />
           </div>
           <div>
             <p className="mb-1.5 text-xs text-ink-500">{t('admin.barbers.vacationLabel')}</p>

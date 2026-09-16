@@ -15,6 +15,7 @@ import { fetchShops } from '../../features/sartaroshxonalar/sartaroshxonalarSlic
 import { openChatWithBarber } from '../../features/ui/uiSlice'
 import { getBarberImage } from '../../assets/images'
 import { formatSum } from '../../utils/format'
+import { getWeeklySchedule, summarizeWeeklyHours } from '../../utils/schedule'
 
 const TIER_BADGE = {
   oddiy: 'bg-ink-800 text-ink-300',
@@ -159,7 +160,7 @@ export default function SartaroshxonaDetail() {
             <AutoText as="p" className="mt-3 text-sm text-ink-400 leading-relaxed" text={selected.bio} />
             <div className="mt-4 flex items-center justify-between text-xs text-ink-500 border-t border-ink-800 pt-3">
               <span className="flex items-center gap-1.5"><FaPhoneAlt /> {selected.telefon}</span>
-              <span className="flex items-center gap-1.5"><FaClock /> {selected.ishVaqti}</span>
+              <span className="flex items-center gap-1.5"><FaClock /> {summarizeWeeklyHours(getWeeklySchedule(selected)) || t('booking.hoursVaryByDay')}</span>
             </div>
             <div className="mt-5 flex items-center justify-between gap-3">
               <span className="font-display text-lg font-bold text-gold-400">{t('barbers.startingFrom', { price: formatSum(selected.narxBoshlanishi) })}</span>

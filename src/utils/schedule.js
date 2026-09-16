@@ -22,15 +22,7 @@ export function getWeekdayOptions(weekdaysShort) {
   return WEEKDAY_DISPLAY_ORDER.map((value) => ({ value, label: weekdaysShort[value] }))
 }
 
-export function isBarberOff(barber, dateIso) {
-  if (!barber || !dateIso) return false
-  const dayOfWeek = new Date(`${dateIso}T00:00:00`).getDay()
-  if (barber.damOlishKunlari?.includes(dayOfWeek)) return true
-  if (barber.taillar?.some((r) => dateIso >= r.boshlanish && dateIso <= r.tugash)) return true
-  return false
-}
-
-// Fallback only — used if a barber's own ishVaqti can't be parsed.
+// Fallback only — used if a barber's own hours can't be parsed.
 export const FALLBACK_WORK_RANGE = { start: 9 * 60, end: 19 * 60 }
 export const SLOT_STEP_MIN = 30
 export const DEFAULT_DURATION_MIN = 30
@@ -55,4 +47,52 @@ export function parseWorkRange(ishVaqti) {
   const start = toMinutes(stamps[0])
   const end = toMinutes(stamps[1])
   return end > start ? { start, end } : null
+}
+
+// A per-barber weekly schedule: keyed by JS Date#getDay() (0 = Sunday ...
+// 6 = Saturday), each value is either `{ boshlanish, tugash }` (HH:MM
+// strings) or `null` for a day off.
+export function defaultJadval(range = { boshlanish: '09:00', tugash: '18:00' }) {
+  return Object.fromEntries(WEEKDAY_DISPLAY_ORDER.map((d) => [d, { ...range }]))
+}
+
+// Barbers saved before the weekly-schedule editor existed only have the old
+// single `ishVaqti` text range + `damOlishKunlari` full-days-off array —
+// derive an equivalent per-weekday schedule from those so old records (and
+// rows already migrated into the shared production DB) keep working without
+// a manual re-save.
+function legacyJadval(barber) {
+  const range = parseWorkRange(barber?.ishVaqti)
+  const hhmmRange = range && { boshlanish: minutesToHHMM(range.start), tugash: minutesToHHMM(range.end) }
+  return Object.fromEntries(
+    WEEKDAY_DISPLAY_ORDER.map((d) => [d, barber?.damOlishKunlari?.includes(d) ? null : hhmmRange])
+  )
+}
+
+export function getWeeklySchedule(barber) {
+  return barber?.jadval || legacyJadval(barber)
+}
+
+// This barber's working hours on one specific date — `null` if they're off
+// that day, whether because it's a vacation date or their weekly day off.
+export function getDaySchedule(barber, dateIso) {
+  if (!barber || !dateIso) return null
+  if (barber.taillar?.some((r) => dateIso >= r.boshlanish && dateIso <= r.tugash)) return null
+  const dayOfWeek = new Date(`${dateIso}T00:00:00`).getDay()
+  return getWeeklySchedule(barber)[dayOfWeek] || null
+}
+
+export function isBarberOff(barber, dateIso) {
+  return getDaySchedule(barber, dateIso) == null
+}
+
+// A compact one-line summary of a weekly schedule for card/detail views:
+// the shared hours if every working day uses the same range, or `null` to
+// signal "varies by day" (caller shows a fallback string in that case).
+export function summarizeWeeklyHours(jadval) {
+  const ranges = WEEKDAY_DISPLAY_ORDER.map((d) => jadval[d]).filter(Boolean)
+  if (ranges.length === 0) return null
+  const [first, ...rest] = ranges
+  const uniform = rest.every((r) => r.boshlanish === first.boshlanish && r.tugash === first.tugash)
+  return uniform ? `${first.boshlanish} - ${first.tugash}` : null
 }

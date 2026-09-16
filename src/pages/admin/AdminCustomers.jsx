@@ -15,6 +15,7 @@ import { createBarber } from '../../features/barbers/barbersSlice'
 import { fetchShops } from '../../features/sartaroshxonalar/sartaroshxonalarSlice'
 import { showToast } from '../../features/ui/uiSlice'
 import { formatSum } from '../../utils/format'
+import { defaultJadval } from '../../utils/schedule'
 import useAuth from '../../hooks/useAuth'
 import usePolling from '../../hooks/usePolling'
 import useDebouncedValue from '../../hooks/useDebouncedValue'
@@ -165,9 +166,8 @@ export default function AdminCustomers() {
       reyting: 5,
       rasm: 'barber-aziz',
       narxBoshlanishi: 0,
-      ishVaqti: '09:00 - 18:00',
+      jadval: defaultJadval(),
       bio: '',
-      damOlishKunlari: [],
       taillar: [],
       sartaroshxonaId: ustaShopId,
     }))

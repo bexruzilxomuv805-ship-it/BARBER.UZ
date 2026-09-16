@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { FaClock, FaMapMarkerAlt, FaArrowRight, FaLocationArrow } from 'react-icons/fa'
+import { FaClock, FaMapMarkerAlt, FaArrowRight, FaLocationArrow, FaSearch } from 'react-icons/fa'
 import Reveal from '../../components/Reveal'
 import Loader from '../../components/Loader'
 import PageHero from '../../components/PageHero'
@@ -16,6 +16,7 @@ const TIER_BADGE = {
   premium: 'bg-gold-500/15 text-gold-400',
   vip: 'bg-violet-500/15 text-violet-300',
 }
+const TIERS = ['oddiy', 'premium', 'vip']
 
 export default function Sartaroshxonalar() {
   const { t } = useTranslation()
@@ -24,18 +25,29 @@ export default function Sartaroshxonalar() {
   const [userLocation, setUserLocation] = useState(null)
   const [locating, setLocating] = useState(false)
   const [locationError, setLocationError] = useState('')
+  const [search, setSearch] = useState('')
+  const [tierFilter, setTierFilter] = useState('')
 
   useEffect(() => {
     dispatch(fetchShops())
   }, [dispatch])
+
+  const filteredShops = useMemo(() => {
+    const query = search.trim().toLowerCase()
+    return shops.filter((s) => {
+      if (tierFilter && s.tur !== tierFilter) return false
+      if (!query) return true
+      return s.nomi?.toLowerCase().includes(query) || s.manzilMatni?.toLowerCase().includes(query)
+    })
+  }, [shops, search, tierFilter])
 
   // Once the visitor shares their location, every shop that has its own
   // coordinates (set by the admin via LocationPicker) gets a distance and
   // the list re-sorts nearest-first — shops with no coordinates yet just
   // stay in their original order at the end.
   const sortedShops = useMemo(() => {
-    if (!userLocation) return shops
-    const withDistance = shops.map((s) => ({
+    if (!userLocation) return filteredShops
+    const withDistance = filteredShops.map((s) => ({
       ...s,
       distance: s.lat != null && s.lng != null ? distanceKm(userLocation, { lat: s.lat, lng: s.lng }) : null,
     }))
@@ -45,7 +57,7 @@ export default function Sartaroshxonalar() {
       if (b.distance == null) return -1
       return a.distance - b.distance
     })
-  }, [shops, userLocation])
+  }, [filteredShops, userLocation])
 
   const handleFindNearest = async () => {
     setLocationError('')
@@ -70,17 +82,56 @@ export default function Sartaroshxonalar() {
 
       <section className="container-x pb-24">
         {shops.length > 0 && (
-          <div className="mb-8 flex flex-col items-center gap-2 text-center">
-            <button
-              type="button"
-              onClick={handleFindNearest}
-              disabled={locating}
-              className="btn-outline !py-2 text-sm disabled:opacity-50"
-            >
-              <FaLocationArrow /> {locating ? t('shops.locating') : t('shops.findNearest')}
-            </button>
-            {locationError && <p className="text-xs text-red-400">{locationError}</p>}
-            {userLocation && !locationError && <p className="text-xs text-ink-500">{t('shops.sortedByDistance')}</p>}
+          <div className="mb-8 flex flex-col items-center gap-4">
+            <div className="mx-auto w-full max-w-md">
+              <div className="relative">
+                <FaSearch className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-ink-600" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder={t('shops.searchPlaceholder')}
+                  className="input-field !py-2 !pl-9 text-sm"
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <button
+                type="button"
+                onClick={() => setTierFilter('')}
+                className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                  tierFilter === '' ? 'border-gold-500 bg-gold-500/10 text-gold-400' : 'border-ink-800 text-ink-400 hover:border-gold-500/40'
+                }`}
+              >
+                {t('shops.filterAll')}
+              </button>
+              {TIERS.map((tier) => (
+                <button
+                  type="button"
+                  key={tier}
+                  onClick={() => setTierFilter(tier)}
+                  className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                    tierFilter === tier ? 'border-gold-500 bg-gold-500/10 text-gold-400' : 'border-ink-800 text-ink-400 hover:border-gold-500/40'
+                  }`}
+                >
+                  {t(`shops.tier.${tier}`)}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex flex-col items-center gap-2 text-center">
+              <button
+                type="button"
+                onClick={handleFindNearest}
+                disabled={locating}
+                className="btn-outline !py-2 text-sm disabled:opacity-50"
+              >
+                <FaLocationArrow /> {locating ? t('shops.locating') : t('shops.findNearest')}
+              </button>
+              {locationError && <p className="text-xs text-red-400">{locationError}</p>}
+              {userLocation && !locationError && <p className="text-xs text-ink-500">{t('shops.sortedByDistance')}</p>}
+            </div>
           </div>
         )}
 
@@ -88,6 +139,8 @@ export default function Sartaroshxonalar() {
           <Loader full />
         ) : shops.length === 0 ? (
           <p className="py-10 text-center text-sm text-ink-500">{t('shops.notFound')}</p>
+        ) : sortedShops.length === 0 ? (
+          <p className="py-10 text-center text-sm text-ink-500">{t('shops.noResults')}</p>
         ) : (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {sortedShops.map((s, i) => (
