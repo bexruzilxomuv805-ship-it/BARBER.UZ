@@ -30,6 +30,7 @@ import {
   markAppointmentStatusNotified,
   setAppointmentStatus,
   getAllAppointments,
+  getCustomersByBarber,
   markAppointmentReminded,
   markAppointmentArrivalAsked,
   setAppointmentArrival,
@@ -705,7 +706,6 @@ function formatRoleClientMessage() {
 async function forwardRoleChanges() {
   const pending = await getUsersPendingRoleNotice()
   for (const u of pending) {
-    const isAdmin = u.role === 'admin'
     const text =
       u.role === 'admin' ? formatRolePromotedMessage() :
       u.role === 'usta' ? formatRoleUstaMessage() :
@@ -715,10 +715,8 @@ async function forwardRoleChanges() {
     // reply_markup — there's no way to push a keyboard swap into an idle
     // chat. Attaching the correct keyboard to this exact DM is what makes
     // the menu switch in real time instead of only updating the next time
-    // they happen to press /start. Ustas stay on CLIENT_KEYBOARD — bot
-    // slash-commands are admin-only by design, ustas use the website's
-    // /usta dashboard instead.
-    await notifyAccountHolder(u, text, isAdmin ? MENU_KEYBOARD : CLIENT_KEYBOARD)
+    // they happen to press /start.
+    await notifyAccountHolder(u, text, keyboardForRole(u.role))
     await markUserRoleNotified(u.id)
   }
 }
@@ -881,6 +879,31 @@ const CLIENT_KEYBOARD = {
     resize_keyboard: true,
     is_persistent: true,
   },
+}
+
+// "Mening navbatlarim" lists appointments made ON the account itself — that
+// means nothing for an usta account (it's not the one booking), so ustas
+// get their own customer list instead of that button. Yordam/Admin bilan
+// chat stay the same as a plain client's.
+const BTN_MY_CUSTOMERS = "\u{1F465} Mening mijozlarim"
+
+const USTA_KEYBOARD = {
+  reply_markup: {
+    keyboard: [[{ text: BTN_MY_CUSTOMERS }], [{ text: BTN_HELP }, { text: BTN_CHAT }]],
+    resize_keyboard: true,
+    is_persistent: true,
+  },
+}
+
+// Single source of truth for "which reply keyboard does this role see" —
+// every call site that used to inline `role === 'admin' ? MENU_KEYBOARD :
+// CLIENT_KEYBOARD` (silently lumping usta in with plain clients) now goes
+// through this instead, so a role added here automatically gets the right
+// keyboard everywhere a keyboard gets attached to a DM.
+function keyboardForRole(role) {
+  if (role === 'admin') return MENU_KEYBOARD
+  if (role === 'usta') return USTA_KEYBOARD
+  return CLIENT_KEYBOARD
 }
 
 async function buildBugunText() {
@@ -1277,7 +1300,7 @@ async function handleTelegramLinkExisting(msg, token, login) {
     await bot.sendMessage(
       msg.chat.id,
       `✅ Telegram ulandi, ${updated.ism}! Endi navbat va xabarlar haqida shu yerdan ham eslatma olasiz.`,
-      updated.role === 'admin' ? MENU_KEYBOARD : CLIENT_KEYBOARD
+      keyboardForRole(updated.role)
     )
   } catch (err) {
     console.error('[bot] link existing error:', err?.message || err)
@@ -1354,7 +1377,7 @@ async function handleTelegramLoginStart(msg, token) {
       await bot.sendMessage(
         msg.chat.id,
         `✅ Xush kelibsiz, ${user.ism}!\nZolotoy Barber hisobingizga kirdingiz. Saytga qaytishingiz mumkin.`,
-        user.role === 'admin' ? MENU_KEYBOARD : CLIENT_KEYBOARD
+        keyboardForRole(user.role)
       )
       return
     }
@@ -1432,7 +1455,7 @@ async function handlePhoneAccountMatch(msg) {
     await bot.sendMessage(
       msg.chat.id,
       `\u{2705} Profilingiz topildi va ulandi, ${updated.ism}! Endi navbat va xabarlar haqida shu yerdan ham eslatma olasiz.`,
-      updated.role === 'admin' ? MENU_KEYBOARD : CLIENT_KEYBOARD
+      keyboardForRole(updated.role)
     )
   } catch (err) {
     console.error('[bot] phone account match error:', err?.message || err)
@@ -1464,7 +1487,7 @@ async function handleContact(msg) {
     await bot.sendMessage(
       msg.chat.id,
       '✅ Raqamingiz saqlandi. Hisobingiz tayyor — saytga qaytishingiz mumkin!',
-      pending.role === 'admin' ? MENU_KEYBOARD : CLIENT_KEYBOARD
+      keyboardForRole(pending.role)
     )
   } catch (err) {
     console.error('[bot] save phone error:', err?.message || err)
@@ -1503,7 +1526,7 @@ bot.onText(/^\/start(?:\s+(\S+))?/, safeHandler(async (msg, match) => {
       await bot.sendMessage(
         msg.chat.id,
         `Salom, ${known.ism}! Siz allaqachon ro'yxatdan o'tgansiz — quyidagi menyudan foydalaning.`,
-        known.role === 'admin' ? MENU_KEYBOARD : CLIENT_KEYBOARD
+        keyboardForRole(known.role)
       )
       await bot.sendMessage(msg.chat.id, "Yangi navbat olish yoki profilingizni ko'rish uchun saytga o'ting:", SITE_LINK_BUTTON)
       return
@@ -1615,6 +1638,54 @@ async function sendUsersPage(chatId, offset, { fresh = false } = {}) {
   }
 
   activeListCards.set(`${chatId}:users`, cardIds)
+}
+
+function formatMyCustomerCard(c) {
+  return (
+    `\u{1F464} ${`${c.ism} ${c.familiya}`.trim() || 'Mijoz'}` +
+    (c.telefon ? `\n\u{1F4DE} ${c.telefon}` : '') +
+    `\n\u{1F553} ${c.visits} ta tashrif` +
+    (c.lastVisit ? ` — oxirgisi ${c.lastVisit}` : '')
+  )
+}
+
+// The usta bot menu's "Mening mijozlarim" — every distinct client who has
+// ever booked with this specific barber, 5 at a time (same page size and
+// ◀️/▶️ pattern as sendUsersPage above), newest visit first.
+async function sendMyCustomersPage(chatId, barberId, offset, { fresh = false } = {}) {
+  const customers = await getCustomersByBarber(barberId)
+  if (!customers.length) {
+    await bot.sendMessage(chatId, "Hozircha mijozlaringiz yo'q.")
+    return
+  }
+  const page = customers.slice(offset, offset + USERS_PAGE_SIZE)
+  if (!page.length) {
+    await bot.sendMessage(chatId, "Boshqa mijoz yo'q.")
+    return
+  }
+
+  await clearListCards(chatId, 'mycustomers')
+  if (fresh) {
+    await bot.sendMessage(chatId, `\u{1F465} Mening mijozlarim (${customers.length} ta):`)
+  }
+
+  const cardIds = []
+  for (const c of page) {
+    const sent = await bot.sendMessage(chatId, formatMyCustomerCard(c))
+    cardIds.push(sent.message_id)
+  }
+
+  const navRow = buildPageNavRow('mycustomerspage', offset, USERS_PAGE_SIZE, customers.length)
+  if (navRow.length) {
+    const sentBtn = await bot.sendMessage(
+      chatId,
+      `${offset + 1}-${Math.min(offset + USERS_PAGE_SIZE, customers.length)} / ${customers.length}`,
+      { reply_markup: { inline_keyboard: [navRow] } }
+    )
+    cardIds.push(sentBtn.message_id)
+  }
+
+  activeListCards.set(`${chatId}:mycustomers`, cardIds)
 }
 
 bot.onText(/^\/foydalanuvchilar/, safeHandler(async (msg) => {
@@ -1902,6 +1973,14 @@ bot.on('message', safeHandler(async (msg) => {
   if (msg.text === BTN_MY_APPOINTMENTS) {
     clientChatMode.delete(msg.chat.id)
     await sendMyAppointmentsPage(msg.chat.id, msg.from.id, 0, { fresh: true })
+    return
+  }
+  if (msg.text === BTN_MY_CUSTOMERS) {
+    clientChatMode.delete(msg.chat.id)
+    const staff = await staffContext(msg.chat.id)
+    if (staff?.role === 'usta') {
+      await sendMyCustomersPage(msg.chat.id, staff.barberId, 0, { fresh: true })
+    }
     return
   }
   if (msg.text === BTN_HELP) {
@@ -2211,6 +2290,17 @@ bot.on('callback_query', safeHandler(async (query) => {
     }
     await bot.answerCallbackQuery(query.id)
     await sendUsersPage(query.message.chat.id, Number(id) || 0)
+    return
+  }
+
+  if (action === 'mycustomerspage') {
+    const staff = await staffContext(query.message.chat.id)
+    if (staff?.role !== 'usta') {
+      await bot.answerCallbackQuery(query.id, { text: "Ruxsat yo'q", show_alert: true })
+      return
+    }
+    await bot.answerCallbackQuery(query.id)
+    await sendMyCustomersPage(query.message.chat.id, staff.barberId, Number(id) || 0)
     return
   }
 

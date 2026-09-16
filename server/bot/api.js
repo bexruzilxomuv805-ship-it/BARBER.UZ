@@ -154,6 +154,44 @@ export async function getAllAppointments() {
   return data
 }
 
+// One row per distinct client who has ever booked with this specific
+// barber — visits/lastVisit aggregated from their appointments — for the
+// usta bot menu's "Mening mijozlarim" (see sendMyCustomersPage in
+// index.js). Deliberately not filtered to telegramId like getBotUsers,
+// since plenty of an usta's customers only ever booked through the site.
+export async function getCustomersByBarber(barberId) {
+  const [{ data: appointments }, { data: users }] = await Promise.all([
+    client.get('/appointments', { params: { barberId } }),
+    client.get('/users'),
+  ])
+  const userById = new Map(users.map((u) => [u.id, u]))
+
+  const byClient = new Map()
+  for (const a of appointments) {
+    if (!a.mijozId) continue
+    const entry = byClient.get(a.mijozId) || { visits: 0, lastVisit: null }
+    entry.visits += 1
+    if (!entry.lastVisit || a.sana > entry.lastVisit) entry.lastVisit = a.sana
+    byClient.set(a.mijozId, entry)
+  }
+
+  return [...byClient.entries()]
+    .map(([mijozId, entry]) => {
+      const u = userById.get(mijozId)
+      return {
+        id: mijozId,
+        ism: u?.ism || '',
+        familiya: u?.familiya || '',
+        telefon: u?.telefon || '',
+        deleted: !!u?.deleted,
+        visits: entry.visits,
+        lastVisit: entry.lastVisit,
+      }
+    })
+    .filter((c) => !c.deleted)
+    .sort((a, b) => (b.lastVisit || '').localeCompare(a.lastVisit || ''))
+}
+
 export async function markAppointmentReminded(id) {
   await client.patch(`/appointments/${id}`, { tgReminded: true })
 }
