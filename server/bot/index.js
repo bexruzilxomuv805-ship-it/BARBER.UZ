@@ -292,13 +292,14 @@ function isSuperAdmin(msgOrQuery) {
 // additionally gets their own copy instead of relying on the admin to relay
 // it (see CLAUDE.md / the "usta phase 1" plan this implements).
 async function notifyBarberChat(barberId, text, options) {
-  if (!barberId) return
+  if (!barberId) return null
   try {
     const usta = await findUstaByBarberId(barberId)
-    if (usta?.telegramId) await bot.sendMessage(usta.telegramId, text, options)
+    if (usta?.telegramId) return await bot.sendMessage(usta.telegramId, text, options)
   } catch (err) {
     console.error('[bot] notify barber chat error:', err?.message || err)
   }
+  return null
 }
 
 // Resolves which "staff" (admin or a specific usta) a Telegram chat belongs
@@ -337,8 +338,12 @@ async function forwardClientMessages() {
     // appointments elsewhere. Only barberId-less (general support) chats
     // reach the shared admin chat.
     if (message.barberId) {
-      await notifyBarberChat(message.barberId, formatClientChatMessage(message))
-      await markMessageForwarded(message.id, { chatId: null, messageId: null, text: message.text })
+      const sent = await notifyBarberChat(message.barberId, formatClientChatMessage(message))
+      if (sent) conversationByTelegramMsgId.set(sent.message_id, message.conversationId)
+      await markMessageForwarded(
+        message.id,
+        sent ? { chatId: sent.chat.id, messageId: sent.message_id, text: message.text } : { chatId: null, messageId: null, text: message.text }
+      )
     } else if (adminChatId) {
       const sent = await bot.sendMessage(adminChatId, formatClientChatMessage(message))
       conversationByTelegramMsgId.set(sent.message_id, message.conversationId)
@@ -1812,6 +1817,39 @@ async function handleClientChatMessage(msg) {
   }
 }
 
+// Handles a staff member's native Telegram "Reply" to a message that was
+// forwarded from a client — postAdminReply is used regardless of whether
+// the reply came from the admin's own chat or an usta's, since both are
+// "staff replying to this client" from the site's point of view (the
+// message just records sender: 'admin').
+async function handleStaffReply(msg, conversationId) {
+  const conversation = await getConversation(conversationId)
+  if (!conversation) {
+    await bot.sendMessage(msg.chat.id, 'Bu suhbat topilmadi (o‘chirilgan bo‘lishi mumkin).')
+    return
+  }
+
+  await postAdminReply({
+    conversationId,
+    userId: conversation.userId,
+    userName: conversation.userName,
+    text: msg.text,
+  })
+
+  // Mirror the reply straight into the client's own Telegram chat too, not
+  // just the site — if they're Telegram-linked.
+  const clientUser = await getUser(conversation.userId).catch(() => null)
+  if (clientUser?.telegramId) {
+    await bot.sendMessage(clientUser.telegramId, `\u{1F464} Admin:\n${msg.text}`).catch((err) => {
+      console.error('[bot] mirror reply to client error:', err?.message || err)
+    })
+  }
+
+  await bot.sendMessage(msg.chat.id, `✓ ${conversation.userName || 'mijoz'}ga yuborildi`, {
+    reply_to_message_id: msg.message_id,
+  })
+}
+
 bot.on('message', safeHandler(async (msg) => {
   if (msg.contact) {
     await handleContact(msg)
@@ -1860,6 +1898,22 @@ bot.on('message', safeHandler(async (msg) => {
   }
 
   if (!isFromAdmin(msg)) {
+    // An usta replying (Telegram's native "Reply") inside their OWN chat to
+    // a client message notifyBarberChat forwarded them — recognized purely
+    // by that reply link, same as an admin's reply below, so it doesn't
+    // fall through to the generic "you're just a client" fallback and get
+    // swallowed (see forwardClientMessages, which now records this mapping
+    // for barber-routed forwards too).
+    const staffReplyToId = msg.reply_to_message?.message_id
+    const staffReplyConversationId = staffReplyToId && conversationByTelegramMsgId.get(staffReplyToId)
+    if (staffReplyConversationId) {
+      const staff = await staffContext(msg.chat.id)
+      if (staff?.role === 'usta') {
+        await handleStaffReply(msg, staffReplyConversationId)
+        return
+      }
+    }
+
     if (clientChatMode.has(msg.chat.id)) {
       await handleClientChatMessage(msg)
     } else {
@@ -1949,31 +2003,7 @@ bot.on('message', safeHandler(async (msg) => {
     return
   }
 
-  const conversation = await getConversation(conversationId)
-  if (!conversation) {
-    await bot.sendMessage(msg.chat.id, 'Bu suhbat topilmadi (o‘chirilgan bo‘lishi mumkin).')
-    return
-  }
-
-  await postAdminReply({
-    conversationId,
-    userId: conversation.userId,
-    userName: conversation.userName,
-    text: msg.text,
-  })
-
-  // Mirror the reply straight into the client's own Telegram chat too, not
-  // just the site — if they're Telegram-linked.
-  const clientUser = await getUser(conversation.userId).catch(() => null)
-  if (clientUser?.telegramId) {
-    await bot.sendMessage(clientUser.telegramId, `\u{1F464} Admin:\n${msg.text}`).catch((err) => {
-      console.error('[bot] mirror reply to client error:', err?.message || err)
-    })
-  }
-
-  await bot.sendMessage(msg.chat.id, `✓ ${conversation.userName || 'mijoz'}ga yuborildi`, {
-    reply_to_message_id: msg.message_id,
-  })
+  await handleStaffReply(msg, conversationId)
 }))
 
 bot.on('callback_query', safeHandler(async (query) => {
