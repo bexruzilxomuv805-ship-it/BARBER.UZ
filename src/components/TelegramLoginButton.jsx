@@ -35,7 +35,15 @@ export default function TelegramLoginButton({ onSuccess }) {
     // popup, since by then the browser no longer considers it a direct
     // response to the tap. The URL is filled in once the token is confirmed
     // created, whichever order those two finish in.
-    const tgWindow = window.open('about:blank', '_blank', 'noopener')
+    //
+    // Deliberately no `noopener` here: with it, window.open() returns null
+    // in Chrome (the whole point of noopener is severing that reference),
+    // so there'd be nothing to redirect below and every call would silently
+    // fall through to the post-await window.open() — i.e. exactly the
+    // popup-blocked bug this is fixing. We navigate this window to a fixed,
+    // trusted t.me URL ourselves right after, so there's no untrusted
+    // content for a kept opener reference to matter here.
+    const tgWindow = window.open('about:blank', '_blank')
 
     try {
       await client.post('/telegramLogins', { id: token, status: 'pending', createdAt: new Date().toISOString() })
