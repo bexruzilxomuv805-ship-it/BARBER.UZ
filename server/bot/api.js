@@ -82,6 +82,7 @@ export async function postAdminReply({ conversationId, userId, userName, text })
     await client.get(`/conversations/${conversationId}`)
     await client.patch(`/conversations/${conversationId}`, {
       lastMessage: text,
+      lastMessageSender: 'admin',
       updatedAt: message.createdAt,
       unreadForClient: 1,
     })
@@ -91,6 +92,7 @@ export async function postAdminReply({ conversationId, userId, userName, text })
       userId,
       userName,
       lastMessage: text,
+      lastMessageSender: 'admin',
       updatedAt: message.createdAt,
       unreadForAdmin: 0,
       unreadForClient: 1,
@@ -394,6 +396,7 @@ export async function postClientMessageFromBot({ conversationId, userId, userNam
     await client.get(`/conversations/${conversationId}`)
     await client.patch(`/conversations/${conversationId}`, {
       lastMessage: text,
+      lastMessageSender: 'client',
       updatedAt: message.createdAt,
       unreadForAdmin: 1,
       ...(barberId ? { barberId } : {}),
@@ -404,6 +407,7 @@ export async function postClientMessageFromBot({ conversationId, userId, userNam
       userId,
       userName,
       lastMessage: text,
+      lastMessageSender: 'client',
       updatedAt: message.createdAt,
       ...(barberId ? { barberId } : {}),
       unreadForAdmin: 1,

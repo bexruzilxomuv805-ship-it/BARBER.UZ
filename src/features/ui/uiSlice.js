@@ -20,6 +20,9 @@ const uiSlice = createSlice({
       state.isChatOpen = true
       state.chatBarberContext = action.payload
     },
+    setChatBarberContext(state, action) {
+      state.chatBarberContext = action.payload
+    },
     toggleMobileMenu(state) {
       state.isMobileMenuOpen = !state.isMobileMenuOpen
     },
@@ -39,6 +42,7 @@ export const {
   toggleChat,
   setChatOpen,
   openChatWithBarber,
+  setChatBarberContext,
   toggleMobileMenu,
   closeMobileMenu,
   showToast,

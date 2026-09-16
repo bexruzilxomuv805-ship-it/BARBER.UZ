@@ -18,14 +18,20 @@ export const fetchConversations = createAsyncThunk(
   }
 )
 
-export const fetchConversation = createAsyncThunk(
-  'chat/fetchConversation',
-  async (conversationId, { rejectWithValue }) => {
+// Every conversation belonging to one client — the general support thread
+// (id === userId, no barberId) plus one per barber they've messaged (see
+// ChatWidget.jsx's `${userId}__${barberId}` ids). Drives both the chat
+// list screen and the floating bubble's total unread badge, instead of the
+// single active conversation ChatWidget used to poll on its own.
+export const fetchMyConversations = createAsyncThunk(
+  'chat/fetchMyConversations',
+  async (userId, { rejectWithValue }) => {
     try {
-      const { data } = await client.get(`/conversations/${conversationId}`)
+      const { data } = await client.get('/conversations', {
+        params: { userId, _sort: 'updatedAt', _order: 'desc' },
+      })
       return data
     } catch (err) {
-      if (err?.response?.status === 404) return null
       return rejectWithValue(err?.message)
     }
   }
@@ -67,6 +73,7 @@ export const sendMessage = createAsyncThunk(
         await client.get(`/conversations/${conversationId}`)
         await client.patch(`/conversations/${conversationId}`, {
           lastMessage: text,
+          lastMessageSender: sender,
           updatedAt: message.createdAt,
           ...(barberId ? { barberId } : {}),
           ...(sender === 'client'
@@ -79,6 +86,7 @@ export const sendMessage = createAsyncThunk(
           userId,
           userName,
           lastMessage: text,
+          lastMessageSender: sender,
           updatedAt: message.createdAt,
           ...(barberId ? { barberId } : {}),
           unreadForAdmin: sender === 'client' ? 1 : 0,
@@ -152,7 +160,7 @@ const chatSlice = createSlice({
   name: 'chat',
   initialState: {
     conversations: [],
-    myConversation: null,
+    myConversations: [],
     messagesByConversation: {},
     activeConversationId: null,
     status: 'idle',
@@ -168,8 +176,8 @@ const chatSlice = createSlice({
       .addCase(fetchConversations.fulfilled, (state, action) => {
         state.conversations = action.payload
       })
-      .addCase(fetchConversation.fulfilled, (state, action) => {
-        state.myConversation = action.payload
+      .addCase(fetchMyConversations.fulfilled, (state, action) => {
+        state.myConversations = action.payload
       })
       .addCase(fetchMessages.fulfilled, (state, action) => {
         state.messagesByConversation[action.payload.conversationId] = action.payload.messages
@@ -195,13 +203,14 @@ const chatSlice = createSlice({
       .addCase(markConversationRead.fulfilled, (state, action) => {
         const idx = state.conversations.findIndex((c) => c.id === action.payload.id)
         if (idx !== -1) state.conversations[idx] = action.payload
-        if (state.myConversation?.id === action.payload.id) state.myConversation = action.payload
+        const myIdx = state.myConversations.findIndex((c) => c.id === action.payload.id)
+        if (myIdx !== -1) state.myConversations[myIdx] = action.payload
       })
       .addCase(removeConversation.fulfilled, (state, action) => {
         const cid = action.payload
         delete state.messagesByConversation[cid]
         state.conversations = state.conversations.filter((c) => c.id !== cid)
-        if (state.myConversation?.id === cid) state.myConversation = null
+        state.myConversations = state.myConversations.filter((c) => c.id !== cid)
         if (state.activeConversationId === cid) state.activeConversationId = null
       })
   },

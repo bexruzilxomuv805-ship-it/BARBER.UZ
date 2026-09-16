@@ -280,7 +280,11 @@
     "deleteChatAction": "Suhbatni o‘chirish",
     "deleteChatConfirmTitle": "Suhbatni butunlay o‘chirish",
     "deleteChatConfirmText": "Faqat shu suhbatdagi xabarlar butunlay o‘chiriladi. Boshqa hech qanday ma’lumotga ta’sir qilmaydi. Bu amalni ortga qaytarib bo‘lmaydi.",
-    "chatDeletedToast": "Suhbat o‘chirildi."
+    "chatDeletedToast": "Suhbat o‘chirildi.",
+    "conversationsTitle": "Xabarlar",
+    "noMessagesYet": "Hozircha xabar yo‘q",
+    "backAction": "Orqaga",
+    "you": "Siz"
   },
   "pwaInstall": {
     "title": "Ilovani o‘rnating",

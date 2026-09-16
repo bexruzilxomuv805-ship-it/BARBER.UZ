@@ -280,7 +280,11 @@
     "deleteChatAction": "Delete chat",
     "deleteChatConfirmTitle": "Delete the entire chat",
     "deleteChatConfirmText": "Only the messages in this chat will be deleted. No other data will be affected. This action cannot be undone.",
-    "chatDeletedToast": "Chat deleted."
+    "chatDeletedToast": "Chat deleted.",
+    "conversationsTitle": "Messages",
+    "noMessagesYet": "No messages yet",
+    "backAction": "Back",
+    "you": "You"
   },
   "pwaInstall": {
     "title": "Install the app",

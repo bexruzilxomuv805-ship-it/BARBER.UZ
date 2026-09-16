@@ -280,7 +280,11 @@
     "deleteChatAction": "Удалить чат",
     "deleteChatConfirmTitle": "Удалить весь чат",
     "deleteChatConfirmText": "Будут удалены только сообщения этого чата. Никакие другие данные не пострадают. Это действие нельзя отменить.",
-    "chatDeletedToast": "Чат удалён."
+    "chatDeletedToast": "Чат удалён.",
+    "conversationsTitle": "Сообщения",
+    "noMessagesYet": "Пока нет сообщений",
+    "backAction": "Назад",
+    "you": "Вы"
   },
   "pwaInstall": {
     "title": "Установите приложение",

@@ -1,18 +1,20 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useTranslation } from 'react-i18next'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   FaHeadset, FaPaperPlane, FaTimes, FaCommentDots, FaPhoneAlt, FaTelegramPlane, FaInstagram,
-  FaEdit, FaTrash, FaCheck, FaRobot,
+  FaEdit, FaTrash, FaCheck, FaRobot, FaArrowLeft,
 } from 'react-icons/fa'
 import useAuth from '../hooks/useAuth'
 import useConversationId from '../hooks/useConversationId'
 import Modal from './admin/Modal'
-import { showToast, setChatOpen } from '../features/ui/uiSlice'
+import { getBarberImage } from '../assets/images'
+import { showToast, setChatOpen, setChatBarberContext } from '../features/ui/uiSlice'
+import { fetchBarbers } from '../features/barbers/barbersSlice'
 import {
-  fetchMessages, sendMessage, updateMessage, removeMessage,
-  fetchConversation, markConversationRead, removeConversation,
+  fetchMyConversations, fetchMessages, sendMessage, updateMessage, removeMessage,
+  markConversationRead, removeConversation,
 } from '../features/chat/chatSlice'
 
 const POLL_MS = 3000
@@ -26,9 +28,20 @@ function formatTime(iso, lang) {
   return new Date(iso).toLocaleTimeString(TIME_LOCALE[lang] || 'uz-UZ', { hour: '2-digit', minute: '2-digit' })
 }
 
+// Telegram-style: today shows a clock time, anything older shows a short date.
+function formatListTime(iso, lang) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  const sameDay = d.toDateString() === new Date().toDateString()
+  return sameDay
+    ? formatTime(iso, lang)
+    : d.toLocaleDateString(TIME_LOCALE[lang] || 'uz-UZ', { day: '2-digit', month: '2-digit' })
+}
+
 export default function ChatWidget() {
   const { t, i18n } = useTranslation()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [selectedId, setSelectedId] = useState(null)
   const [text, setText] = useState('')
   const [sending, setSending] = useState(false)
   const [editingId, setEditingId] = useState(null)
@@ -41,35 +54,49 @@ export default function ChatWidget() {
   const contact = info || FALLBACK_CONTACT
   const open = useSelector((s) => s.ui.isChatOpen)
   const chatBarberContext = useSelector((s) => s.ui.chatBarberContext)
-  const barber = useSelector((s) => s.barbers.items.find((b) => b.id === chatBarberContext))
+  const barbers = useSelector((s) => s.barbers.items)
   const userId = useConversationId()
-  // A chat opened from a barber's own profile ("Xabar yozish") gets its own
-  // persisted thread, separate from the general support conversation and
-  // from every other barber's — otherwise all of them would collapse into
-  // one mixed conversation keyed only by the client's own id.
-  const conversationId = chatBarberContext ? `${userId}__${chatBarberContext}` : userId
-  const messages = useSelector((s) => s.chat.messagesByConversation[conversationId] || [])
-  const myConversation = useSelector((s) => s.chat.myConversation)
-  const hasUnread = myConversation?.id === conversationId && myConversation.unreadForClient > 0
+  const myConversations = useSelector((s) => s.chat.myConversations)
+
+  // A chat opened from a barber's own profile ("Xabar yozish") always jumps
+  // straight to that barber's own persisted thread; otherwise the widget
+  // shows the Telegram-style chat list and the person picks one themselves.
+  const activeId = chatBarberContext ? `${userId}__${chatBarberContext}` : selectedId
+  const showList = open && !activeId
+
+  const activeBarberId = chatBarberContext || (activeId ? myConversations.find((c) => c.id === activeId)?.barberId : null)
+  const activeBarber = activeBarberId ? barbers.find((b) => b.id === activeBarberId) : null
+
+  const messages = useSelector((s) => s.chat.messagesByConversation[activeId] || [])
+  const totalUnread = useMemo(
+    () => myConversations.reduce((sum, c) => sum + (c.unreadForClient || 0), 0),
+    [myConversations]
+  )
+
   const listRef = useRef(null)
   const timerRef = useRef(null)
 
   useEffect(() => {
-    if (!open) return
-    dispatch(fetchMessages(conversationId))
+    dispatch(fetchBarbers())
+  }, [dispatch])
+
+  useEffect(() => {
+    if (!open || !activeId) return
+    dispatch(fetchMessages(activeId))
     timerRef.current = setInterval(() => {
-      dispatch(fetchMessages(conversationId))
+      dispatch(fetchMessages(activeId))
     }, POLL_MS)
     return () => clearInterval(timerRef.current)
-  }, [open, conversationId, dispatch])
+  }, [open, activeId, dispatch])
 
-  // Poll the conversation summary (even while the widget is closed) so an
-  // unread badge can appear as soon as the admin replies.
+  // Polled even while the widget is closed so the floating bubble's unread
+  // badge (and each list row's own badge) stay live the moment admin or a
+  // barber replies — from the site or via the bot, either way.
   useEffect(() => {
-    dispatch(fetchConversation(conversationId))
-    const t = setInterval(() => dispatch(fetchConversation(conversationId)), CONVERSATION_POLL_MS)
-    return () => clearInterval(t)
-  }, [conversationId, dispatch])
+    dispatch(fetchMyConversations(userId))
+    const timer = setInterval(() => dispatch(fetchMyConversations(userId)), CONVERSATION_POLL_MS)
+    return () => clearInterval(timer)
+  }, [userId, dispatch])
 
   useEffect(() => {
     if (listRef.current) {
@@ -77,31 +104,47 @@ export default function ChatWidget() {
     }
   }, [messages, open])
 
+  // Closing the widget always returns to a fresh chat list next time it opens.
+  const closeChat = () => {
+    dispatch(setChatOpen(false))
+    setSelectedId(null)
+  }
+
   const handleSend = async (e) => {
     e.preventDefault()
     const trimmed = text.trim()
-    if (!trimmed || sending) return
+    if (!trimmed || sending || !activeId) return
     setSending(true)
     setText('')
     await dispatch(
       sendMessage({
-        conversationId,
+        conversationId: activeId,
         userId,
         userName: user ? `${user.ism} ${user.familiya}` : t('chat.guestName'),
         sender: 'client',
         text: trimmed,
-        ...(chatBarberContext ? { barberId: chatBarberContext } : {}),
+        ...(activeBarberId ? { barberId: activeBarberId } : {}),
       })
     )
+    dispatch(fetchMyConversations(userId))
     setSending(false)
   }
 
   const openChat = () => {
     setMenuOpen(false)
     dispatch(setChatOpen(true))
-    if (hasUnread) {
-      dispatch(markConversationRead({ conversationId, forRole: 'client' }))
+  }
+
+  const openConversation = (conversation) => {
+    setSelectedId(conversation.id)
+    if (conversation.unreadForClient > 0) {
+      dispatch(markConversationRead({ conversationId: conversation.id, forRole: 'client' }))
     }
+  }
+
+  const goBackToList = () => {
+    if (chatBarberContext) dispatch(setChatBarberContext(null))
+    setSelectedId(null)
   }
 
   const startEdit = (m) => {
@@ -124,16 +167,30 @@ export default function ChatWidget() {
 
   const confirmDelete = () => {
     if (!deleteTarget) return
-    dispatch(removeMessage({ id: deleteTarget, conversationId }))
+    dispatch(removeMessage({ id: deleteTarget, conversationId: activeId }))
     setDeleteTarget(null)
   }
 
   const confirmDeleteChat = async () => {
-    await dispatch(removeConversation(conversationId))
+    await dispatch(removeConversation(activeId))
     setDeleteChatConfirmOpen(false)
-    dispatch(setChatOpen(false))
+    goBackToList()
     dispatch(showToast({ type: 'success', text: t('chat.chatDeletedToast') }))
   }
+
+  // The general support thread (no barberId) is always offered even before
+  // its first message — synthesized here so it still shows up as a row.
+  const adminConversation = myConversations.find((c) => c.id === userId) || {
+    id: userId,
+    lastMessage: null,
+    lastMessageSender: null,
+    updatedAt: null,
+    unreadForClient: 0,
+  }
+  const barberConversations = myConversations
+    .filter((c) => c.barberId)
+    .sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0))
+  const conversationRows = [adminConversation, ...barberConversations]
 
   return (
     <>
@@ -160,12 +217,12 @@ export default function ChatWidget() {
                     >
                       <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gold-500/15 text-gold-400">
                         <FaCommentDots />
-                        {hasUnread && <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-ink-900" />}
+                        {totalUnread > 0 && <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-ink-900" />}
                       </span>
                       <span className="flex-1 text-sm font-medium text-white">{t('chat.viaSite')}</span>
-                      {hasUnread && (
+                      {totalUnread > 0 && (
                         <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
-                          {myConversation.unreadForClient > 9 ? '9+' : myConversation.unreadForClient}
+                          {totalUnread > 9 ? '9+' : totalUnread}
                         </span>
                       )}
                     </button>
@@ -230,54 +287,125 @@ export default function ChatWidget() {
               aria-label={t('chat.supportLabel')}
             >
               {menuOpen ? <FaTimes /> : <FaHeadset />}
-              {hasUnread && !menuOpen && (
+              {totalUnread > 0 && !menuOpen && (
                 <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white ring-2 ring-ink-950">
-                  {myConversation.unreadForClient > 9 ? '9+' : myConversation.unreadForClient}
+                  {totalUnread > 9 ? '9+' : totalUnread}
                 </span>
               )}
             </motion.button>
           </div>
         )}
 
-        <AnimatePresence>
-          {open && (
+        <AnimatePresence mode="wait">
+          {open && showList && (
+            <motion.div
+              key="chat-list"
+              initial={{ opacity: 0, y: 30, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 30, scale: 0.9 }}
+              transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+              className="flex h-[70vh] max-h-[560px] w-[92vw] max-w-sm flex-col overflow-hidden rounded-2xl border border-gold-500/30 bg-ink-900 shadow-2xl"
+            >
+              <div className="flex items-center justify-between bg-gradient-to-r from-ink-800 to-ink-900 px-4 py-3 border-b border-ink-800">
+                <p className="text-sm font-semibold text-white">{t('chat.conversationsTitle')}</p>
+                <button onClick={() => closeChat()} className="-m-2 rounded-lg p-2 text-ink-400 hover:bg-ink-800 hover:text-white">
+                  <FaTimes />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto">
+                {conversationRows.map((c) => {
+                  const rowBarber = c.barberId ? barbers.find((b) => b.id === c.barberId) : null
+                  const name = c.barberId
+                    ? (rowBarber ? `${rowBarber.ism} ${rowBarber.familiya}` : t('booking.barberLabel'))
+                    : t('chat.supportLabel')
+                  const preview = c.lastMessage
+                    ? `${c.lastMessageSender === 'client' ? `${t('chat.you')}: ` : ''}${c.lastMessage}`
+                    : t('chat.noMessagesYet')
+                  const unread = c.unreadForClient || 0
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => openConversation(c)}
+                      className="flex w-full items-center gap-3 border-b border-ink-800/60 px-4 py-3 text-left hover:bg-ink-800/60"
+                    >
+                      {rowBarber ? (
+                        <img
+                          src={getBarberImage(rowBarber.rasm)}
+                          alt=""
+                          className="h-11 w-11 shrink-0 rounded-full object-cover"
+                        />
+                      ) : (
+                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gold-500/15 text-gold-400">
+                          <FaHeadset />
+                        </span>
+                      )}
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-center justify-between gap-2">
+                          <span className="truncate text-sm font-semibold text-white">{name}</span>
+                          <span className="shrink-0 text-[11px] text-ink-500">{formatListTime(c.updatedAt, i18n.language)}</span>
+                        </span>
+                        <span className="mt-0.5 flex items-center justify-between gap-2">
+                          <span className="truncate text-xs text-ink-400">{preview}</span>
+                          {unread > 0 && (
+                            <span className="flex h-5 min-w-[20px] shrink-0 items-center justify-center rounded-full bg-gold-500 px-1 text-[10px] font-bold text-ink-950">
+                              {unread > 9 ? '9+' : unread}
+                            </span>
+                          )}
+                        </span>
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </motion.div>
+          )}
+
+          {open && !showList && (
             <motion.div
               key="chat-panel"
               initial={{ opacity: 0, y: 30, scale: 0.9 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 30, scale: 0.9 }}
               transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-              className="flex h-[70vh] max-h-[520px] w-[90vw] max-w-sm flex-col overflow-hidden rounded-2xl border border-gold-500/30 bg-ink-900 shadow-2xl"
+              className="flex h-[70vh] max-h-[560px] w-[92vw] max-w-sm flex-col overflow-hidden rounded-2xl border border-gold-500/30 bg-ink-900 shadow-2xl"
             >
-              <div className="flex items-center justify-between bg-gradient-to-r from-ink-800 to-ink-900 px-4 py-3 border-b border-ink-800">
-                <div className="flex items-center gap-2">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gold-500/15 text-gold-400">
+              <div className="flex items-center gap-2 bg-gradient-to-r from-ink-800 to-ink-900 px-3 py-3 border-b border-ink-800">
+                <button
+                  onClick={goBackToList}
+                  className="-m-2 shrink-0 rounded-lg p-2 text-ink-400 hover:bg-ink-800 hover:text-white"
+                  aria-label={t('chat.backAction')}
+                >
+                  <FaArrowLeft />
+                </button>
+                {activeBarber ? (
+                  <img src={getBarberImage(activeBarber.rasm)} alt="" className="h-9 w-9 shrink-0 rounded-full object-cover" />
+                ) : (
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gold-500/15 text-gold-400">
                     <FaHeadset />
                   </span>
-                  <div>
-                    <p className="text-sm font-semibold text-white">
-                      {barber ? `${barber.ism} ${barber.familiya}` : t('chat.supportLabel')}
-                    </p>
-                    <p className="text-[11px] text-emerald-400 flex items-center gap-1">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" /> {t('chat.online')}
-                    </p>
-                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-white">
+                    {activeBarberId ? (activeBarber ? `${activeBarber.ism} ${activeBarber.familiya}` : t('booking.barberLabel')) : t('chat.supportLabel')}
+                  </p>
+                  <p className="text-[11px] text-emerald-400 flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" /> {t('chat.online')}
+                  </p>
                 </div>
-                <div className="flex items-center gap-1">
-                  {messages.length > 0 && (
-                    <button
-                      onClick={() => setDeleteChatConfirmOpen(true)}
-                      className="-m-2 rounded-lg p-2 text-ink-400 hover:bg-red-500/10 hover:text-red-400"
-                      aria-label={t('chat.deleteChatAction')}
-                      title={t('chat.deleteChatAction')}
-                    >
-                      <FaTrash />
-                    </button>
-                  )}
-                  <button onClick={() => dispatch(setChatOpen(false))} className="-m-2 rounded-lg p-2 text-ink-400 hover:bg-ink-800 hover:text-white">
-                    <FaTimes />
+                {messages.length > 0 && (
+                  <button
+                    onClick={() => setDeleteChatConfirmOpen(true)}
+                    className="-m-2 shrink-0 rounded-lg p-2 text-ink-400 hover:bg-red-500/10 hover:text-red-400"
+                    aria-label={t('chat.deleteChatAction')}
+                    title={t('chat.deleteChatAction')}
+                  >
+                    <FaTrash />
                   </button>
-                </div>
+                )}
+                <button onClick={() => closeChat()} className="-m-2 shrink-0 rounded-lg p-2 text-ink-400 hover:bg-ink-800 hover:text-white">
+                  <FaTimes />
+                </button>
               </div>
 
               <div ref={listRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
