@@ -82,7 +82,7 @@ export default function Register() {
                 <span className="flex h-14 w-14 items-center justify-center rounded-full border border-gold-500/50 bg-gold-500/10 text-2xl text-gold-400">
                   <GiRazor />
                 </span>
-                <h1 className="mt-4 font-display text-2xl font-bold text-white">{t('register.title')}</h1>
+                <h1 className="mt-4 font-display text-2xl font-bold text-strong">{t('register.title')}</h1>
                 <p className="mt-1 text-sm text-ink-400">{t('register.subtitle')}</p>
               </div>
 

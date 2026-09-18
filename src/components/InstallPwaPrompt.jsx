@@ -60,7 +60,7 @@ export default function InstallPwaPrompt({ variant = 'banner' }) {
             <FaDownload />
           </span>
           <div>
-            <p className="text-sm font-semibold text-white">{t('pwaInstall.title')}</p>
+            <p className="text-sm font-semibold text-strong">{t('pwaInstall.title')}</p>
             <p className="mt-0.5 text-xs text-ink-400">{t('pwaInstall.subtitle')}</p>
           </div>
         </div>
@@ -70,7 +70,7 @@ export default function InstallPwaPrompt({ variant = 'banner' }) {
         {variant === 'banner' && (
           <button
             onClick={handleDismiss}
-            className="absolute right-3 top-3 text-ink-500 hover:text-white"
+            className="absolute right-3 top-3 text-ink-500 hover:text-strong"
             aria-label={t('common.close')}
           >
             <FaTimes />

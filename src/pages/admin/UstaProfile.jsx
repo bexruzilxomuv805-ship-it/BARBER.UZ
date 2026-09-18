@@ -93,7 +93,7 @@ export default function UstaProfile() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="font-display text-2xl font-bold text-white">{t('admin.ustaProfile.title')}</h1>
+        <h1 className="font-display text-2xl font-bold text-strong">{t('admin.ustaProfile.title')}</h1>
         <p className="text-sm text-ink-500 mt-1">{t('admin.ustaProfile.subtitle')}</p>
       </div>
 
@@ -102,7 +102,7 @@ export default function UstaProfile() {
           <div className="flex items-center gap-4">
             <img src={getBarberImage(draft.rasm)} alt="" className="h-20 w-20 shrink-0 rounded-xl object-cover border border-ink-800" />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-lg font-semibold text-white">{barber.ism} {barber.familiya}</p>
+              <p className="truncate text-lg font-semibold text-strong">{barber.ism} {barber.familiya}</p>
               <div className="mt-1"><RatingStars value={barber.reyting} /></div>
               {shop && (
                 <p className="mt-1 flex items-center gap-1.5 truncate text-xs text-ink-500">

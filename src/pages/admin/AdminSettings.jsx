@@ -25,7 +25,7 @@ export default function AdminSettings() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="font-display text-2xl font-bold text-white">{t('admin.settings.title')}</h1>
+        <h1 className="font-display text-2xl font-bold text-strong">{t('admin.settings.title')}</h1>
         <p className="text-sm text-ink-500 mt-1">{t('admin.settings.subtitle')}</p>
       </div>
 

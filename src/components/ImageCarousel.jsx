@@ -51,7 +51,7 @@ export default function ImageCarousel({ images, alt }) {
               onClick={goPrev}
               disabled={index === 0}
               aria-label="Oldingi rasm"
-              className="absolute left-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-ink-950/70 text-white backdrop-blur-sm transition-opacity hover:bg-ink-950/90 disabled:opacity-0"
+              className="absolute left-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-sm transition-opacity hover:bg-black/80 disabled:opacity-0"
             >
               <FaChevronLeft className="text-sm" />
             </button>
@@ -60,11 +60,11 @@ export default function ImageCarousel({ images, alt }) {
               onClick={goNext}
               disabled={index === images.length - 1}
               aria-label="Keyingi rasm"
-              className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-ink-950/70 text-white backdrop-blur-sm transition-opacity hover:bg-ink-950/90 disabled:opacity-0"
+              className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-sm transition-opacity hover:bg-black/80 disabled:opacity-0"
             >
               <FaChevronRight className="text-sm" />
             </button>
-            <span className="absolute bottom-2 right-2 rounded-full bg-ink-950/70 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur-sm">
+            <span className="absolute bottom-2 right-2 rounded-full bg-black/60 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur-sm">
               {index + 1}/{images.length}
             </span>
           </>

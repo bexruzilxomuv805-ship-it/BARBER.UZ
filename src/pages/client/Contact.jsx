@@ -70,28 +70,28 @@ export default function Contact() {
             <div className="flex items-start gap-3">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gold-500/10 text-gold-400"><FaMapMarkerAlt /></span>
               <div>
-                <p className="text-sm font-semibold text-white">{t('contact.addressLabel')}</p>
+                <p className="text-sm font-semibold text-strong">{t('contact.addressLabel')}</p>
                 <AutoText as="p" className="text-sm text-ink-400" text={contact.manzil} />
               </div>
             </div>
             <div className="flex items-start gap-3">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gold-500/10 text-gold-400"><FaPhoneAlt /></span>
               <div>
-                <p className="text-sm font-semibold text-white">{t('contact.phoneLabel')}</p>
+                <p className="text-sm font-semibold text-strong">{t('contact.phoneLabel')}</p>
                 <p className="text-sm text-ink-400">{contact.telefon}</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gold-500/10 text-gold-400"><FaEnvelope /></span>
               <div>
-                <p className="text-sm font-semibold text-white">{t('contact.emailLabel')}</p>
+                <p className="text-sm font-semibold text-strong">{t('contact.emailLabel')}</p>
                 <p className="text-sm text-ink-400">{contact.email}</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gold-500/10 text-gold-400"><FaClock /></span>
               <div>
-                <p className="text-sm font-semibold text-white">{t('contact.hoursLabel')}</p>
+                <p className="text-sm font-semibold text-strong">{t('contact.hoursLabel')}</p>
                 <AutoText as="p" className="text-sm text-ink-400" text={contact.ishVaqti} />
               </div>
             </div>
@@ -122,7 +122,7 @@ export default function Contact() {
 
         <Reveal delay={0.1}>
           <div className="card p-6">
-            <h3 className="font-display text-lg font-semibold text-white">{t('contact.formTitle')}</h3>
+            <h3 className="font-display text-lg font-semibold text-strong">{t('contact.formTitle')}</h3>
             {sent ? (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}

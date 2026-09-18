@@ -80,7 +80,7 @@ export default function AdminInventory() {
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl font-bold text-white">{t('admin.inventory.title')}</h1>
+          <h1 className="font-display text-2xl font-bold text-strong">{t('admin.inventory.title')}</h1>
           <p className="text-sm text-ink-500 mt-1">
             {t('admin.inventory.subtitle', { count: items.length })}
             {lowStock > 0 && <span className="text-amber-400"> • {t('admin.inventory.lowStockSuffix', { count: lowStock })}</span>}
@@ -111,7 +111,7 @@ export default function AdminInventory() {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-gold-500/10 text-gold-400"><FaBoxes /></span>
-                      <AutoText as="p" className="font-medium text-white" text={i.nomi} />
+                      <AutoText as="p" className="font-medium text-strong" text={i.nomi} />
                     </div>
                   </td>
                   <td className="px-4 py-3 text-ink-300">{i.miqdor} <AutoText text={i.birlik} /></td>

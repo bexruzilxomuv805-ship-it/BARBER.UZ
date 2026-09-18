@@ -160,7 +160,7 @@ export default function Sartaroshxonalar() {
                   </div>
                   <div className="p-4">
                     <div className="flex items-center justify-between gap-2">
-                      <h3 className="font-semibold text-white">{s.nomi}</h3>
+                      <h3 className="font-semibold text-strong">{s.nomi}</h3>
                       <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${TIER_BADGE[s.tur] || TIER_BADGE.oddiy}`}>
                         {t(`shops.tier.${s.tur || 'oddiy'}`)}
                       </span>

@@ -84,7 +84,7 @@ export default function Profile() {
                 <div className="flex items-center gap-3">
                   <FaUserCircle className="text-5xl text-gold-400" />
                   <div>
-                    <p className="font-semibold text-white">{user?.ism} {user?.familiya}</p>
+                    <p className="font-semibold text-strong">{user?.ism} {user?.familiya}</p>
                     <p className="text-xs text-ink-500">
                       {user?.role === 'admin'
                         ? t('profile.roleAdmin')
@@ -132,7 +132,7 @@ export default function Profile() {
 
           <div className="card p-6 grid grid-cols-3 gap-3 text-center">
             <div>
-              <p className="font-display text-xl font-bold text-white">{stats.total}</p>
+              <p className="font-display text-xl font-bold text-strong">{stats.total}</p>
               <p className="text-[11px] text-ink-500 mt-1">{t('profile.statTotal')}</p>
             </div>
             <div>
@@ -149,7 +149,7 @@ export default function Profile() {
         </div>
 
         <div className="lg:col-span-2">
-          <h3 className="mb-4 flex items-center gap-2 font-display text-lg font-semibold text-white">
+          <h3 className="mb-4 flex items-center gap-2 font-display text-lg font-semibold text-strong">
             <FaCalendarCheck className="text-gold-400" /> {t('profile.myAppointments')}
           </h3>
           {status === 'loading' ? (
@@ -161,7 +161,7 @@ export default function Profile() {
               {myAppointments.map((a) => (
                 <div key={a.id} className="card flex flex-wrap items-center justify-between gap-3 p-4">
                   <div>
-                    <p className="font-medium text-white text-sm">{a.xizmatNomi}</p>
+                    <p className="font-medium text-strong text-sm">{a.xizmatNomi}</p>
                     <p className="text-xs text-ink-500 mt-1">
                       {a.barberIsmi} • {a.sana} • {a.vaqt}
                     </p>

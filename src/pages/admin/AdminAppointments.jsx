@@ -107,7 +107,7 @@ export default function AdminAppointments() {
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl font-bold text-white">{t('admin.appointments.title')}</h1>
+          <h1 className="font-display text-2xl font-bold text-strong">{t('admin.appointments.title')}</h1>
           <p className="text-sm text-ink-500 mt-1">{t('admin.appointments.subtitle', { count: appointments.length })}</p>
         </div>
       </div>
@@ -154,7 +154,7 @@ export default function AdminAppointments() {
               {filtered.map((a) => (
                 <tr key={a.id} className="border-b border-ink-800/60 hover:bg-ink-800/30">
                   <td className="px-4 py-3">
-                    <p className="font-medium text-white">{a.mijozIsmi}</p>
+                    <p className="font-medium text-strong">{a.mijozIsmi}</p>
                     <p className="text-xs text-ink-500">{a.mijozTelefon}</p>
                   </td>
                   <td className="px-4 py-3 text-ink-300"><AutoText text={a.xizmatNomi} /></td>

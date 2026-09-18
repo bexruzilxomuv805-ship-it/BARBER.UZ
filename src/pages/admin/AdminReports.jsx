@@ -15,10 +15,12 @@ import { fetchServices } from '../../features/services/servicesSlice'
 import { fetchBarbers } from '../../features/barbers/barbersSlice'
 import { formatSum } from '../../utils/format'
 import { toLocalDateIso } from '../../utils/schedule'
+import { useChartTheme } from '../../hooks/useTheme'
 
 const COLORS = ['#c9a227', '#38bdf8', '#34d399', '#f87171', '#a78bfa', '#fb923c', '#f472b6', '#22d3ee']
 
 export default function AdminReports() {
+  const chart = useChartTheme()
   const { t } = useTranslation()
   const dispatch = useDispatch()
   const { items: appointments, status } = useSelector((s) => s.appointments)
@@ -101,7 +103,7 @@ export default function AdminReports() {
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl font-bold text-white">{t('admin.reports.title')}</h1>
+          <h1 className="font-display text-2xl font-bold text-strong">{t('admin.reports.title')}</h1>
           <p className="text-sm text-ink-500 mt-1">{t('admin.reports.subtitle')}</p>
         </div>
         <div className="flex items-center gap-2">
@@ -111,7 +113,7 @@ export default function AdminReports() {
                 key={r.label}
                 onClick={() => setRange(r.days)}
                 className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                  range === r.days ? 'bg-gold-500 text-ink-950' : 'text-ink-400 hover:text-white'
+                  range === r.days ? 'bg-gold-500 text-on-gold' : 'text-ink-400 hover:text-strong'
                 }`}
               >
                 {r.label}
@@ -131,17 +133,17 @@ export default function AdminReports() {
         </div>
         <div className="card p-5">
           <p className="text-xs text-ink-500">{t('admin.reports.appointmentsCount')}</p>
-          <p className="font-display text-2xl font-bold text-white mt-1">{scopedAppointments.length}</p>
+          <p className="font-display text-2xl font-bold text-strong mt-1">{scopedAppointments.length}</p>
         </div>
         <div className="card p-5">
           <p className="text-xs text-ink-500">{t('admin.reports.avgTicket')}</p>
-          <p className="font-display text-2xl font-bold text-white mt-1">{formatSum(avgTicket)}</p>
+          <p className="font-display text-2xl font-bold text-strong mt-1">{formatSum(avgTicket)}</p>
         </div>
       </div>
 
       <div className="grid gap-5 lg:grid-cols-2">
         <div className="card p-5">
-          <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-white">
+          <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-strong">
             <FaChartPie className="text-gold-400" /> {t('admin.reports.servicesBreakdownTitle')}
           </h3>
           <ResponsiveContainer width="100%" height={280}>
@@ -151,21 +153,21 @@ export default function AdminReports() {
                   <Cell key={entry.name} fill={COLORS[i % COLORS.length]} stroke="none" />
                 ))}
               </Pie>
-              <Tooltip contentStyle={{ background: '#181818', border: '1px solid #2b2b2b', borderRadius: 10, fontSize: 12 }} />
+              <Tooltip contentStyle={chart.tooltip} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
             </PieChart>
           </ResponsiveContainer>
         </div>
 
         <div className="card p-5">
-          <h3 className="mb-4 text-sm font-semibold text-white">{t('admin.reports.barbersLoadTitle')}</h3>
+          <h3 className="mb-4 text-sm font-semibold text-strong">{t('admin.reports.barbersLoadTitle')}</h3>
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={barberLoad} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" stroke="#2b2b2b" horizontal={false} />
-              <XAxis type="number" stroke="#6d6d6d" fontSize={11} tickLine={false} axisLine={false} />
-              <YAxis type="category" dataKey="name" stroke="#6d6d6d" fontSize={11} tickLine={false} axisLine={false} width={70} />
+              <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} horizontal={false} />
+              <XAxis type="number" stroke={chart.axis} fontSize={11} tickLine={false} axisLine={false} />
+              <YAxis type="category" dataKey="name" stroke={chart.axis} fontSize={11} tickLine={false} axisLine={false} width={70} />
               <Tooltip
-                contentStyle={{ background: '#181818', border: '1px solid #2b2b2b', borderRadius: 10, fontSize: 12 }}
+                contentStyle={chart.tooltip}
                 formatter={(value) => [value, t('admin.reports.appointmentsCount')]}
               />
               <Bar dataKey="count" fill="#c9a227" radius={[0, 6, 6, 0]} />
@@ -189,7 +191,7 @@ export default function AdminReports() {
               const count = scopedAppointments.filter((a) => a.barberId === b.id).length
               return (
                 <tr key={b.id} className="border-b border-ink-800/60 hover:bg-ink-800/30">
-                  <td className="px-4 py-3 font-medium text-white">{b.ism} {b.familiya}</td>
+                  <td className="px-4 py-3 font-medium text-strong">{b.ism} {b.familiya}</td>
                   <td className="px-4 py-3 text-ink-300"><AutoText text={b.mutaxassislik} /></td>
                   <td className="px-4 py-3 text-gold-400">{b.reyting} ★</td>
                   <td className="px-4 py-3 text-ink-300">{count}</td>

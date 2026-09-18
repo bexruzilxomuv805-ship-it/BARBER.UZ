@@ -216,7 +216,7 @@ export default function AdminCustomers() {
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl font-bold text-white">
+          <h1 className="font-display text-2xl font-bold text-strong">
             {view === 'active' ? t('admin.customers.title') : t('admin.customers.deletedTitle')}
           </h1>
           <p className="text-sm text-ink-500 mt-1">
@@ -246,7 +246,7 @@ export default function AdminCustomers() {
           <button
             onClick={() => setView('active')}
             className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
-              view === 'active' ? 'bg-gold-500/10 text-gold-400' : 'text-ink-400 hover:text-white'
+              view === 'active' ? 'bg-gold-500/10 text-gold-400' : 'text-ink-400 hover:text-strong'
             }`}
           >
             {t('admin.customers.title')}
@@ -254,7 +254,7 @@ export default function AdminCustomers() {
           <button
             onClick={() => setView('deleted')}
             className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
-              view === 'deleted' ? 'bg-gold-500/10 text-gold-400' : 'text-ink-400 hover:text-white'
+              view === 'deleted' ? 'bg-gold-500/10 text-gold-400' : 'text-ink-400 hover:text-strong'
             }`}
           >
             {t('admin.customers.deletedTab', { count: deletedUsers.length })}
@@ -273,7 +273,7 @@ export default function AdminCustomers() {
             key={r.key}
             onClick={() => setRoleFilter(r.key)}
             className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
-              roleFilter === r.key ? 'bg-gold-500/10 text-gold-400' : 'text-ink-400 hover:text-white'
+              roleFilter === r.key ? 'bg-gold-500/10 text-gold-400' : 'text-ink-400 hover:text-strong'
             }`}
           >
             {r.label}
@@ -307,7 +307,7 @@ export default function AdminCustomers() {
                       <div className="flex items-center gap-3">
                         <FaUserCircle className="text-2xl text-ink-600" />
                         <div>
-                          <p className="font-medium text-white">{c.ism} {c.familiya}</p>
+                          <p className="font-medium text-strong">{c.ism} {c.familiya}</p>
                           {c.email && <p className="text-xs text-ink-500">{c.email}</p>}
                           {c.telegramUsername && (
                             <a

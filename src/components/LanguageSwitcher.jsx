@@ -37,7 +37,7 @@ export default function LanguageSwitcher({ className = '' }) {
                 key={lang.code}
                 onMouseDown={() => handleSelect(lang.code)}
                 className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm ${
-                  lang.code === current.code ? 'text-gold-400' : 'text-ink-200 hover:bg-ink-800 hover:text-white'
+                  lang.code === current.code ? 'text-gold-400' : 'text-ink-200 hover:bg-ink-800 hover:text-strong'
                 }`}
               >
                 {lang.label}

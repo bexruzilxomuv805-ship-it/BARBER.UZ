@@ -144,7 +144,7 @@ export default function AdminBarbers() {
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl font-bold text-white">{t('admin.barbers.title')}</h1>
+          <h1 className="font-display text-2xl font-bold text-strong">{t('admin.barbers.title')}</h1>
           <p className="text-sm text-ink-500 mt-1">{t('admin.barbers.subtitle', { count: barbers.length })}</p>
         </div>
         <button onClick={openCreate} className="btn-gold !py-2 text-sm">
@@ -162,7 +162,7 @@ export default function AdminBarbers() {
                 <img src={getBarberImage(b.rasm)} alt={b.ism} className="h-full w-full object-cover" />
               </div>
               <div className="flex flex-1 flex-col p-3">
-                <p className="truncate text-sm font-semibold text-white">{b.ism} {b.familiya}</p>
+                <p className="truncate text-sm font-semibold text-strong">{b.ism} {b.familiya}</p>
                 <AutoText as="p" className="truncate text-xs text-gold-400" text={b.mutaxassislik} />
                 <div className="mt-1"><RatingStars value={b.reyting} /></div>
                 <p className="mt-1 flex items-center gap-1 truncate text-xs text-ink-500"><FaPhoneAlt className="shrink-0" /> {b.telefon}</p>

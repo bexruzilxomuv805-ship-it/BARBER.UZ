@@ -178,7 +178,7 @@ export default function Home() {
             <span className="inline-flex items-center gap-2 rounded-full border border-gold-500/40 bg-gold-500/10 px-4 py-1.5 text-xs font-medium text-gold-300">
               <GiRazor /> {t('home.badge')}
             </span>
-            <h1 className="mt-6 text-4xl sm:text-5xl lg:text-6xl font-display font-bold leading-[1.1] text-white">
+            <h1 className="mt-6 text-4xl sm:text-5xl lg:text-6xl font-display font-bold leading-[1.1] text-strong">
               {t('home.heroTitlePre')} <span className="gold-text">{t('home.heroTitleHighlight')}</span> {t('home.heroTitlePost')}
             </h1>
             <p className="mt-6 max-w-lg text-ink-400 leading-relaxed">
@@ -195,19 +195,19 @@ export default function Home() {
 
             <div className="mt-12 grid grid-cols-3 gap-6 max-w-md">
               <div>
-                <p className="font-display text-3xl font-bold text-white">
+                <p className="font-display text-3xl font-bold text-strong">
                   <AnimatedCounter to={yearsExperience} />+
                 </p>
                 <p className="text-xs text-ink-500 mt-1">{t('home.statExperience')}</p>
               </div>
               <div>
-                <p className="font-display text-3xl font-bold text-white">
+                <p className="font-display text-3xl font-bold text-strong">
                   <AnimatedCounter to={happyClientsCount} />+
                 </p>
                 <p className="text-xs text-ink-500 mt-1">{t('home.statClients')}</p>
               </div>
               <div>
-                <p className="font-display text-3xl font-bold text-white flex items-center gap-1">
+                <p className="font-display text-3xl font-bold text-strong flex items-center gap-1">
                   {avgRating} <FaStar className="text-gold-400 text-xl" />
                 </p>
                 <p className="text-xs text-ink-500 mt-1">{t('home.statRating')}</p>
@@ -265,7 +265,7 @@ export default function Home() {
                   <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-gold-500/10 text-gold-400 text-xl">
                     <f.icon />
                   </span>
-                  <h3 className="mt-4 font-semibold text-white">{f.title}</h3>
+                  <h3 className="mt-4 font-semibold text-strong">{f.title}</h3>
                   <p className="mt-2 text-sm text-ink-400 leading-relaxed">{f.text}</p>
                 </div>
               </Reveal>
@@ -306,11 +306,11 @@ export default function Home() {
                         <FaClock /> {t('home.minutesShort', { count: s.davomiyligi })}
                       </span>
                     </div>
-                    <AutoText as="h3" className="mt-4 font-semibold text-white" text={s.nomi} />
+                    <AutoText as="h3" className="mt-4 font-semibold text-strong" text={s.nomi} />
                     <AutoText as="p" className="mt-1.5 text-sm text-ink-400 line-clamp-2" text={s.tavsif} />
                     <div className="mt-4 flex items-center justify-between">
                       <span className="font-display text-lg font-bold text-gold-400">{formatSum(s.narxi)}</span>
-                      <Link to="/navbat-olish" className="text-xs font-semibold text-white hover:text-gold-400">
+                      <Link to="/navbat-olish" className="text-xs font-semibold text-strong hover:text-gold-400">
                         {t('home.bookAction')}
                       </Link>
                     </div>
@@ -349,7 +349,7 @@ export default function Home() {
                       {/* Hidden until hover/tap — reveals price + a CTA over a
                           dark gradient instead of permanently occupying card
                           space, so the plain card stays clean at rest. */}
-                      <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-ink-950 via-ink-950/40 to-transparent p-4 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                      <div className="keep-dark absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black via-black/40 to-transparent p-4 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
                         <span className="translate-y-2 text-sm font-semibold text-gold-400 transition-transform duration-300 group-hover:translate-y-0">
                           {t('barbers.startingFrom', { price: formatSum(b.narxBoshlanishi) })}
                         </span>
@@ -359,7 +359,7 @@ export default function Home() {
                       </div>
                     </div>
                     <div className="p-4">
-                      <h3 className="font-semibold text-white">{b.ism} {b.familiya}</h3>
+                      <h3 className="font-semibold text-strong">{b.ism} {b.familiya}</h3>
                       <AutoText as="p" className="text-xs text-gold-400 mt-0.5" text={b.mutaxassislik} />
                       <div className="mt-2 flex items-center justify-between">
                         <RatingStars value={b.reyting} />
@@ -399,7 +399,7 @@ export default function Home() {
                     <p className="mt-4 text-sm text-ink-300 leading-relaxed">
                       “<AutoText text={r.matn} />”
                     </p>
-                    <p className="mt-4 text-sm font-semibold text-white">{r.mijozIsmi}</p>
+                    <p className="mt-4 text-sm font-semibold text-strong">{r.mijozIsmi}</p>
                   </div>
                 </Reveal>
               ))}

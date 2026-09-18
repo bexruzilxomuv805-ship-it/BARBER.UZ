@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { FaBars, FaTimes, FaUserCircle, FaSignOutAlt, FaCalendarCheck, FaCog } from 'react-icons/fa'
 import Logo from './Logo'
 import LanguageSwitcher from './LanguageSwitcher'
+import ThemeToggle from './ThemeToggle'
 import Modal from './admin/Modal'
 import useAuth from '../hooks/useAuth'
 import useAdminNotifications from '../hooks/useAdminNotifications'
@@ -74,7 +75,7 @@ export default function Navbar() {
               end={link.to === '/'}
               className={({ isActive }) =>
                 `relative text-sm font-medium tracking-wide transition-colors ${
-                  isActive ? 'text-gold-400' : 'text-ink-200 hover:text-white'
+                  isActive ? 'text-gold-400' : 'text-ink-200 hover:text-strong'
                 }`
               }
             >
@@ -84,6 +85,7 @@ export default function Navbar() {
         </div>
 
         <div className="hidden lg:flex items-center gap-3">
+          <ThemeToggle />
           <LanguageSwitcher />
           {isAuthenticated ? (
             <div className="relative">
@@ -156,6 +158,7 @@ export default function Navbar() {
         </div>
 
         <div className="flex items-center gap-2 lg:hidden">
+          <ThemeToggle />
           <LanguageSwitcher />
           <button
             className="relative text-2xl text-gold-400"

@@ -103,13 +103,13 @@ function ConversationRow({ conversation, active, onClick, lang, t }) {
       <Avatar id={conversation.id} name={conversation.userName} />
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline justify-between gap-2">
-          <p className="truncate text-sm font-medium text-white">{conversation.userName}</p>
+          <p className="truncate text-sm font-medium text-strong">{conversation.userName}</p>
           <span className="shrink-0 text-[11px] text-ink-500">{formatListTime(conversation.updatedAt, lang, t)}</span>
         </div>
         <p className="truncate text-xs text-ink-500">{conversation.lastMessage}</p>
       </div>
       {conversation.unreadForAdmin > 0 && (
-        <span className="flex h-5 min-w-[20px] shrink-0 items-center justify-center rounded-full bg-gold-500 px-1 text-[10px] font-bold text-ink-950">
+        <span className="flex h-5 min-w-[20px] shrink-0 items-center justify-center rounded-full bg-gold-500 px-1 text-[10px] font-bold text-on-gold">
           {conversation.unreadForAdmin > 9 ? '9+' : conversation.unreadForAdmin}
         </span>
       )}
@@ -160,14 +160,14 @@ function ChatConversationPanel({
         {onBack && (
           <button
             onClick={onBack}
-            className="-ml-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink-300 hover:bg-ink-800 hover:text-white"
+            className="-ml-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink-300 hover:bg-ink-800 hover:text-strong"
             aria-label={t('common.back')}
           >
             <FaArrowLeft />
           </button>
         )}
         <Avatar id={conversation?.id} name={conversation?.userName} />
-        <p className="min-w-0 flex-1 truncate text-sm font-medium text-white">{conversation?.userName}</p>
+        <p className="min-w-0 flex-1 truncate text-sm font-medium text-strong">{conversation?.userName}</p>
         <button
           onClick={onDeleteChat}
           className="-mr-1 shrink-0 rounded-full p-2.5 text-ink-400 hover:bg-red-500/10 hover:text-red-400"
@@ -201,7 +201,7 @@ function ChatConversationPanel({
                 <div className={`mb-2.5 flex flex-col ${isOwn ? 'items-end' : 'items-start'}`}>
                   <div
                     className={`max-w-[82%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed shadow-sm sm:max-w-[75%] ${
-                      isOwn ? 'rounded-br-md bg-gold-500 text-ink-950' : 'rounded-bl-md bg-ink-800 text-ink-100'
+                      isOwn ? 'rounded-br-md bg-gold-500 text-on-gold' : 'rounded-bl-md bg-ink-800 text-ink-100'
                     }`}
                   >
                     {isEditing ? (
@@ -215,20 +215,20 @@ function ChatConversationPanel({
                             if (e.key === 'Escape') cancelEdit()
                           }}
                           placeholder={t('admin.chat.editPlaceholder')}
-                          className="min-w-0 flex-1 rounded-lg border border-ink-950/20 bg-white/25 px-2 py-1 text-sm text-ink-950 placeholder:text-ink-950/50 focus:outline-none"
+                          className="min-w-0 flex-1 rounded-lg border border-on-gold/20 bg-white/25 px-2 py-1 text-sm text-on-gold placeholder:text-on-gold/50 focus:outline-none"
                         />
                         <button
                           type="button"
                           onClick={() => saveEdit(m.id)}
                           disabled={!editText.trim()}
-                          className="-m-1.5 shrink-0 rounded-md p-1.5 text-ink-950/70 hover:bg-white/15 hover:text-ink-950 disabled:opacity-30"
+                          className="-m-1.5 shrink-0 rounded-md p-1.5 text-on-gold/70 hover:bg-white/15 hover:text-on-gold disabled:opacity-30"
                         >
                           <FaCheck className="text-xs" />
                         </button>
                         <button
                           type="button"
                           onClick={cancelEdit}
-                          className="-m-1.5 shrink-0 rounded-md p-1.5 text-ink-950/70 hover:bg-white/15 hover:text-ink-950"
+                          className="-m-1.5 shrink-0 rounded-md p-1.5 text-on-gold/70 hover:bg-white/15 hover:text-on-gold"
                         >
                           <FaTimes className="text-xs" />
                         </button>
@@ -284,7 +284,7 @@ function ChatConversationPanel({
         <button
           type="submit"
           disabled={!text.trim()}
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gold-500 text-ink-950 shadow-gold transition-opacity disabled:opacity-40 disabled:shadow-none"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gold-500 text-on-gold shadow-gold transition-opacity disabled:opacity-40 disabled:shadow-none"
         >
           <FaPaperPlane className="text-sm" />
         </button>
@@ -435,7 +435,7 @@ export default function AdminChat() {
   return (
     <div>
       <div className="mb-6 hidden md:block">
-        <h1 className="font-display text-2xl font-bold text-white">{t('admin.chat.title')}</h1>
+        <h1 className="font-display text-2xl font-bold text-strong">{t('admin.chat.title')}</h1>
         <p className="text-sm text-ink-500 mt-1">{t('admin.chat.subtitle')}</p>
       </div>
 

@@ -5,19 +5,23 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Driven by CSS variables (src/index.css) so the whole ink scale flips
+        // between dark and light theme without touching any component classes.
         ink: {
-          50: '#f6f6f6',
-          100: '#e7e7e7',
-          200: '#d1d1d1',
-          300: '#b0b0b0',
-          400: '#888888',
-          500: '#6d6d6d',
-          600: '#5d5d5d',
-          700: '#4f4f4f',
-          800: '#2b2b2b',
-          900: '#181818',
-          950: '#0a0a0a',
+          50: 'rgb(var(--ink-50) / <alpha-value>)',
+          100: 'rgb(var(--ink-100) / <alpha-value>)',
+          200: 'rgb(var(--ink-200) / <alpha-value>)',
+          300: 'rgb(var(--ink-300) / <alpha-value>)',
+          400: 'rgb(var(--ink-400) / <alpha-value>)',
+          500: 'rgb(var(--ink-500) / <alpha-value>)',
+          600: 'rgb(var(--ink-600) / <alpha-value>)',
+          700: 'rgb(var(--ink-700) / <alpha-value>)',
+          800: 'rgb(var(--ink-800) / <alpha-value>)',
+          900: 'rgb(var(--ink-900) / <alpha-value>)',
+          950: 'rgb(var(--ink-950) / <alpha-value>)',
         },
+        strong: 'rgb(var(--strong) / <alpha-value>)',
+        'on-gold': 'rgb(10 10 10 / <alpha-value>)',
         gold: {
           50: '#fbf7e9',
           100: '#f5ecc6',

@@ -116,7 +116,7 @@ export default function SartaroshxonaDetail() {
                     />
                   </div>
                   <div className="p-4 flex flex-col flex-1">
-                    <h3 className="font-semibold text-white text-sm">{b.ism} {b.familiya}</h3>
+                    <h3 className="font-semibold text-strong text-sm">{b.ism} {b.familiya}</h3>
                     <AutoText as="p" className="text-xs text-gold-400 mt-0.5" text={b.mutaxassislik} />
                     <div className="mt-2 flex items-center justify-between">
                       <RatingStars value={b.reyting} />

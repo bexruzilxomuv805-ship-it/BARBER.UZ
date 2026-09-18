@@ -44,7 +44,7 @@ export default function Footer() {
         </div>
 
         <div>
-          <h4 className="text-white font-semibold mb-4">{t('footer.pagesTitle')}</h4>
+          <h4 className="text-strong font-semibold mb-4">{t('footer.pagesTitle')}</h4>
           <ul className="space-y-2 text-sm text-ink-400">
             <li><Link to="/" className="hover:text-gold-400 transition-colors">{t('nav.home')}</Link></li>
             <li><Link to="/sartaroshxonalar" className="hover:text-gold-400 transition-colors">{t('nav.shops')}</Link></li>
@@ -53,7 +53,7 @@ export default function Footer() {
         </div>
 
         <div>
-          <h4 className="text-white font-semibold mb-4">{t('footer.accountTitle')}</h4>
+          <h4 className="text-strong font-semibold mb-4">{t('footer.accountTitle')}</h4>
           <ul className="space-y-2 text-sm text-ink-400">
             {isAuthenticated ? (
               <li><Link to="/profil" className="hover:text-gold-400 transition-colors">{t('nav.myAppointments')}</Link></li>
@@ -67,7 +67,7 @@ export default function Footer() {
         </div>
 
         <div>
-          <h4 className="text-white font-semibold mb-4">{t('footer.contactTitle')}</h4>
+          <h4 className="text-strong font-semibold mb-4">{t('footer.contactTitle')}</h4>
           <ul className="space-y-3 text-sm text-ink-400">
             <li className="flex items-start gap-2">
               <FaMapMarkerAlt className="mt-0.5 text-gold-400 shrink-0" />

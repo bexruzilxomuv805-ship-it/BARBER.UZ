@@ -31,6 +31,10 @@
     "logoutConfirmTitle": "Tizimdan chiqish",
     "logoutConfirmText": "Rostan ham tizimdan chiqmoqchimisiz?"
   },
+  "theme": {
+    "toLight": "Yorug‘ rejimga o‘tish",
+    "toDark": "Qorong‘i rejimga o‘tish"
+  },
   "footer": {
     "tagline": "Premium sartaroshxona — zamonaviy va klassik uslublar, tajribali ustalar, qulay onlayn navbat tizimi.",
     "pagesTitle": "Sahifalar",

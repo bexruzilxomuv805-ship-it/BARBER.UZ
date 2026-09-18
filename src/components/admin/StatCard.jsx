@@ -29,7 +29,7 @@ export default function StatCard({ icon: Icon, label, value, trend, trendUp = tr
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-xs text-ink-500">{label}</p>
-          <p className="font-display text-xl font-bold text-white truncate">{value}</p>
+          <p className="font-display text-xl font-bold text-strong truncate">{value}</p>
           {trend && (
             <p className={`text-xs mt-0.5 ${trendUp ? 'text-emerald-400' : 'text-red-400'}`}>
               {trendUp ? '▲' : '▼'} {trend}

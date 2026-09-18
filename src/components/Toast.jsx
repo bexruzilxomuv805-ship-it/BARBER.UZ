@@ -32,7 +32,7 @@ export default function Toast() {
               <FaCheckCircle className="text-gold-400 mt-0.5 shrink-0" />
             )}
             <p className="text-sm text-ink-100 flex-1">{toast.text}</p>
-            <button onClick={() => dispatch(clearToast())} className="text-ink-500 hover:text-white">
+            <button onClick={() => dispatch(clearToast())} className="text-ink-500 hover:text-strong">
               <FaTimes />
             </button>
           </motion.div>

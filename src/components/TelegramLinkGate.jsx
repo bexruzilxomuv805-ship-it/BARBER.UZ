@@ -90,7 +90,7 @@ export default function TelegramLinkGate({ userId, onLinked }) {
         <FaTelegramPlane />
       </span>
       <div>
-        <h2 className="font-display text-xl font-bold text-white">{t('telegramLink.title')}</h2>
+        <h2 className="font-display text-xl font-bold text-strong">{t('telegramLink.title')}</h2>
         <p className="mt-1 text-sm text-ink-400">{t('telegramLink.subtitle')}</p>
       </div>
 

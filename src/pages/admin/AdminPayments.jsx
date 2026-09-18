@@ -13,6 +13,7 @@ import usePolling from '../../hooks/usePolling'
 import useDebouncedValue from '../../hooks/useDebouncedValue'
 import { formatSum, PAYMENT_METHOD_LABELS, PAYMENT_STATUS_LABELS } from '../../utils/format'
 import { toLocalDateIso } from '../../utils/schedule'
+import { useChartTheme } from '../../hooks/useTheme'
 
 const POLL_MS = 8000
 
@@ -23,6 +24,7 @@ function daysAgoIso(count) {
 }
 
 export default function AdminPayments() {
+  const chart = useChartTheme()
   const { t } = useTranslation()
   const dispatch = useDispatch()
   const { isUsta, user } = useAuth()
@@ -108,7 +110,7 @@ export default function AdminPayments() {
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl font-bold text-white">{t('admin.payments.title')}</h1>
+          <h1 className="font-display text-2xl font-bold text-strong">{t('admin.payments.title')}</h1>
           <p className="text-sm text-ink-500 mt-1">{t('admin.payments.totalLabel')} <span className="text-gold-400 font-semibold">{formatSum(total)}</span></p>
         </div>
       </div>
@@ -122,24 +124,24 @@ export default function AdminPayments() {
             </div>
             <div className="card p-5">
               <p className="text-xs text-ink-500">{t('admin.payments.weekTotal')}</p>
-              <p className="font-display text-2xl font-bold text-white mt-1">{formatSum(weekTotal)}</p>
+              <p className="font-display text-2xl font-bold text-strong mt-1">{formatSum(weekTotal)}</p>
             </div>
             <div className="card p-5">
               <p className="text-xs text-ink-500">{t('admin.payments.monthTotal')}</p>
-              <p className="font-display text-2xl font-bold text-white mt-1">{formatSum(monthTotal)}</p>
+              <p className="font-display text-2xl font-bold text-strong mt-1">{formatSum(monthTotal)}</p>
             </div>
           </div>
           <div className="card mt-4 p-5">
-            <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-white">
+            <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-strong">
               <FaChartLine className="text-gold-400" /> {t('admin.payments.dailyChartTitle')}
             </h3>
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={dailyChartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#2b2b2b" vertical={false} />
-                <XAxis dataKey="label" stroke="#6d6d6d" fontSize={11} tickLine={false} axisLine={false} />
-                <YAxis stroke="#6d6d6d" fontSize={11} tickLine={false} axisLine={false} width={50} />
+                <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} vertical={false} />
+                <XAxis dataKey="label" stroke={chart.axis} fontSize={11} tickLine={false} axisLine={false} />
+                <YAxis stroke={chart.axis} fontSize={11} tickLine={false} axisLine={false} width={50} />
                 <Tooltip
-                  contentStyle={{ background: '#181818', border: '1px solid #2b2b2b', borderRadius: 10, fontSize: 12 }}
+                  contentStyle={chart.tooltip}
                   formatter={(value) => [formatSum(value), t('admin.payments.tableAmount')]}
                 />
                 <Bar dataKey="sum" fill="#c9a227" radius={[6, 6, 0, 0]} />
@@ -177,7 +179,7 @@ export default function AdminPayments() {
             <tbody>
               {filtered.map((p) => (
                 <tr key={p.id} className="border-b border-ink-800/60 hover:bg-ink-800/30">
-                  <td className="px-4 py-3 font-medium text-white">{p.mijozIsmi}</td>
+                  <td className="px-4 py-3 font-medium text-strong">{p.mijozIsmi}</td>
                   <td className="px-4 py-3 text-ink-300">{p.sana}</td>
                   <td className="px-4 py-3 text-ink-300">
                     <span className="inline-flex items-center gap-1.5">

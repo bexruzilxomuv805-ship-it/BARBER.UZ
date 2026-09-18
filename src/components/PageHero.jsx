@@ -17,7 +17,7 @@ export default function PageHero({ eyebrow, title, subtitle }) {
               <GiRazor /> {eyebrow}
             </span>
           )}
-          <h1 className="mt-5 text-3xl sm:text-4xl lg:text-5xl font-display font-bold text-white">{title}</h1>
+          <h1 className="mt-5 text-3xl sm:text-4xl lg:text-5xl font-display font-bold text-strong">{title}</h1>
           {subtitle && <p className="mt-4 max-w-xl mx-auto text-ink-400">{subtitle}</p>}
         </motion.div>
       </div>

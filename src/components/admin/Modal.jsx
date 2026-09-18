@@ -21,8 +21,8 @@ export default function Modal({ open, onClose, title, children, wide = false }) 
             className={`w-full ${wide ? 'max-w-2xl' : 'max-w-md'} max-h-[88vh] overflow-y-auto rounded-2xl border border-ink-800 bg-ink-900 shadow-2xl`}
           >
             <div className="flex items-center justify-between border-b border-ink-800 px-6 py-4">
-              <h3 className="font-display text-lg font-semibold text-white">{title}</h3>
-              <button onClick={onClose} className="text-ink-500 hover:text-white">
+              <h3 className="font-display text-lg font-semibold text-strong">{title}</h3>
+              <button onClick={onClose} className="text-ink-500 hover:text-strong">
                 <FaTimes />
               </button>
             </div>

@@ -116,7 +116,7 @@ export default function AdminSartaroshxonalar() {
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl font-bold text-white">{t('admin.shops.title')}</h1>
+          <h1 className="font-display text-2xl font-bold text-strong">{t('admin.shops.title')}</h1>
           <p className="text-sm text-ink-500 mt-1">{t('admin.shops.subtitle', { count: shops.length })}</p>
         </div>
         <button onClick={openCreate} className="btn-gold !py-2 text-sm">
@@ -135,7 +135,7 @@ export default function AdminSartaroshxonalar() {
               </div>
               <div className="flex flex-1 flex-col p-3">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="truncate text-sm font-semibold text-white">{s.nomi}</p>
+                  <p className="truncate text-sm font-semibold text-strong">{s.nomi}</p>
                   <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${TIER_BADGE[s.tur] || TIER_BADGE.oddiy}`}>
                     {t(`admin.shops.tier.${s.tur || 'oddiy'}`)}
                   </span>

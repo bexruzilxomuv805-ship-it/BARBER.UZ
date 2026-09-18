@@ -17,6 +17,7 @@ import { fetchServices } from '../../features/services/servicesSlice'
 import usePolling from '../../hooks/usePolling'
 import { formatSum, STATUS_LABELS } from '../../utils/format'
 import { getWeekdayOptions, toLocalDateIso } from '../../utils/schedule'
+import { useChartTheme } from '../../hooks/useTheme'
 
 const COLORS = ['#c9a227', '#38bdf8', '#34d399', '#f87171', '#a78bfa']
 const HEATMAP_HOURS = ['09', '10', '11', '12', '14', '15', '16', '17', '18']
@@ -37,6 +38,7 @@ function trendPercent(series) {
 }
 
 export default function AdminDashboard() {
+  const chart = useChartTheme()
   const { t } = useTranslation()
   const dispatch = useDispatch()
   const { items: appointments, status } = useSelector((s) => s.appointments)
@@ -198,7 +200,7 @@ export default function AdminDashboard() {
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl font-bold text-white">{t('admin.dashboard.title')}</h1>
+          <h1 className="font-display text-2xl font-bold text-strong">{t('admin.dashboard.title')}</h1>
           <p className="text-sm text-ink-500 mt-1">{t('admin.dashboard.subtitle')}</p>
         </div>
         <Link to="/admin/navbatlar" className="btn-gold !py-2 text-sm">
@@ -243,7 +245,7 @@ export default function AdminDashboard() {
 
       <div className="mt-6 grid gap-5 lg:grid-cols-3">
         <div className="card p-5 lg:col-span-2">
-          <h3 className="mb-4 text-sm font-semibold text-white">{t('admin.dashboard.revenueChartTitle')}</h3>
+          <h3 className="mb-4 text-sm font-semibold text-strong">{t('admin.dashboard.revenueChartTitle')}</h3>
           <ResponsiveContainer width="100%" height={260}>
             <AreaChart data={revenueTrend}>
               <defs>
@@ -252,11 +254,11 @@ export default function AdminDashboard() {
                   <stop offset="100%" stopColor="#c9a227" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#2b2b2b" vertical={false} />
-              <XAxis dataKey="sana" stroke="#6d6d6d" fontSize={12} tickLine={false} axisLine={false} />
-              <YAxis stroke="#6d6d6d" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `${v / 1000}k`} />
+              <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} vertical={false} />
+              <XAxis dataKey="sana" stroke={chart.axis} fontSize={12} tickLine={false} axisLine={false} />
+              <YAxis stroke={chart.axis} fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `${v / 1000}k`} />
               <Tooltip
-                contentStyle={{ background: '#181818', border: '1px solid #2b2b2b', borderRadius: 10, fontSize: 12 }}
+                contentStyle={chart.tooltip}
                 formatter={(v) => [formatSum(v), t('admin.dashboard.tooltipRevenue')]}
               />
               <Area type="monotone" dataKey="summa" stroke="#c9a227" strokeWidth={2} fill="url(#goldFill)" />
@@ -265,7 +267,7 @@ export default function AdminDashboard() {
         </div>
 
         <div className="card p-5">
-          <h3 className="mb-4 text-sm font-semibold text-white">{t('admin.dashboard.statusChartTitle')}</h3>
+          <h3 className="mb-4 text-sm font-semibold text-strong">{t('admin.dashboard.statusChartTitle')}</h3>
           <ResponsiveContainer width="100%" height={220}>
             <PieChart>
               <Pie data={statusBreakdown} dataKey="value" nameKey="name" innerRadius={50} outerRadius={80} paddingAngle={3}>
@@ -274,7 +276,7 @@ export default function AdminDashboard() {
                 ))}
               </Pie>
               <Tooltip
-                contentStyle={{ background: '#181818', border: '1px solid #2b2b2b', borderRadius: 10, fontSize: 12 }}
+                contentStyle={chart.tooltip}
                 formatter={(value, name) => [value, statusLabel(name)]}
               />
             </PieChart>
@@ -295,14 +297,14 @@ export default function AdminDashboard() {
 
       <div className="mt-6 grid gap-5 lg:grid-cols-3">
         <div className="card p-5 lg:col-span-1">
-          <h3 className="mb-4 text-sm font-semibold text-white">{t('admin.dashboard.revenueByBarberTitle')}</h3>
+          <h3 className="mb-4 text-sm font-semibold text-strong">{t('admin.dashboard.revenueByBarberTitle')}</h3>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={revenueByBarber}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#2b2b2b" vertical={false} />
-              <XAxis dataKey="name" stroke="#6d6d6d" fontSize={11} tickLine={false} axisLine={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} vertical={false} />
+              <XAxis dataKey="name" stroke={chart.axis} fontSize={11} tickLine={false} axisLine={false} />
               <YAxis hide />
               <Tooltip
-                contentStyle={{ background: '#181818', border: '1px solid #2b2b2b', borderRadius: 10, fontSize: 12 }}
+                contentStyle={chart.tooltip}
                 formatter={(v) => [formatSum(v), t('admin.dashboard.tooltipRevenue')]}
               />
               <Bar dataKey="summa" fill="#c9a227" radius={[6, 6, 0, 0]} />
@@ -312,7 +314,7 @@ export default function AdminDashboard() {
 
         <div className="card p-5 lg:col-span-2">
           <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-white">{t('admin.dashboard.ustaStatsTitle')}</h3>
+            <h3 className="text-sm font-semibold text-strong">{t('admin.dashboard.ustaStatsTitle')}</h3>
             <Link to="/admin/ustalar" className="text-xs text-gold-400 hover:underline">{t('admin.dashboard.viewAll')}</Link>
           </div>
           {ustaStats.length === 0 ? (
@@ -331,7 +333,7 @@ export default function AdminDashboard() {
                 <tbody>
                   {ustaStats.map((u) => (
                     <tr key={u.name} className="border-b border-ink-800/60">
-                      <td className="px-2 py-2.5 font-medium text-white">{u.name}</td>
+                      <td className="px-2 py-2.5 font-medium text-strong">{u.name}</td>
                       <td className="px-2 py-2.5 text-ink-300">{u.customers}</td>
                       <td className="px-2 py-2.5 text-ink-300">{u.count}</td>
                       <td className="px-2 py-2.5 text-gold-400 font-medium">{formatSum(u.revenue)}</td>
@@ -346,7 +348,7 @@ export default function AdminDashboard() {
 
       <div className="mt-6">
         <div className="card p-5">
-          <h3 className="mb-4 text-sm font-semibold text-white">{t('admin.dashboard.heatmapTitle')}</h3>
+          <h3 className="mb-4 text-sm font-semibold text-strong">{t('admin.dashboard.heatmapTitle')}</h3>
           <div className="overflow-x-auto">
             <table className="w-full text-center text-[11px] text-ink-400">
               <thead>
@@ -368,8 +370,8 @@ export default function AdminDashboard() {
                         <td key={d.value} className="p-0.5">
                           <div
                             title={String(count)}
-                            className="mx-auto flex h-7 min-w-[28px] items-center justify-center rounded-md text-[10px] font-medium text-white"
-                            style={{ background: intensity ? `rgba(201,162,39,${0.15 + intensity * 0.75})` : 'rgba(255,255,255,0.04)' }}
+                            className="mx-auto flex h-7 min-w-[28px] items-center justify-center rounded-md text-[10px] font-medium text-strong"
+                            style={{ background: intensity ? `rgba(201,162,39,${0.15 + intensity * 0.75})` : chart.emptyCell }}
                           >
                             {count > 0 ? count : ''}
                           </div>

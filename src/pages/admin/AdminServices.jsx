@@ -61,7 +61,7 @@ export default function AdminServices() {
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl font-bold text-white">{t('admin.services.title')}</h1>
+          <h1 className="font-display text-2xl font-bold text-strong">{t('admin.services.title')}</h1>
           <p className="text-sm text-ink-500 mt-1">{t('admin.services.subtitle', { count: services.length })}</p>
         </div>
         <button onClick={openCreate} className="btn-gold !py-2 text-sm">
@@ -92,7 +92,7 @@ export default function AdminServices() {
                         <ServiceIcon name={s.rasm} />
                       </span>
                       <div>
-                        <AutoText as="p" className="font-medium text-white" text={s.nomi} />
+                        <AutoText as="p" className="font-medium text-strong" text={s.nomi} />
                         <AutoText as="p" className="text-xs text-ink-500 max-w-xs truncate" text={s.tavsif} />
                       </div>
                     </div>

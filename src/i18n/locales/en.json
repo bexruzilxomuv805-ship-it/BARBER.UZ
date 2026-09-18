@@ -31,6 +31,10 @@
     "logoutConfirmTitle": "Log out",
     "logoutConfirmText": "Are you sure you want to log out?"
   },
+  "theme": {
+    "toLight": "Switch to light mode",
+    "toDark": "Switch to dark mode"
+  },
   "footer": {
     "tagline": "Premium barbershop — modern and classic styles, experienced barbers, a convenient online booking system.",
     "pagesTitle": "Pages",

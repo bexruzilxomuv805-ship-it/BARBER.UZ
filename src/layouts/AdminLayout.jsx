@@ -14,6 +14,7 @@ import { logout } from '../features/auth/authSlice'
 import { showToast } from '../features/ui/uiSlice'
 import Toast from '../components/Toast'
 import LanguageSwitcher from '../components/LanguageSwitcher'
+import ThemeToggle from '../components/ThemeToggle'
 import Modal from '../components/admin/Modal'
 
 export default function AdminLayout() {
@@ -72,7 +73,7 @@ export default function AdminLayout() {
         <span className="flex h-9 w-9 items-center justify-center rounded-full border border-gold-500/60 bg-ink-900 text-gold-400">
           <GiRazor />
         </span>
-        <span className="font-display text-lg font-bold text-white">
+        <span className="font-display text-lg font-bold text-strong">
           Zolotoy <span className="gold-text">{isUsta ? t('nav.ustaPanel') : 'Admin'}</span>
         </span>
       </div>
@@ -88,7 +89,7 @@ export default function AdminLayout() {
               onClick={() => setSidebarOpen(false)}
               className={({ isActive }) =>
                 `relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-colors ${
-                  isActive ? 'text-gold-300' : 'text-ink-400 hover:bg-ink-900 hover:text-white'
+                  isActive ? 'text-gold-300' : 'text-ink-400 hover:bg-ink-900 hover:text-strong'
                 }`
               }
             >
@@ -116,7 +117,7 @@ export default function AdminLayout() {
       </nav>
 
       <div className="border-t border-ink-800 p-3 space-y-1">
-        <NavLink to="/" className="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium text-ink-400 hover:bg-ink-900 hover:text-white">
+        <NavLink to="/" className="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium text-ink-400 hover:bg-ink-900 hover:text-strong">
           <FaHome /> {t('admin.nav.backToSite')}
         </NavLink>
         <button
@@ -163,9 +164,10 @@ export default function AdminLayout() {
           </button>
           <div className="hidden lg:block" />
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             <LanguageSwitcher />
             <div className="text-right hidden sm:block">
-              <p className="text-sm font-medium text-white">{user?.ism} {user?.familiya}</p>
+              <p className="text-sm font-medium text-strong">{user?.ism} {user?.familiya}</p>
               <p className="text-[11px] text-ink-500">{isUsta ? t('admin.roleUsta') : t('admin.role')}</p>
             </div>
             <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gold-500/15 text-gold-400 text-base">

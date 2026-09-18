@@ -16,7 +16,7 @@ export default function NotFound() {
       >
         <GiRazor />
       </motion.div>
-      <h1 className="relative mt-6 font-display text-6xl font-bold text-white">{t('notFound.title')}</h1>
+      <h1 className="relative mt-6 font-display text-6xl font-bold text-strong">{t('notFound.title')}</h1>
       <p className="relative mt-3 text-ink-400 max-w-sm">
         {t('notFound.message')}
       </p>

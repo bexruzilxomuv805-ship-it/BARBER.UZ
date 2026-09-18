@@ -208,7 +208,7 @@ export default function ChatWidget() {
                   className="absolute bottom-full right-0 mb-3 w-72 max-w-[85vw] overflow-hidden rounded-2xl border border-gold-500/30 bg-ink-900 shadow-2xl"
                 >
                   <div className="border-b border-ink-800 px-4 py-3">
-                    <p className="text-sm font-semibold text-white">{t('chat.menuTitle')}</p>
+                    <p className="text-sm font-semibold text-strong">{t('chat.menuTitle')}</p>
                   </div>
                   <div className="p-2">
                     <button
@@ -219,7 +219,7 @@ export default function ChatWidget() {
                         <FaCommentDots />
                         {totalUnread > 0 && <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-ink-900" />}
                       </span>
-                      <span className="flex-1 text-sm font-medium text-white">{t('chat.viaSite')}</span>
+                      <span className="flex-1 text-sm font-medium text-strong">{t('chat.viaSite')}</span>
                       {totalUnread > 0 && (
                         <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
                           {totalUnread > 9 ? '9+' : totalUnread}
@@ -235,7 +235,7 @@ export default function ChatWidget() {
                       >
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sky-500/15 text-sky-400"><FaRobot /></span>
                         <span>
-                          <span className="block text-sm font-medium text-white">{t('chat.telegramBotAction')}</span>
+                          <span className="block text-sm font-medium text-strong">{t('chat.telegramBotAction')}</span>
                           <span className="block text-xs text-ink-500">@{BOT_USERNAME}</span>
                         </span>
                       </a>
@@ -247,7 +247,7 @@ export default function ChatWidget() {
                       >
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-400"><FaPhoneAlt /></span>
                         <span>
-                          <span className="block text-sm font-medium text-white">{t('chat.callAction')}</span>
+                          <span className="block text-sm font-medium text-strong">{t('chat.callAction')}</span>
                           <span className="block text-xs text-ink-500">{contact.telefon}</span>
                         </span>
                       </a>
@@ -260,7 +260,7 @@ export default function ChatWidget() {
                         className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-ink-800"
                       >
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sky-500/15 text-sky-400"><FaTelegramPlane /></span>
-                        <span className="text-sm font-medium text-white">Telegram</span>
+                        <span className="text-sm font-medium text-strong">Telegram</span>
                       </a>
                     )}
                     {contact.instagram && (
@@ -271,7 +271,7 @@ export default function ChatWidget() {
                         className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-ink-800"
                       >
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-pink-500/15 text-pink-400"><FaInstagram /></span>
-                        <span className="text-sm font-medium text-white">Instagram</span>
+                        <span className="text-sm font-medium text-strong">Instagram</span>
                       </a>
                     )}
                   </div>
@@ -283,7 +283,7 @@ export default function ChatWidget() {
               whileHover={{ scale: 1.08 }}
               whileTap={{ scale: 0.94 }}
               onClick={() => setMenuOpen((v) => !v)}
-              className={`relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-gold-400 to-gold-600 text-ink-950 text-2xl shadow-gold ${menuOpen ? '' : 'animate-pulseRing'}`}
+              className={`relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-gold-400 to-gold-600 text-on-gold text-2xl shadow-gold ${menuOpen ? '' : 'animate-pulseRing'}`}
               aria-label={t('chat.supportLabel')}
             >
               {menuOpen ? <FaTimes /> : <FaHeadset />}
@@ -307,8 +307,8 @@ export default function ChatWidget() {
               className="flex h-[70vh] max-h-[560px] w-[92vw] max-w-sm flex-col overflow-hidden rounded-2xl border border-gold-500/30 bg-ink-900 shadow-2xl"
             >
               <div className="flex items-center justify-between bg-gradient-to-r from-ink-800 to-ink-900 px-4 py-3 border-b border-ink-800">
-                <p className="text-sm font-semibold text-white">{t('chat.conversationsTitle')}</p>
-                <button onClick={() => closeChat()} className="-m-2 rounded-lg p-2 text-ink-400 hover:bg-ink-800 hover:text-white">
+                <p className="text-sm font-semibold text-strong">{t('chat.conversationsTitle')}</p>
+                <button onClick={() => closeChat()} className="-m-2 rounded-lg p-2 text-ink-400 hover:bg-ink-800 hover:text-strong">
                   <FaTimes />
                 </button>
               </div>
@@ -342,13 +342,13 @@ export default function ChatWidget() {
                       )}
                       <span className="min-w-0 flex-1">
                         <span className="flex items-center justify-between gap-2">
-                          <span className="truncate text-sm font-semibold text-white">{name}</span>
+                          <span className="truncate text-sm font-semibold text-strong">{name}</span>
                           <span className="shrink-0 text-[11px] text-ink-500">{formatListTime(c.updatedAt, i18n.language)}</span>
                         </span>
                         <span className="mt-0.5 flex items-center justify-between gap-2">
                           <span className="truncate text-xs text-ink-400">{preview}</span>
                           {unread > 0 && (
-                            <span className="flex h-5 min-w-[20px] shrink-0 items-center justify-center rounded-full bg-gold-500 px-1 text-[10px] font-bold text-ink-950">
+                            <span className="flex h-5 min-w-[20px] shrink-0 items-center justify-center rounded-full bg-gold-500 px-1 text-[10px] font-bold text-on-gold">
                               {unread > 9 ? '9+' : unread}
                             </span>
                           )}
@@ -373,7 +373,7 @@ export default function ChatWidget() {
               <div className="flex items-center gap-2 bg-gradient-to-r from-ink-800 to-ink-900 px-3 py-3 border-b border-ink-800">
                 <button
                   onClick={goBackToList}
-                  className="-m-2 shrink-0 rounded-lg p-2 text-ink-400 hover:bg-ink-800 hover:text-white"
+                  className="-m-2 shrink-0 rounded-lg p-2 text-ink-400 hover:bg-ink-800 hover:text-strong"
                   aria-label={t('chat.backAction')}
                 >
                   <FaArrowLeft />
@@ -386,7 +386,7 @@ export default function ChatWidget() {
                   </span>
                 )}
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-white">
+                  <p className="truncate text-sm font-semibold text-strong">
                     {activeBarberId ? (activeBarber ? `${activeBarber.ism} ${activeBarber.familiya}` : t('booking.barberLabel')) : t('chat.supportLabel')}
                   </p>
                   <p className="text-[11px] text-emerald-400 flex items-center gap-1">
@@ -403,7 +403,7 @@ export default function ChatWidget() {
                     <FaTrash />
                   </button>
                 )}
-                <button onClick={() => closeChat()} className="-m-2 shrink-0 rounded-lg p-2 text-ink-400 hover:bg-ink-800 hover:text-white">
+                <button onClick={() => closeChat()} className="-m-2 shrink-0 rounded-lg p-2 text-ink-400 hover:bg-ink-800 hover:text-strong">
                   <FaTimes />
                 </button>
               </div>
@@ -421,7 +421,7 @@ export default function ChatWidget() {
                     <div key={m.id} className={`flex flex-col ${isOwn ? 'items-end' : 'items-start'}`}>
                       <div
                         className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm leading-snug ${
-                          isOwn ? 'bg-gold-500 text-ink-950 rounded-br-sm' : 'bg-ink-800 text-ink-100 rounded-bl-sm'
+                          isOwn ? 'bg-gold-500 text-on-gold rounded-br-sm' : 'bg-ink-800 text-ink-100 rounded-bl-sm'
                         }`}
                       >
                         {isEditing ? (
@@ -435,17 +435,17 @@ export default function ChatWidget() {
                                 if (e.key === 'Escape') cancelEdit()
                               }}
                               placeholder={t('chat.editPlaceholder')}
-                              className="min-w-0 flex-1 rounded-lg border border-ink-950/20 bg-white/25 px-2 py-1 text-sm text-ink-950 placeholder:text-ink-950/50 focus:outline-none"
+                              className="min-w-0 flex-1 rounded-lg border border-on-gold/20 bg-white/25 px-2 py-1 text-sm text-on-gold placeholder:text-on-gold/50 focus:outline-none"
                             />
                             <button
                               type="button"
                               onClick={() => saveEdit(m.id)}
                               disabled={!editText.trim()}
-                              className="-m-1.5 shrink-0 rounded-md p-1.5 text-ink-950/70 hover:bg-white/15 hover:text-ink-950 disabled:opacity-30"
+                              className="-m-1.5 shrink-0 rounded-md p-1.5 text-on-gold/70 hover:bg-white/15 hover:text-on-gold disabled:opacity-30"
                             >
                               <FaCheck className="text-xs" />
                             </button>
-                            <button type="button" onClick={cancelEdit} className="-m-1.5 shrink-0 rounded-md p-1.5 text-ink-950/70 hover:bg-white/15 hover:text-ink-950">
+                            <button type="button" onClick={cancelEdit} className="-m-1.5 shrink-0 rounded-md p-1.5 text-on-gold/70 hover:bg-white/15 hover:text-on-gold">
                               <FaTimes className="text-xs" />
                             </button>
                           </div>
@@ -494,7 +494,7 @@ export default function ChatWidget() {
                 <button
                   type="submit"
                   disabled={sending || !text.trim()}
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gold-500 text-ink-950 disabled:opacity-40 transition-opacity"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gold-500 text-on-gold disabled:opacity-40 transition-opacity"
                 >
                   <FaPaperPlane className="text-sm" />
                 </button>

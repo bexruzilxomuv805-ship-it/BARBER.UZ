@@ -253,7 +253,7 @@ export default function Booking() {
             />
             <FaCheckCircle className="relative text-6xl text-emerald-400" />
           </motion.div>
-          <motion.h2 variants={fadeUp} className="mt-6 font-display text-2xl font-bold text-white">
+          <motion.h2 variants={fadeUp} className="mt-6 font-display text-2xl font-bold text-strong">
             {t('booking.doneTitle')}
           </motion.h2>
           <motion.p variants={fadeUp} className="mt-3 text-ink-400">
@@ -281,7 +281,7 @@ export default function Booking() {
                 <div
                   className={`flex h-9 w-9 items-center justify-center rounded-full border text-sm font-semibold transition-colors ${
                     i < step
-                      ? 'bg-gold-500 border-gold-500 text-ink-950'
+                      ? 'bg-gold-500 border-gold-500 text-on-gold'
                       : i === step
                       ? 'border-gold-500 text-gold-400'
                       : 'border-ink-800 text-ink-600'
@@ -344,7 +344,7 @@ export default function Booking() {
                           </span>
                         )}
                         <div className="min-w-0 flex-1">
-                          <p className="truncate font-medium text-white text-sm">{s.nomi}</p>
+                          <p className="truncate font-medium text-strong text-sm">{s.nomi}</p>
                           <AutoText as="p" className="text-xs text-ink-500 truncate" text={s.manzilMatni} />
                           <p className="mt-0.5 truncate text-xs text-ink-500">
                             {s.distance != null ? (
@@ -378,7 +378,7 @@ export default function Booking() {
                           <ServiceIcon name={s.rasm} />
                         </span>
                         <div className="min-w-0 flex-1">
-                          <AutoText as="p" className="truncate font-medium text-white text-sm" text={s.nomi} />
+                          <AutoText as="p" className="truncate font-medium text-strong text-sm" text={s.nomi} />
                           <p className="text-xs text-ink-500">{t('booking.minutes', { count: s.davomiyligi })}</p>
                         </div>
                         <span className="shrink-0 text-sm font-semibold text-gold-400">{formatSum(s.narxi)}</span>
@@ -412,7 +412,7 @@ export default function Booking() {
                         >
                           <img src={getBarberImage(b.rasm)} alt={b.ism} className="h-14 w-14 rounded-full object-cover shrink-0" />
                           <div className="min-w-0 flex-1">
-                            <p className="truncate font-medium text-white text-sm">{b.ism} {b.familiya}</p>
+                            <p className="truncate font-medium text-strong text-sm">{b.ism} {b.familiya}</p>
                             <AutoText as="p" className="truncate text-xs text-gold-400" text={b.mutaxassislik} />
                             <p className="mt-0.5 truncate text-xs text-ink-500">{hoursSummary || t('booking.hoursVaryByDay')}</p>
                             {offDays.length > 0 && (
@@ -472,7 +472,7 @@ export default function Booking() {
                         onClick={() => setTime(t)}
                         className={`rounded-lg border px-2 py-2.5 text-sm font-medium transition-colors ${
                           active
-                            ? 'border-gold-500 bg-gold-500 text-ink-950'
+                            ? 'border-gold-500 bg-gold-500 text-on-gold'
                             : isBlocked || isPast
                             ? 'border-ink-900 text-ink-700 line-through cursor-not-allowed'
                             : 'border-ink-800 text-ink-300 hover:border-gold-500/50'
@@ -492,10 +492,10 @@ export default function Booking() {
                 <div className="card p-5">
                   <p className="text-xs text-ink-500 mb-3">{t('booking.orderSummary')}</p>
                   <div className="space-y-1.5 text-sm text-ink-300">
-                    <p>{t('booking.shopLabel')}: <span className="text-white font-medium">{selectedShop?.nomi}</span></p>
-                    <p>{t('booking.serviceLabel')}: <span className="text-white font-medium"><AutoText text={selectedService?.nomi} /></span></p>
-                    <p>{t('booking.barberLabel')}: <span className="text-white font-medium">{selectedBarber?.ism} {selectedBarber?.familiya}</span></p>
-                    <p>{t('booking.dateTimeLabel')}: <span className="text-white font-medium">{date} — {time}</span></p>
+                    <p>{t('booking.shopLabel')}: <span className="text-strong font-medium">{selectedShop?.nomi}</span></p>
+                    <p>{t('booking.serviceLabel')}: <span className="text-strong font-medium"><AutoText text={selectedService?.nomi} /></span></p>
+                    <p>{t('booking.barberLabel')}: <span className="text-strong font-medium">{selectedBarber?.ism} {selectedBarber?.familiya}</span></p>
+                    <p>{t('booking.dateTimeLabel')}: <span className="text-strong font-medium">{date} — {time}</span></p>
                     <p>{t('booking.priceLabel')}: <span className="text-gold-400 font-semibold">{formatSum(selectedService?.narxi)}</span></p>
                   </div>
                 </div>
